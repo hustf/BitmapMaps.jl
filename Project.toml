@@ -1,0 +1,22 @@
+name = "BitmapMaps"
+uuid = "dcf5437e-85d8-460a-98f8-69920db83c61"
+authors = ["hustf <hustf@users.noreply.github.com> and contributors"]
+version = "0.0.1"
+
+[deps]
+GeoArrays = "2fb1d81b-e6a0-5fc5-82e6-8e06903437ab"
+ImageMorphology = "787d08f9-d448-5407-9aad-5290dd7ab264"
+LuxorLayout = "909dfbbc-cb73-418e-9556-eed3773b40ca"
+Pango_jll = "36c8627f-9965-5494-a995-c6b170f724f3"
+Serialization = "9e88b42a-f829-5b0c-bbe9-9e923198166b"
+
+
+[compat]
+Pango_jll = "=1.42.4"
+julia = "1.9"
+
+[extras]
+Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
+
+[targets]
+test = ["Test"]
