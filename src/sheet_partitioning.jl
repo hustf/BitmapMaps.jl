@@ -1,55 +1,56 @@
-# Based on Luxor.Partition, adapted so as to ensure that an integer number of sheets
-# cover the entire area.
-# My printer tends to sometimes drop 1 mm of graphics when printer. 
-# Add some pixels to the final output image to compensate for that. But that
-# does not affect partitioning.
+# Inspired by Luxor.Partition, adapted so as to ensure that an integer number of sheets
+# cover the entire area, and that the oposite direction of 'northing' and 'image matrix y+'
+# does not cause inaccuracies (which it might do). Another cause of bugs is the integer
+# sampling distance.
+#
 
 """
-    p = ShPartition(bmm_pixel_width, bmm_pixel_height, sheet_width, sheet_height)
+    SheetPartition
 
-A ShPartition is an iterator that, for each iteration, returns a tuple of:
+# Fields
+- pixel_origin_ref_to_bitmapmap::Tuple{Int64, Int64}
 
-  - the `x`/`y` point of the center of each tile in a set of sheets that divide up a
-    rectangular space such as a page into rows and columns (relative to current 0/0)
+The sheet's upper left corner given in a pixel coordinate system for the entire 'bitmapmap' (BM, consisting of multiple sheets).
 
-  - the number of the tile
+- pix_iter::CartesianIndices{2, Tuple{UnitRange{Int64}, UnitRange{Int64}}}
 
-`bmm_pixel_width` and `bmm_pixel_height` are the dimensions of the area to be tiled,
-`sheet_width`/`sheet_height` are the dimensions of the sheets.
+Iterate over every pixel in the current sheet, starting top left. Typical use with `zip(pix_iter, utm_iter)`
 
-Tiler and ShPartition are similar:
+- utm_iter::CartesianIndices{2, Tuple{UnitRange{Int64}, UnitRange{Int64}}}
 
-  - ShPartition lets you specify the width and height of a sheet
+Iterate over every utm coordinate (easting, northing) corresponding to a pixel in the current sheet, starting top left. Typical use with `zip(pix_iter, utm_iter)`
 
-  - Tiler lets you specify how many rows and columns of sheets you want, and a margin
 
-  ```
-
-    sheets = ShPartition(1200, 1200, 30, 30)
-    for (pos, n) in sheets
-    
-    # the point pos is the center of the tile
-    
-    end
-  ```
-
-You can access the calculated tile width and height like this:
+# Example
 
 ```
-    sheets = ShPartition(1200, 1200, 30, 30)
-    for (pos, n) in sheets
-        ellipse(pos.x, pos.y, sheets.sheet_width, sheets.sheet_height, :fill)
-    end
 ```
+"""
+@kwdef struct SheetPartition
+    pixel_origin_ref_to_bitmapmap::Tuple{Int64, Int64}
+    pix_iter::CartesianIndices{2, Tuple{UnitRange{Int64}, UnitRange{Int64}}}
+    f_I_to_utm::Function
+end
+
+function SheetPartition(sheet_lower_left_utm, pix_dist, pixel_origin_ref_to_bitmapmap, pix_iter)
+    sheet_height = size(pix_iter)[1]
+    function f_I_to_utm(I::CartesianIndex)
+        easting_offset =   (I[2] - 1) * pix_dist 
+        northing_offset =  (sheet_height - I[1]) * pix_dist
+        (easting_offset, northing_offset) .+ sheet_lower_left_utm
+    end
+    SheetPartition(;pixel_origin_ref_to_bitmapmap, pix_iter, f_I_to_utm)
+end
+
+function Base.show(io::IO, ::MIME"text/plain", shi::SheetPartition)
+    println(io, "SheetPartition(")
+    println(io, rpad("\tpixel_origin_ref_to_bitmapmap = ", 32), shi.pixel_origin_ref_to_bitmapmap)
+    println(io, rpad("\tpix_iter or I = ", 32), shi.pix_iter)
+    println(io, rpad("\tf_I_to_utm(first(pix_iter)) = ", 32), shi.f_I_to_utm(first(shi.pix_iter)), " )")
+end
 
 
-It's sometimes useful to know which row and column you're currently on:
-
-    sheets.currentrow
-    sheets.currentcol
-
-should have that information for you.
-
+"""
 Unless the entire 'bitmapmap' (the entire map or canvas) and 'sheet' 
 dimensions are exact multiples of each other, the bordering sheets will  
 extend outside of the 'bitmapmap' with background content.
@@ -71,69 +72,85 @@ TODO: Input:
 
     pixel
 """
-mutable struct ShPartition
-    bmm_pixel_width::Int
-    bmm_pixel_height::Int
+mutable struct BmPartition
+    bm_pixel_width::Int
+    bm_pixel_height::Int
     sheet_width::Int
     sheet_height::Int
     nrows::Int
     ncols::Int
-    currentrow::Int
-    currentcol::Int
-    function ShPartition(bmm_pixel_width, bmm_pixel_height, sheet_width, sheet_height)
-        ncols = bmm_pixel_width / sheet_width |> ceil |> Integer
-        nrows = bmm_pixel_height / sheet_height |> ceil |> Integer
+    bm_southwest_corner::Tuple{Int, Int}
+    sheet_indices::CartesianIndices{2, Tuple{UnitRange{Int64}, UnitRange{Int64}}}
+    pixel_distance::Int
+    function BmPartition(bm_pixel_width, bm_pixel_height, sheet_width, sheet_height, bm_southwest_corner, pixel_distance)
+        ncols = bm_pixel_width / sheet_width |> ceil |> Integer
+        nrows = bm_pixel_height / sheet_height |> ceil |> Integer
         if ncols < 1 || nrows < 1
             throw(error("partition(): not enough space for sheets that size"))
         end
-        currentrow = 1
-        currentcol = 1
-        new(bmm_pixel_width, bmm_pixel_height, sheet_width, sheet_height, nrows, ncols, currentrow, currentcol)
+        sheet_indices = CartesianIndices((1:nrows, 1:ncols))
+        new(bm_pixel_width, bm_pixel_height, sheet_width, sheet_height, nrows, ncols, bm_southwest_corner, sheet_indices, pixel_distance)
     end
+end
+
+function SheetPartition(p::BmPartition, sheetnumber::Int)
+    # No upper bounds here, 'iterate' and 'getindex' should do that.
+    #
+    # The first (and any) sheet's own pixel origin is top left of the sheet.
+    #
+    # The bitmapmap's pixel origin is top left of the bitmapmap (bm). 
+    # which contains the south-west corner of the bitmapmap
+    pix_iter = CartesianIndices((1:p.sheet_height, 1:p.sheet_width))
+    r, c = row_col_of_sheet(p, sheetnumber)
+    opx = (c - 1) * p.sheet_width
+    opy = p.bm_pixel_height - p.sheet_height - (r - 1) * p.sheet_height
+    pixel_origin_ref_to_bitmapmap = (opx, opy)
+    sheet_lower_left_utm = p.bm_southwest_corner .+ p.pixel_distance .* (opx, (r - 1) * p.sheet_height)
+    SheetPartition(sheet_lower_left_utm, p.pixel_distance, pixel_origin_ref_to_bitmapmap, pix_iter)
 end
 
 # The first iteration, returns first and second state.
-function Base.iterate(pt::ShPartition)
-    x = -(pt.bmm_pixel_width / 2) + (pt.sheet_width / 2)
-    y = (pt.bmm_pixel_height / 2) - (pt.sheet_height / 2)
+function Base.iterate(p::BmPartition)
     sheetnumber = 1
-    x1 = x + pt.sheet_width
-    y1 = y
-    if (x1 + pt.sheet_width / 2) > (pt.bmm_pixel_width / 2)
-        y1 -= pt.sheet_height
-        x1 = -(pt.bmm_pixel_width / 2) + (pt.sheet_width / 2)
-    end
-    pt.currentrow, pt.currentcol = (div(sheetnumber - 1, pt.ncols) + 1, mod1(sheetnumber, pt.ncols))
-    return ((Point(x, y), sheetnumber), (Point(x1, y1), sheetnumber + 1))
+    shp = SheetPartition(p, 1)
+    shp_n = SheetPartition(p, 2)    
+    return ((shp, sheetnumber), (shp_n, sheetnumber + 1))
 end
 
 # Other than the first iteration, returns this and the next state.
-function Base.iterate(pt::ShPartition, state)
-    if state[2] > (pt.nrows * pt.ncols)
+function Base.iterate(p::BmPartition, state)
+    if state[2] > (p.nrows * p.ncols)
         return nothing
     end
-    x = state[1].x
-    y = state[1].y
     sheetnumber = state[2]
-    x1 = x + pt.sheet_width
-    y1 = y
-    if (x1 + pt.sheet_width / 2) > (pt.bmm_pixel_width / 2)
-        y1 -= pt.sheet_height
-        x1 = -(pt.bmm_pixel_width / 2) + (pt.sheet_width / 2)
-    end
-    pt.currentrow, pt.currentcol = (div(sheetnumber - 1, pt.ncols) + 1, mod1(sheetnumber, pt.ncols))
-    return ((Point(x, y), sheetnumber), (Point(x1, y1), sheetnumber + 1))
+    shp = state[1]
+    @assert shp isa SheetPartition
+    shp_n = SheetPartition(p, sheetnumber + 1)
+    return ((shp, sheetnumber), (shp_n, sheetnumber + 1))
 end
 
 
-function Base.length(pt::ShPartition)
-    pt.nrows * pt.ncols
+function Base.length(p::BmPartition)
+    p.nrows * p.ncols
 end
 
-
-function Base.getindex(pt::ShPartition, i::Int)
-    1 <= i <= pt.ncols * pt.nrows || throw(BoundsError(pt, i))
-    xcoord = -pt.bmm_pixel_width / 2 + mod1(i, pt.ncols) * pt.sheet_width - pt.sheet_width / 2
-    ycoord = -pt.bmm_pixel_height / 2 + (div(i - 1, pt.ncols) * pt.sheet_height) + pt.sheet_height / 2
-    return (Point(xcoord, ycoord), i)
+row_col_of_sheet(p::BmPartition, sheetnumber::Int) = row_col_of_sheet(p.nrows, sheetnumber)
+function row_col_of_sheet(nrows::Int, sheetnumber::Int)
+    row = mod1(sheetnumber, nrows)
+    col = div(sheetnumber - 1, nrows) + 1
+    row, col
 end
+
+function Base.getindex(p::BmPartition, i::Int)
+    1 <= i <= p.ncols * p.nrows || throw(BoundsError(p, i))
+    shp = SheetPartition(p, i)
+    return (shp, i)
+end
+
+#= For TODO
+# TODO: Drop the 'ShIterators' name. Create a function returning 'i' from a ShIterator.
+# See if we can't drop the 'i' from iterator returns.
+function index_number_of_sheet(XXX::SheetPartition)
+    2 
+end
+=#

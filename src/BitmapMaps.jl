@@ -21,9 +21,11 @@ using PNGFiles: PNG_COLOR_TYPE_GRAY, png_destroy_read_struct, close_png
 using PNGFiles: PNG_INFO_pHYs, png_get_pHYs
 # For sheet partitioning
 import LuxorLayout
-using LuxorLayout: Point
+using LuxorLayout: Point # Maybe no need
+import Base.show
 # Exports
 export save_png_with_phys
+export SheetPartition, BmPartition, row_col_of_sheet
 
 
 include("ini_file.jl")
