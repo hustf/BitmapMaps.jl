@@ -20,16 +20,17 @@ function _prepare_init_file_configuration(io)
     println(io, msg)
     #
     ini = Inifile()
-    # Shorthad
+    # Shorthand
     entry(section, key, val; comm = "") = set_section_key_string_comment(ini, section, key, val, comm)
     # Entries in arbitrary order from file. Will be ordered by section.
-    entry("UTM limits", "Outer bounding box", "(4873 6909048)-(57042 6964416)")
+    entry("Geographical position", "Southwest corner, (easting northing)", "(4873 6909048)")
     # Printed and measured 'resource/printer_test_gutter' with 'fill page' scaling settings
     entry("Printer consistent capability", "Printable width mm", "191"; comm = "Measured 193, 2 mm for random vari.")
     entry("Printer consistent capability", "Printable height mm", "275"; comm = "Measured 277, 2 mm for random vari.")
-    entry("Printer consistent capability", "Stated dots per inch limit", "600"; comm = "As advertised by Brother")
-    entry("Printing pixel density", "Selected dots per inch limit", "300"; comm = "Based on assumed viewing distance > 20 cm")
-
+    entry("Printer consistent capability", "Stated density limit, dots per inch", "600"; comm = "As advertised by Brother")
+    entry("Printing pixel density", "Selected density, dots per inch", "300"; comm = "Based on assumed viewing distance > 20 cm")
+    entry("Number of printable sheets", "(rows columns)", "(3 4)")
+    entry("Zoom level", "Pixel distance between elevation sampling points", "3"; comm = "One pixel / point distance equals 3 metres easting or northing")
     # To file..
     println(io, ini)
 end
@@ -77,20 +78,11 @@ function get_config_value(sect, key, type::DataType; nothing_if_not_found = fals
     tryparse(type, split(st, ' ')[1])
 end
 
-function get_config_value(sect, key, ::Type{Tuple{Float64, Float64}}; nothing_if_not_found = false)
-    st = get_config_value(sect, key; nothing_if_not_found)
-    isnothing(st) && return nothing
-    (tryparse(Float64, split(st, ' ')[1]),     tryparse(Float64, split(st, ' ')[2]))
-end
 function get_config_value(sect, key, ::Type{Tuple{Int64, Int64}}; nothing_if_not_found = false)
-    st = get_config_value(sect, key; nothing_if_not_found)
+    st = strip(get_config_value(sect, key; nothing_if_not_found), ['(', ')', ' '])
     isnothing(st) && return nothing
     (tryparse(Int64, split(st, ' ')[1]),     tryparse(Int64, split(st, ' ')[2]))
 end
-
-
-
-
 
 
 "Get an existing, readable ini file name, create it if necessary"

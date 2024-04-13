@@ -45,8 +45,6 @@ While transferring the bitmap part of the map-making pipeline here, we have made
 
 - Establish BitmapMaps.ini, tune default printer data (the scripted / manual workflow map was missing 1 mm due to 'random' variations during printing).
 - Find a reliable way to print with actual scale. Use png's pHYs chunk, then print with an application that respects the settings. E.g. Gimp, MS Paint, and IrFanview.
-- Introduce the ShPartition iterator. Change sheet numbering to start in SW corner. WIP. Implement current concept (fig):
-
-
+- Introduce the BmPartition (outer iterator) and SheetPartition (inner iterator). Change sheet numbering to start in SW corner. See figure:
 
 <img src="resource/map_sheet_utm_pix.svg" alt = "resource/map_sheet_utm_pix.svg" style="display: inline-block; margin: 0 auto; max-width: 640px">

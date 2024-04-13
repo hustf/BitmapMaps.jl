@@ -108,3 +108,26 @@ end
 @test bmp[1,3] == bmp[1, 3]
 @test bmp[1,3] == bmp[5]
 @test bmp[2,3] == bmp[6]
+
+@test southwest_corner(bmp) == southwest_corner(bmp[1, 1]) 
+@test northeast_external_corner(bmp) == northeast_external_corner(bmp[2, 3])
+@test northeast_internal_corner(bmp) == northeast_internal_corner(bmp[2, 3])
+
+@test geo_centre(bmp) isa Tuple{Float64, Float64}
+@test geo_centre(bmp[1,1]) isa Tuple{Float64, Float64}
+@test geo_grid_centre_single(bmp) isa Tuple{Int64, Int64}
+@test geo_grid_centre_single(bmp[1,1]) isa Tuple{Int64, Int64}
+
+
+@test all(geo_centre(bmp)                  .> southwest_corner(bmp))
+@test all(geo_centre(bmp[1,1])             .> southwest_corner(bmp[1,1]))
+@test all(geo_grid_centre_single(bmp)      .> southwest_corner(bmp))
+@test all(geo_grid_centre_single(bmp[1,1]) .> southwest_corner(bmp[1,1]))
+
+@test all(geo_centre(bmp)                  .< northeast_internal_corner(bmp))
+@test all(geo_centre(bmp[1,1])             .< northeast_internal_corner(bmp[1,1]))
+@test all(geo_grid_centre_single(bmp)      .< northeast_internal_corner(bmp))
+@test all(geo_grid_centre_single(bmp[1,1]) .< northeast_internal_corner(bmp[1,1]))
+
+@test bounding_box_external_string(bmp) == "(43999 6909048)-(44017 6909064)"
+@test bounding_box_external_string(bmp[1,1]) == "(43999 6909048)-(44005 6909056)"

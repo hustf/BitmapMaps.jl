@@ -11,4 +11,7 @@ end
     include("t_sheet_partitioning.jl")
 end
 
+@testset "Test BitmapMaps pipeline" begin
+    include("t_pipeline.jl")
+end
 cd(olddir)

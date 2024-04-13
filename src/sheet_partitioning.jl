@@ -37,7 +37,7 @@ julia> bitmapmap = let
            bm_pixel_width, bm_pixel_height = 9, 8  # Actual full bitmapmap sizes would be thousands of pixels
            sheet_width, sheet_height = 3, 4        # 12 sheets, over which bm_pixels can be evenly divided
            bm_southwest_corner = (43999, 6909048)  # Utm zone coordinates, the corner is lower left in bmp[1, 1] (defined below)
-           pixel_distance = 2                      # One horizontal pixel distance equals 2 metres easting and 2 metres northing
+           pixel_distance = 2                      # One horizontal or vertical pixel distance equals 2 metres easting or 2 metres northing
            #
            BmPartition(bm_pixel_width, bm_pixel_height, sheet_width, sheet_height, bm_southwest_corner, pixel_distance)
        end;
@@ -194,3 +194,68 @@ function Base.getindex(bmp::BmPartition, r::Int, c::Int)
     i = r + (c - 1) * bmp.nrows
     _SheetPartition(bmp, i)
 end
+
+
+# Utilty functions
+
+"""
+    northeast_internal_corner(p::SheetPartition)
+    northeast_internal_corner(p::BmPartition)
+    ---> Tuple{Int, Int}
+
+This utm position is part of the sheet or bitmap. See 'northeast_external_corner'
+"""
+northeast_internal_corner(p::SheetPartition) = p.f_I_to_utm(p.pix_iter[1, end])
+northeast_internal_corner(p::BmPartition) = p.bm_southwest_corner .+ p.pixel_distance .* (p.bm_pixel_width - 1, p.bm_pixel_height - 1)
+
+"""
+    northeast_external_corner(p::SheetPartition)
+    northeast_external_corner(p::BmPartition)
+    ---> Tuple{Int, Int}
+
+This utm position is NOT part of the sheet or bitmap, but equals the southwest position of the next one. See 'northeast_external_corner'.
+"""
+function northeast_external_corner(p::SheetPartition)
+    pixel_distance_meter = p.f_I_to_utm(p.pix_iter[1])[2] - p.f_I_to_utm(p.pix_iter[2])[2]
+    northeast_internal_corner(p) .+ (pixel_distance_meter, pixel_distance_meter)
+end
+northeast_external_corner(p::BmPartition) = p.bm_southwest_corner .+ p.pixel_distance .* (p.bm_pixel_width, p.bm_pixel_height)
+
+
+"""
+    southwest_corner(p::SheetPartition)
+    southwest_corner(p::BmPartition)
+    ---> Tuple{Int, Int}
+
+The utm position is included in this partition. The geographical sample point lies on the corner.
+"""
+southwest_corner(p::SheetPartition) = p.f_I_to_utm(p.pix_iter[end, 1])
+southwest_corner(p::BmPartition) = p.bm_southwest_corner
+
+
+"""
+    geo_grid_centre_single(p)
+    ---> Tuple{Int, Int}
+
+When the number of sample points is even, the actual centre lies between elements.
+This returns the most easterly and southerly elements in those cases.
+
+By 'the grid' we mean internal sample points of p.
+
+Also see 'geometric_grid_centre'.
+"""
+geo_grid_centre_single(p) = div.(southwest_corner(p) .+ northeast_internal_corner(p), 2)
+
+
+"""
+    geo_centre(p)
+    ---> Tuple{Float64, Float64}
+
+This returns the centre point as a continuous coordinate. Since corner coordinates of
+`p` are integers, the centre lies at 'n.0' for odd dimensions of `p`, or 'n.5' for even.
+
+Also see 'geo_grid_centre_single'.
+"""
+geo_centre(p) = (southwest_corner(p) .+ northeast_external_corner(p)) ./ 2
+
+bounding_box_external_string(p) = replace("$(southwest_corner(p))-$(northeast_external_corner(p))", "," => "")
