@@ -19,32 +19,32 @@ The example includes default elevation contours every 100 m with a fatter curve 
 
 Rendering the finished bitmaps is not expected to run in one go. Intermediate step results are saved in a folder structure defined in an .ini file. The .ini file is generated automatically, but can be updated by user.
 
-If an intermediate file is deleted, the corresponding step is triggered to rerun. 
+If an intermediate file is deleted, the corresponding step is triggered to rerun.
 Steps include:
 
-- Make a grid for individual printed pages. Each page is associated with an utm coordinate bounding box.
-- Establish folder hierarcy for storing intermediate data.
-- Make requests for public data at høydedata.no (requires email). Download and unzip to appropriate folders.
-- Sample and serialize elevation data.
-- Identify water surfaces.
-- Make topographic reliefs
-- Make elevation contours
-- Make vector graphics and text covering the full map area. You may use RouteMap.jl for this step.
-- Make the composite bitmaps: 
-    1) topographic reliefs 
-    2) Water surfaces
-    3) elevation countours 
-    4) vector graphics and text
-
+1) Make a grid for individual printed pages. Each page is associated with an utm coordinate bounding box.
+2) Establish folder hierarcy for storing intermediate data.
+3) Make requests for public data at høydedata.no (requires email). Download and unzip to appropriate folders.
+4) Sample and serialize elevation data.
+5) Identify water surfaces.
+6) Make topographic reliefs
+7) Make elevation contours
+8) Make vector graphics and text covering the full map area. You may use RouteMap.jl for this step.
+9) Make composite bitmaps: 
+    - topographic reliefs 
+    - water surfaces
+    - elevation countours 
+    - vector graphics and text
 
 # Current state
-Most code currently resides in environment 'geoarrays' and in package 'RouteMap.jl' ' / example/ split '.
-A first map was made with scripting and ad hoc calculations.
+Pipeline step 1) is implemented with feedback. Most other code currently resides in environment 'geoarrays' and in package 'RouteMap.jl' ' / example/ split '.
 
-While transferring the bitmap part of the map-making pipeline here, we have made some changes:
+A first map was made with scripting, ad hoc calculations and A4 sheets.
+
+Some changes from scripting workflow:
 
 - Establish BitmapMaps.ini, tune default printer data (the scripted / manual workflow map was missing 1 mm due to 'random' variations during printing).
 - Find a reliable way to print with actual scale. Use png's pHYs chunk, then print with an application that respects the settings. E.g. Gimp, MS Paint, and IrFanview.
-- Introduce the BmPartition (outer iterator) and SheetPartition (inner iterator). Change sheet numbering to start in SW corner. See figure:
+- Introduce the BmPartition (outer iterator) and SheetPartition (inner iterator for pixels). Change sheet numbering to start in SW corner. See figure:
 
 <img src="resource/map_sheet_utm_pix.svg" alt = "resource/map_sheet_utm_pix.svg" style="display: inline-block; margin: 0 auto; max-width: 640px">

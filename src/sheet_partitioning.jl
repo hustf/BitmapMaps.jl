@@ -1,14 +1,14 @@
 #=
-Inspired by Luxor.Partition, adapted so as to ensure that 
+Inspired by Luxor.Partition, adapted so as to ensure that
  - an integer number of sheets covers the entire area
- - the oposite direction of 'northing' and 'image matrix y+' does not cause inaccuracies (which it might do). 
+ - the oposite direction of 'northing' and 'image matrix y+' does not cause inaccuracies (which it might do).
  - Hide away the bug nest of sampling distances.
 =#
 
 """
     SheetPartition
 
-A SheetPartition is one sheet in a collection defined by `BmPartition`. 
+A SheetPartition is one sheet in a collection defined by `BmPartition`.
 
 # Fields
 - pixel_origin_ref_to_bitmapmap::Tuple{Int64, Int64}
@@ -19,13 +19,13 @@ The sheet's upper left corner given in a pixel coordinate system for the entire 
 
 Iterate over every pixel index `I` in the current sheet, starting top left. This field is the same for every sheet in a BmPartition.
 
-- f_I_to_utm::Function  
+- f_I_to_utm::Function
 
 f_I_to_utm(I) transforms a pixel index I for this sheet to an UTM coordinate. For UTM coordinates, see `GeoArrays.jl`.
 
 - sheet_number::Int
 
-Sequential index `i` of this sheet. You can get the sheet's row and column by calling `row_col_of_sheet(bmp, i)` 
+Sequential index `i` of this sheet. You can get the sheet's row and column by calling `row_col_of_sheet(bmp, i)`
 
 
 # Example
@@ -34,12 +34,12 @@ Sequential index `i` of this sheet. You can get the sheet's row and column by ca
 julia> using BitmapMaps
 
 julia> bitmapmap = let
-           bm_pixel_width, bm_pixel_height = 9, 8  # Actual full bitmapmap sizes would be thousands of pixels
-           sheet_width, sheet_height = 3, 4        # 12 sheets, over which bm_pixels can be evenly divided
-           bm_southwest_corner = (43999, 6909048)  # Utm zone coordinates, the corner is lower left in bmp[1, 1] (defined below)
-           pixel_distance = 2                      # One horizontal or vertical pixel distance equals 2 metres easting or 2 metres northing
+           pix_width, pix_height = 9, 8  # Actual full bitmapmap sizes would be thousands of pixels
+           sheet_pix_width, sheet_pix_height = 3, 4        # 12 sheets, over which bm_pixels can be evenly divided
+           southwest_corner = (43999, 6909048)  # Utm zone coordinates, the corner is lower left in bmp[1, 1] (defined below)
+           pix_to_utm_factor = 2                      # One horizontal or vertical pixel distance equals 2 metres easting or 2 metres northing
            #
-           BmPartition(bm_pixel_width, bm_pixel_height, sheet_width, sheet_height, bm_southwest_corner, pixel_distance)
+           BmPartition(pix_width, pix_height, sheet_pix_width, sheet_pix_height, southwest_corner, pix_to_utm_factor)
        end;
 
 
@@ -79,10 +79,10 @@ end
 end
 
 function SheetPartition(sheet_lower_left_utm, pix_dist, pixel_origin_ref_to_bitmapmap, pix_iter, sheet_number)
-    sheet_height = size(pix_iter)[1]
+    sheet_pix_height = size(pix_iter)[1]
     function f_I_to_utm(I::CartesianIndex)
-        easting_offset =   (I[2] - 1) * pix_dist 
-        northing_offset =  (sheet_height - I[1]) * pix_dist
+        easting_offset =   (I[2] - 1) * pix_dist
+        northing_offset =  (sheet_pix_height - I[1]) * pix_dist
         (easting_offset, northing_offset) .+ sheet_lower_left_utm
     end
     SheetPartition(;pixel_origin_ref_to_bitmapmap, pix_iter, f_I_to_utm, sheet_number)
@@ -118,23 +118,23 @@ end
 See `SheetPartition` and `resource/map_sheet_utm_pix` for an example.
 """
 struct BmPartition
-    bm_pixel_width::Int
-    bm_pixel_height::Int
-    sheet_width::Int
-    sheet_height::Int
+    pix_width::Int
+    pix_height::Int
+    sheet_pix_width::Int
+    sheet_pix_height::Int
     nrows::Int
     ncols::Int
-    bm_southwest_corner::Tuple{Int, Int}
+    southwest_corner::Tuple{Int, Int}
     sheet_indices::CartesianIndices{2, Tuple{UnitRange{Int64}, UnitRange{Int64}}}
-    pixel_distance::Int
-    function BmPartition(bm_pixel_width, bm_pixel_height, sheet_width, sheet_height, bm_southwest_corner, pixel_distance)
-        ncols = bm_pixel_width / sheet_width |> ceil |> Integer
-        nrows = bm_pixel_height / sheet_height |> ceil |> Integer
+    pix_to_utm_factor::Int
+    function BmPartition(pix_width, pix_height, sheet_pix_width, sheet_pix_height, southwest_corner, pix_to_utm_factor)
+        ncols = pix_width / sheet_pix_width |> ceil |> Integer
+        nrows = pix_height / sheet_pix_height |> ceil |> Integer
         if ncols < 1 || nrows < 1
             throw(error("partition(): not enough space for sheets that size"))
         end
         sheet_indices = CartesianIndices((1:nrows, 1:ncols))
-        new(bm_pixel_width, bm_pixel_height, sheet_width, sheet_height, nrows, ncols, bm_southwest_corner, sheet_indices, pixel_distance)
+        new(pix_width, pix_height, sheet_pix_width, sheet_pix_height, nrows, ncols, southwest_corner, sheet_indices, pix_to_utm_factor)
     end
 end
 
@@ -142,30 +142,23 @@ end
 function Base.show(io::IO, ::MIME"text/plain", p::BmPartition)
     colwi = 32
     println(io, "BmPartition(")
-    for sy in [:bm_pixel_width,
-            :bm_pixel_height,
-            :sheet_width,
-            :sheet_height,
-            :nrows,
-            :ncols,
-            :bm_southwest_corner,
-            :sheet_indices,
-            :pixel_distance]
-        println(io, rpad("\t$sy", colwi), " = ", getfield(p, sy), ",")
+    for sy in fieldnames(BmPartition)
+        va = getfield(p, sy)
+        print(io, rpad("\t$sy", colwi), " = ", va)
+        println(sy !== :pix_to_utm_factor ? "," : ")")
     end
-    println(io, " )")
 end
 
 
 function _SheetPartition(p::BmPartition, sheet_number::Int)
     # No bounds in this "private" function, 'iterate' and 'getindex' should do that.
-    pix_iter = CartesianIndices((1:p.sheet_height, 1:p.sheet_width))
+    pix_iter = CartesianIndices((1:p.sheet_pix_height, 1:p.sheet_pix_width))
     r, c = row_col_of_sheet(p, sheet_number)
-    opx = (c - 1) * p.sheet_width
-    opy = p.bm_pixel_height - p.sheet_height - (r - 1) * p.sheet_height
+    opx = (c - 1) * p.sheet_pix_width
+    opy = p.pix_height - p.sheet_pix_height - (r - 1) * p.sheet_pix_height
     pixel_origin_ref_to_bitmapmap = (opx, opy)
-    sheet_lower_left_utm = p.bm_southwest_corner .+ p.pixel_distance .* (opx, (r - 1) * p.sheet_height)
-    SheetPartition(sheet_lower_left_utm, p.pixel_distance, pixel_origin_ref_to_bitmapmap, pix_iter, sheet_number)
+    sheet_lower_left_utm = p.southwest_corner .+ p.pix_to_utm_factor .* (opx, (r - 1) * p.sheet_pix_height)
+    SheetPartition(sheet_lower_left_utm, p.pix_to_utm_factor, pixel_origin_ref_to_bitmapmap, pix_iter, sheet_number)
 end
 
 Base.iterate(bmp::BmPartition) = _SheetPartition(bmp, 1), _SheetPartition(bmp, 2)
@@ -206,7 +199,7 @@ end
 This utm position is part of the sheet or bitmap. See 'northeast_external_corner'
 """
 northeast_internal_corner(p::SheetPartition) = p.f_I_to_utm(p.pix_iter[1, end])
-northeast_internal_corner(p::BmPartition) = p.bm_southwest_corner .+ p.pixel_distance .* (p.bm_pixel_width - 1, p.bm_pixel_height - 1)
+northeast_internal_corner(p::BmPartition) = p.southwest_corner .+ p.pix_to_utm_factor .* (p.pix_width - 1, p.pix_height - 1)
 
 """
     northeast_external_corner(p::SheetPartition)
@@ -219,7 +212,7 @@ function northeast_external_corner(p::SheetPartition)
     pixel_distance_meter = p.f_I_to_utm(p.pix_iter[1])[2] - p.f_I_to_utm(p.pix_iter[2])[2]
     northeast_internal_corner(p) .+ (pixel_distance_meter, pixel_distance_meter)
 end
-northeast_external_corner(p::BmPartition) = p.bm_southwest_corner .+ p.pixel_distance .* (p.bm_pixel_width, p.bm_pixel_height)
+northeast_external_corner(p::BmPartition) = p.southwest_corner .+ p.pix_to_utm_factor .* (p.pix_width, p.pix_height)
 
 
 """
@@ -230,7 +223,7 @@ northeast_external_corner(p::BmPartition) = p.bm_southwest_corner .+ p.pixel_dis
 The utm position is included in this partition. The geographical sample point lies on the corner.
 """
 southwest_corner(p::SheetPartition) = p.f_I_to_utm(p.pix_iter[end, 1])
-southwest_corner(p::BmPartition) = p.bm_southwest_corner
+southwest_corner(p::BmPartition) = p.southwest_corner
 
 
 """
@@ -259,3 +252,44 @@ Also see 'geo_grid_centre_single'.
 geo_centre(p) = (southwest_corner(p) .+ northeast_external_corner(p)) ./ 2
 
 bounding_box_external_string(p) = replace("$(southwest_corner(p))-$(northeast_external_corner(p))", "," => "")
+
+# Well known text (for pasting elsewhere)
+
+function bounding_box_closed_polygon_string(p::SheetPartition)
+    x1, y1 = southwest_corner(p)
+    x3, y3 = northeast_external_corner(p)
+    x2, y2 = x3, y1
+    x4, y4 = x1, y3
+   "($x1 $y1, $x2 $y2, $x3 $y3, $x4 $y4, $x1 $y1)"
+end
+
+function bounding_box_closed_polygon_string(p::BmPartition)
+    s = ""
+    for shp in p
+        s *= "$(bounding_box_closed_polygon_string(shp))"
+        if shp.sheet_number !== length(p)
+            s *= ",\n\t\t"
+        end
+    end
+    s
+end
+
+bounding_box_polygon_string(p) = "POLYGON ($(bounding_box_closed_polygon_string(p)))"
+
+function show_augmented(p::BmPartition)
+    printstyled("Bitmapmap configuration based on .ini file  ", color = :green, bold=:true)
+    show(stdout, MIME("text/plain"), p)
+    show_augmented_properties(p)
+end
+
+function show_augmented_properties(p)
+    printstyled("\tAugmented properties (all as (easting, northing)): \n", color = :green)
+    println("\t  ", rpad("Geo centre = ",        35), geo_centre(p))
+    println("\t  ", rpad("Grid centre single = ", 35), geo_grid_centre_single(p))
+    println("\t  ", rpad("Northeast external corner = ",     35), northeast_external_corner(p))
+    println("\t  ", rpad("Northeast internal corner = ",     35), northeast_internal_corner(p), " - most northeastern sample point")
+    println("\t  ", rpad("Bounding Box (BB) SE-NW = ", 35), bounding_box_external_string(p))
+    printstyled("\tBBs of sheets as Well Known Text ", color = :green)
+    printstyled("(paste in e.g. https://nvdb-vegdata.github.io/nvdb-visrute/STM ):\n", color = :light_black)
+    println("\t  ", bounding_box_polygon_string(p))
+end

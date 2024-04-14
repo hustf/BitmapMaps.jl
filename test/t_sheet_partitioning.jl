@@ -16,8 +16,8 @@ next = iterate(bmp, state)
 
 # BM paritioning corresponds to resource/map_sheet_utm_pix.svg
 
-bm_pixel_width, bm_pixel_height, sheet_width, sheet_height, bm_southwest_corner, pixel_distance = (9, 8, 3, 4, (43999, 6909048), 2)
-bmp = BmPartition(bm_pixel_width, bm_pixel_height, sheet_width, sheet_height, bm_southwest_corner, pixel_distance)
+pix_width, pix_height, sheet_pix_width, sheet_pix_height, sw_corner, pix_to_utm_factor = (9, 8, 3, 4, (43999, 6909048), 2)
+bmp = BmPartition(pix_width, pix_height, sheet_pix_width, sheet_pix_height, sw_corner, pix_to_utm_factor)
 @test length(bmp) == 6
 (item, state) = iterate(bmp) # 1, 2
 @test item.sheet_number == 1
@@ -28,15 +28,15 @@ pix_iter = item.pix_iter
 @test pix_iter[3,1] == pix_iter[3]
 f_I_to_utm = item.f_I_to_utm
 @test_throws BoundsError f_I_to_utm(pix_iter[0, 1])
-@test f_I_to_utm(pix_iter[1, 1]) .- bm_southwest_corner == (0, 6)
-@test f_I_to_utm(pix_iter[2, 1]) .- bm_southwest_corner == (0, 4)
-@test f_I_to_utm(pix_iter[3, 1]) .- bm_southwest_corner == (0, 2)
-@test f_I_to_utm(pix_iter[4, 1]) .- bm_southwest_corner == (0, 0)
+@test f_I_to_utm(pix_iter[1, 1]) .- sw_corner == (0, 6)
+@test f_I_to_utm(pix_iter[2, 1]) .- sw_corner == (0, 4)
+@test f_I_to_utm(pix_iter[3, 1]) .- sw_corner == (0, 2)
+@test f_I_to_utm(pix_iter[4, 1]) .- sw_corner == (0, 0)
 @test_throws BoundsError f_I_to_utm(pix_iter[5, 1])
 @test_throws BoundsError f_I_to_utm(pix_iter[4, 0])
-@test f_I_to_utm(pix_iter[4, 1]) .- bm_southwest_corner == (0, 0)
-@test f_I_to_utm(pix_iter[4, 2]) .- bm_southwest_corner == (2, 0)
-@test f_I_to_utm(pix_iter[4, 3]) .- bm_southwest_corner == (4, 0)
+@test f_I_to_utm(pix_iter[4, 1]) .- sw_corner == (0, 0)
+@test f_I_to_utm(pix_iter[4, 2]) .- sw_corner == (2, 0)
+@test f_I_to_utm(pix_iter[4, 3]) .- sw_corner == (4, 0)
 @test_throws BoundsError f_I_to_utm(pix_iter[4, 4])
 
 @test state.sheet_number == 2
@@ -47,15 +47,15 @@ pix_iter = state.pix_iter
 @test pix_iter[3,1] == pix_iter[3]
 f_I_to_utm = state.f_I_to_utm
 @test_throws BoundsError f_I_to_utm(pix_iter[0, 1])
-@test f_I_to_utm(pix_iter[1, 1]) .- bm_southwest_corner == (0, 6 + 8)
-@test f_I_to_utm(pix_iter[2, 1]) .- bm_southwest_corner == (0, 4 + 8)
-@test f_I_to_utm(pix_iter[3, 1]) .- bm_southwest_corner == (0, 2 + 8)
-@test f_I_to_utm(pix_iter[4, 1]) .- bm_southwest_corner == (0, 0 + 8)
+@test f_I_to_utm(pix_iter[1, 1]) .- sw_corner == (0, 6 + 8)
+@test f_I_to_utm(pix_iter[2, 1]) .- sw_corner == (0, 4 + 8)
+@test f_I_to_utm(pix_iter[3, 1]) .- sw_corner == (0, 2 + 8)
+@test f_I_to_utm(pix_iter[4, 1]) .- sw_corner == (0, 0 + 8)
 @test_throws BoundsError f_I_to_utm(pix_iter[5, 1])
 @test_throws BoundsError f_I_to_utm(pix_iter[4, 0])
-@test f_I_to_utm(pix_iter[4, 1]) .- bm_southwest_corner == (0, 0  + 8)
-@test f_I_to_utm(pix_iter[4, 2]) .- bm_southwest_corner == (2, 0 + 8)
-@test f_I_to_utm(pix_iter[4, 3]) .- bm_southwest_corner == (4, 0 + 8)
+@test f_I_to_utm(pix_iter[4, 1]) .- sw_corner == (0, 0  + 8)
+@test f_I_to_utm(pix_iter[4, 2]) .- sw_corner == (2, 0 + 8)
+@test f_I_to_utm(pix_iter[4, 3]) .- sw_corner == (4, 0 + 8)
 @test_throws BoundsError f_I_to_utm(pix_iter[4, 4])
 
 
@@ -131,3 +131,10 @@ end
 
 @test bounding_box_external_string(bmp) == "(43999 6909048)-(44017 6909064)"
 @test bounding_box_external_string(bmp[1,1]) == "(43999 6909048)-(44005 6909056)"
+@test replace(BitmapMaps.bounding_box_polygon_string(bmp), "\t" => "") == """
+    POLYGON ((43999 6909048, 44005 6909048, 44005 6909056, 43999 6909056, 43999 6909048),
+    (43999 6909056, 44005 6909056, 44005 6909064, 43999 6909064, 43999 6909056),
+    (44005 6909048, 44011 6909048, 44011 6909056, 44005 6909056, 44005 6909048),
+    (44005 6909056, 44011 6909056, 44011 6909064, 44005 6909064, 44005 6909056),
+    (44011 6909048, 44017 6909048, 44017 6909056, 44011 6909056, 44011 6909048),
+    (44011 6909056, 44017 6909056, 44017 6909064, 44011 6909064, 44011 6909056))"""
