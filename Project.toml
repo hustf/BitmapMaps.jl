@@ -1,7 +1,7 @@
 name = "BitmapMaps"
 uuid = "dcf5437e-85d8-460a-98f8-69920db83c61"
 authors = ["hustf <hustf@users.noreply.github.com> and contributors"]
-version = "0.0.5"
+version = "0.0.6"
 
 [deps]
 FileIO = "5789e2e9-d7fb-5bc7-8068-2c6fae9b9549"

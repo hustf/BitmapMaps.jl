@@ -22,7 +22,7 @@ Rendering the finished bitmaps is not expected to run in one go. Intermediate st
 If an intermediate file is deleted, the corresponding step is triggered to rerun.
 Steps include:
 
-1) Make a grid for individual printed pages. Each page is associated with an utm coordinate bounding box.
+1) Define a `BmPartition` based on `home/BitmapMaps.ini`. Keywords overrule file values. Repl feedback for a 'preview'.
 2) Establish folder hierarcy for storing intermediate data.
 3) Make requests for public data at høydedata.no (requires email). Download and unzip to appropriate folders.
 4) Sample and serialize elevation data.
@@ -37,7 +37,7 @@ Steps include:
     - vector graphics and text
 
 # Current state
-Pipeline step 1) is implemented with feedback. Most other code currently resides in environment 'geoarrays' and in package 'RouteMap.jl' ' / example/ split '.
+Pipeline step 1) is implemented. Most other code currently resides in environment 'geoarrays' and in package 'RouteMap.jl' ' / example/ split '.
 
 A first map was made with scripting, ad hoc calculations and A4 sheets.
 
