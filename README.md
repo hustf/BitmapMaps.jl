@@ -23,9 +23,9 @@ If an intermediate file is deleted, the corresponding step is triggered to rerun
 Steps include:
 
 1) Define a `BmPartition` based on `home/BitmapMaps.ini`. Keywords overrule file values. Repl feedback for a 'preview'.
-2) Establish folder hierarcy for storing intermediate data.
-3) Make requests for public data at høydedata.no (requires email). Download and unzip to appropriate folders.
-4) Sample and serialize elevation data.
+2) Establish folder hierarchy for storing intermediate data.
+3) User action if missing: Make requests for public data at høydedata.no (requires email). Download and unzip to appropriate folders.
+4) Consolidate elevation data.
 5) Identify water surfaces.
 6) Make topographic reliefs
 7) Make elevation contours
@@ -37,7 +37,7 @@ Steps include:
     - vector graphics and text
 
 # Current state
-Pipeline step 1) is implemented. Most other code currently resides in environment 'geoarrays' and in package 'RouteMap.jl' ' / example/ split '.
+Starting work on 4). Code currently resides in environment 'geoarrays' and in package 'RouteMap.jl' ' / example/ split '.
 
 A first map was made with scripting, ad hoc calculations and A4 sheets.
 

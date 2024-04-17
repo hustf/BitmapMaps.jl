@@ -2,7 +2,7 @@ using Test
 using BitmapMaps
 using BitmapMaps: BmPartition
 
-bmp = BmPartition(3, 4, 1, 2, (43999, 6909048), 1)
+bmp = BmPartition(3, 4, 1, 2, (43999, 6909048), 1, "nopath")
 @test length(bmp) == 6
 
 (item, state) = iterate(bmp) # 1, 2
@@ -17,7 +17,7 @@ next = iterate(bmp, state)
 # BM paritioning corresponds to resource/map_sheet_utm_pix.svg
 
 pix_width, pix_height, sheet_pix_width, sheet_pix_height, sw_corner, pix_to_utm_factor = (9, 8, 3, 4, (43999, 6909048), 2)
-bmp = BmPartition(pix_width, pix_height, sheet_pix_width, sheet_pix_height, sw_corner, pix_to_utm_factor)
+bmp = BmPartition(pix_width, pix_height, sheet_pix_width, sheet_pix_height, sw_corner, pix_to_utm_factor, "test")
 @test length(bmp) == 6
 (item, state) = iterate(bmp) # 1, 2
 @test item.sheet_number == 1
@@ -128,6 +128,14 @@ end
 @test all(geo_centre(bmp[1,1])             .< northeast_internal_corner(bmp[1,1]))
 @test all(geo_grid_centre_single(bmp)      .< northeast_internal_corner(bmp))
 @test all(geo_grid_centre_single(bmp[1,1]) .< northeast_internal_corner(bmp[1,1]))
+
+
+# Check that a sheet's folder name matches its northeast_external_corner
+@test tryparse.(Int, split(bmp[2,2].pthsh, ' ')[end - 1: end]) == collect(northeast_external_corner(bmp[2, 2]))
+
+
+@test geo_area(bmp) == bmp.pix_width * bmp. pix_height * pix_to_utm_factor^2
+@test geo_area(bmp[1]) == (bmp.pix_width * bmp. pix_height * pix_to_utm_factor^2) / (bmp.nrows * bmp.ncols)
 
 @test bounding_box_external_string(bmp) == "(43999 6909048)-(44017 6909064)"
 @test bounding_box_external_string(bmp[1,1]) == "(43999 6909048)-(44005 6909056)"

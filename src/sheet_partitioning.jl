@@ -76,16 +76,17 @@ end
     pix_iter::CartesianIndices{2, Tuple{UnitRange{Int64}, UnitRange{Int64}}}
     f_I_to_utm::Function
     sheet_number::Int
+    pthsh::String
 end
 
-function SheetPartition(sheet_lower_left_utm, pix_dist, pixel_origin_ref_to_bitmapmap, pix_iter, sheet_number)
+function SheetPartition(sheet_lower_left_utm, pix_dist, pixel_origin_ref_to_bitmapmap, pix_iter, pthsh, sheet_number)
     sheet_pix_height = size(pix_iter)[1]
     function f_I_to_utm(I::CartesianIndex)
         easting_offset =   (I[2] - 1) * pix_dist
         northing_offset =  (sheet_pix_height - I[1]) * pix_dist
         (easting_offset, northing_offset) .+ sheet_lower_left_utm
     end
-    SheetPartition(;pixel_origin_ref_to_bitmapmap, pix_iter, f_I_to_utm, sheet_number)
+    SheetPartition(;pixel_origin_ref_to_bitmapmap, pix_iter, f_I_to_utm, pthsh, sheet_number)
 end
 
 function Base.show(io::IO, ::MIME"text/plain", shi::SheetPartition)
@@ -94,6 +95,7 @@ function Base.show(io::IO, ::MIME"text/plain", shi::SheetPartition)
     println(io, rpad("\tpixel_origin_ref_to_bitmapmap = ", colwi), shi.pixel_origin_ref_to_bitmapmap)
     println(io, rpad("\tpix_iter or I = ", colwi), shi.pix_iter)
     println(io, rpad("\tf_I_to_utm(first(pix_iter)) = ", colwi), shi.f_I_to_utm(first(shi.pix_iter)))
+    println(io, rpad("\tpthsh = ", colwi), shi.pthsh)
     println(io, rpad("\tsheet_number = ", colwi), shi.sheet_number)
     println(io, " )")
 end
@@ -102,6 +104,7 @@ function Base.show(io::IO, shi::SheetPartition)
     print(io, shi.pixel_origin_ref_to_bitmapmap, ", ")
     print(io, shi.pix_iter.indices, ", ")
     print(io, "f(I) -> utm", ", ")
+    print(io, "pthsh = ", shi.pthsh)
     print(io, shi.sheet_number)
     println(io, " )")
 end
@@ -109,13 +112,14 @@ end
 
 
 """
-    BmPartition
+    BmPartition(pix_width, pix_height, sheet_pix_width, sheet_pix_height, southwest_corner, pix_to_utm_factor, pth)
+    BmPartition(pwi::Int, phe::Int, pdens_dpi::Int, nrc::Tuple{Int, Int}, southwest_corner::Tuple{Int, Int}, pix_to_utm_factor::Int, pth)
 
-# Fields
+An object specifying the map and helping with making it.
 
+See `pipeline.jl/define_job(;kwds)` for typical construction.
 
-
-See `SheetPartition` and `resource/map_sheet_utm_pix` for an example.
+See `SheetPartition` and `resource/map_sheet_utm_pix.svg` for an example.
 """
 struct BmPartition
     pix_width::Int
@@ -127,17 +131,26 @@ struct BmPartition
     southwest_corner::Tuple{Int, Int}
     sheet_indices::CartesianIndices{2, Tuple{UnitRange{Int64}, UnitRange{Int64}}}
     pix_to_utm_factor::Int
-    function BmPartition(pix_width, pix_height, sheet_pix_width, sheet_pix_height, southwest_corner, pix_to_utm_factor)
+    pth::String
+    function BmPartition(pix_width, pix_height, sheet_pix_width, sheet_pix_height, southwest_corner, pix_to_utm_factor, pth)
         ncols = pix_width / sheet_pix_width |> ceil |> Integer
         nrows = pix_height / sheet_pix_height |> ceil |> Integer
         if ncols < 1 || nrows < 1
             throw(error("partition(): not enough space for sheets that size"))
         end
         sheet_indices = CartesianIndices((1:nrows, 1:ncols))
-        new(pix_width, pix_height, sheet_pix_width, sheet_pix_height, nrows, ncols, southwest_corner, sheet_indices, pix_to_utm_factor)
+        new(pix_width, pix_height, sheet_pix_width, sheet_pix_height, nrows, ncols, southwest_corner, sheet_indices, pix_to_utm_factor, pth)
     end
 end
 
+function BmPartition(pwi::Int, phe::Int, pdens_dpi::Int, nrc::Tuple{Int, Int}, southwest_corner::Tuple{Int, Int}, pix_to_utm_factor::Int, pth::String)
+    sheet_pix_width = floor(pwi * pdens_dpi / 25.4)
+    sheet_pix_height = floor(phe * pdens_dpi / 25.4)
+    nrows, ncols = nrc
+    pix_width = ncols * sheet_pix_width
+    pix_height = nrows * sheet_pix_height
+    BmPartition(pix_width, pix_height, sheet_pix_width, sheet_pix_height, southwest_corner, pix_to_utm_factor, pth)
+end
 
 function Base.show(io::IO, ::MIME"text/plain", p::BmPartition)
     colwi = 32
@@ -145,7 +158,7 @@ function Base.show(io::IO, ::MIME"text/plain", p::BmPartition)
     for sy in fieldnames(BmPartition)
         va = getfield(p, sy)
         print(io, rpad("\t$sy", colwi), " = ", va)
-        println(sy !== :pix_to_utm_factor ? "," : ")")
+        println(sy !== :pix_to_utm_factor ? "" : ")")
     end
 end
 
@@ -158,7 +171,13 @@ function _SheetPartition(p::BmPartition, sheet_number::Int)
     opy = p.pix_height - p.sheet_pix_height - (r - 1) * p.sheet_pix_height
     pixel_origin_ref_to_bitmapmap = (opx, opy)
     sheet_lower_left_utm = p.southwest_corner .+ p.pix_to_utm_factor .* (opx, (r - 1) * p.sheet_pix_height)
-    SheetPartition(sheet_lower_left_utm, p.pix_to_utm_factor, pixel_origin_ref_to_bitmapmap, pix_iter, sheet_number)
+    # The local folder name includes row, column, min_easting, min_northing, max_easting, max_northing. This simplifies
+    # the manual data ordering process (the web api requires user rights).
+    min_easting, min_northing = sheet_lower_left_utm
+    max_easting_external = min_easting + p.sheet_pix_width * p.pix_to_utm_factor
+    max_northing_external = min_northing + p.sheet_pix_height * p.pix_to_utm_factor
+    pthsh = joinpath(p.pth, "$r $c  $min_easting $min_northing  $max_easting_external $max_northing_external")
+    SheetPartition(sheet_lower_left_utm, p.pix_to_utm_factor, pixel_origin_ref_to_bitmapmap, pix_iter, pthsh, sheet_number)
 end
 
 Base.iterate(bmp::BmPartition) = _SheetPartition(bmp, 1), _SheetPartition(bmp, 2)
@@ -253,6 +272,14 @@ geo_centre(p) = (southwest_corner(p) .+ northeast_external_corner(p)) ./ 2
 
 bounding_box_external_string(p) = replace("$(southwest_corner(p))-$(northeast_external_corner(p))", "," => "")
 
+
+
+function geo_area(p)
+    s, w = southwest_corner(p)
+    n, e = northeast_external_corner(p)
+    (n - s) * (e - w)
+end
+
 # Well known text (for pasting elsewhere)
 
 function bounding_box_closed_polygon_string(p::SheetPartition)
@@ -289,6 +316,11 @@ function show_augmented_properties(p)
     println("\t  ", rpad("Northeast external corner = ",     35), northeast_external_corner(p))
     println("\t  ", rpad("Northeast internal corner = ",     35), northeast_internal_corner(p), " - most northeastern sample point")
     println("\t  ", rpad("Bounding Box (BB) SE-NW = ", 35), bounding_box_external_string(p))
+    if p isa BmPartition
+        println("\t  ", rpad("Geographical area [km²] = ", 35), Int(round(geo_area(p) / 1e6)), "         Per sheet: ", round(geo_area(first(p)) / 1e6, digits = 1), "  km²   Single file export limit: 16 km²")
+    else
+        println("\t  ", rpad("Geographical area [km²] = ", 35), Int(round(geo_area(p) / 1e6)))
+    end
     printstyled("\tBBs of sheets as Well Known Text ", color = :green)
     printstyled("(paste in e.g. https://nvdb-vegdata.github.io/nvdb-visrute/STM ):\n", color = :light_black)
     println("\t  ", bounding_box_polygon_string(p))

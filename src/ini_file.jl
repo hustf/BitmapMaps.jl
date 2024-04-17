@@ -27,10 +27,11 @@ function _prepare_init_file_configuration(io)
     # Printed and measured 'resource/printer_test_gutter' with 'fill page' scaling settings
     entry("Printer consistent capability", "Printable width mm", "191"; comm = ":pwi Measured 193, 2 mm for random vari.")
     entry("Printer consistent capability", "Printable height mm", "275"; comm = ":phe Measured 277, 2 mm for random vari.")
-    entry("Printer consistent capability", "Stated density limit, dots per inch", "600"; comm = ":pdensmax As advertised by Brother")
-    entry("Printing pixel density", "Selected density, dots per inch", "300"; comm = ":pdens Based on assumed viewing distance > 20 cm")
+    entry("Printer consistent capability", "Stated density limit, dots per inch", "600"; comm = ":pdensmax_dpi As advertised by Brother")
+    entry("Printing pixel density", "Selected density, dots per inch", "300"; comm = ":pdens_dpi Based on assumed viewing distance > 20 cm")
     entry("Number of printable sheets", "(rows columns)", "(3 4)"; comm = ":nrc")
     entry("Pixel to utm factor", "Pixel distance between elevation sampling points", "3"; comm = ":pix_to_utm_factor One pixel / point distance equals 3 metres easting or northing")
+    entry("File folder", "Top folders path under homedir()", "bitmapmaps/default"; comm = ":pth Will be created under homedir()")
     # To file..
     println(io, ini)
 end
@@ -76,6 +77,13 @@ function get_config_value(sect, key, type::DataType; nothing_if_not_found = fals
     st = get_config_value(sect, key; nothing_if_not_found)
     isnothing(st) && return nothing
     tryparse(type, split(st, ' ')[1])
+end
+
+function get_config_value(sect, key, ::Type{String}; nothing_if_not_found = false)
+    st = strip(get_config_value(sect, key; nothing_if_not_found), ' ')
+    stv = strip(split(st, '#')[1])
+    isnothing(stv) && return nothing
+    String(stv)
 end
 
 function get_config_value(sect, key, ::Type{Tuple{Int64, Int64}}; nothing_if_not_found = false)

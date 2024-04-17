@@ -30,10 +30,13 @@ export run_bitmapmap_pipeline
 export SheetPartition, BmPartition, row_col_of_sheet
 export northeast_internal_corner, northeast_external_corner, southwest_corner
 export geo_grid_centre_single, geo_centre, bounding_box_external_string, show_augmented
+export geo_area
 
 
 include("ini_file.jl")
 include("png_phys.jl")
 include("sheet_partitioning.jl")
 include("pipeline.jl")
+include("establish_folder.jl")
+include("consolidate_elevation_data.jl")
 end
