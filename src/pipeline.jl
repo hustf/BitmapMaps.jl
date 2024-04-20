@@ -82,29 +82,30 @@ Make composite bitmaps:
 =#
 
 function process_job(bmp, complete_sheets_first)
-    operations_order = [establish_folder, consolidate_elevation_data]
+    operations_order = [establish_folder, unzip_tif, consolidate_elevation_data]
     # Consider sharing an in-memory z-map and gradient map between operations.... No need to redo it.
     if complete_sheets_first
         for shp in bmp # Might do this in parallel? Though a lot will be wating for file i/o...
             for fn in operations_order
-                ok_res = fn(shp)
-                if ! ok_res
-                    @warn "Could not finish $fn($shp) with success. Exiting."
-                    return false
-                end
+                call_func(fn, shp) || return false
             end
         end
     else
         for fn in operations_order
             for shp in bmp
-                ok_res = fn(shp)
-                if ! ok_res
-                    @warn "Could not finish $fn($shp) with success. Exiting."
-                    return false
-                end
+                call_func(fn, shp) || return false
             end
         end
     end
     true
 end
-
+function call_func(fn, shp)
+    ok_res = fn(shp)
+    if ! ok_res
+        @warn "Could not finish $fn($shp) with success. Exiting."
+        return false
+    else
+        @debug "Finished $fn"
+    end
+    true
+end

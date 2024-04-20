@@ -10,6 +10,9 @@ end
 @testset "Test sheet partitioning" begin
     include("t_sheet_partitioning.jl")
 end
+@testset "Test consolidate elevation data" begin
+    include("t_unzip_and_consolidate.jl")
+end
 
 @testset "Test BitmapMaps pipeline" begin
     include("t_pipeline.jl")

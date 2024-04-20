@@ -23,6 +23,13 @@ using PNGFiles: PNG_INFO_pHYs, png_get_pHYs
 import LuxorLayout
 using LuxorLayout: Point # Maybe no need
 import Base.show
+# ZipFile
+import ZipFile
+# GeoArray
+import GeoArrays
+using GeoArrays: GeoArray, bbox, bbox_overlap, Vertex, coords, indices, crop
+# Feedback
+import Dates
 # Exports
 export save_png_with_phys
 export run_bitmapmap_pipeline
@@ -32,11 +39,13 @@ export northeast_internal_corner, northeast_external_corner, southwest_corner
 export geo_grid_centre_single, geo_centre, bounding_box_external_string, show_augmented
 export geo_area
 
+const CONSOLIDATED_FNAM = "Consolidated.tif"
 
 include("ini_file.jl")
 include("png_phys.jl")
 include("sheet_partitioning.jl")
 include("pipeline.jl")
 include("establish_folder.jl")
+include("unzip_tif.jl")
 include("consolidate_elevation_data.jl")
 end

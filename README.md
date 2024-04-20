@@ -24,20 +24,21 @@ Steps include:
 
 1) Define a `BmPartition` based on `home/BitmapMaps.ini`. Keywords overrule file values. Repl feedback for a 'preview'.
 2) Establish folder hierarchy for storing intermediate data.
-3) User action if missing: Make requests for public data at høydedata.no (requires email). Download and unzip to appropriate folders.
-4) Consolidate elevation data.
-5) Identify water surfaces.
-6) Make topographic reliefs
-7) Make elevation contours
-8) Make vector graphics and text covering the full map area. You may use RouteMap.jl for this step.
-9) Make composite bitmaps: 
+3) User action if missing: Make requests for public data at høydedata.no (requires email). Download to appropriate folders.
+4) Unzip downloaded .zip files
+5) Consolidate elevation data.
+6) Identify water surfaces.
+7) Make topographic reliefs
+8) Make elevation contours
+9) Make vector graphics and text covering the full map area. You may use RouteMap.jl for this step.
+10) Make composite bitmaps: 
     - topographic reliefs 
     - water surfaces
     - elevation countours 
     - vector graphics and text
 
 # Current state
-Starting work on 4). Code currently resides in environment 'geoarrays' and in package 'RouteMap.jl' ' / example/ split '.
+Debugging 5). Code copied from environment 'geoarrays' and in package 'RouteMap.jl' ' / example/ split '.
 
 A first map was made with scripting, ad hoc calculations and A4 sheets.
 
