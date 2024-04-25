@@ -1,12 +1,12 @@
-function establish_folder(p::SheetPartition)
+function establish_folder(p::SheetBuilder)
     fullpth = full_folder_path(p)
     if ! ispath(fullpth)
         mkpath(fullpth)
     end
     ispath(fullpth)
 end
-full_folder_path(p::SheetPartition) = joinpath(homedir(), p.pthsh)
-full_folder_path(p::BmPartition) = joinpath(homedir(), p.pth)
+full_folder_path(p::SheetBuilder) = joinpath(homedir(), p.pthsh)
+full_folder_path(p::SheetMatrixBuilder) = joinpath(homedir(), p.pth)
 
 function parse_folder_name(fofo)
     @show fofo

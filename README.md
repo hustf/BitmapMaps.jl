@@ -8,8 +8,8 @@ Make printable topographic relief maps. The foreground is vector graphics from [
 and the background is topographic relief maps based on elevation data. The hypsometric colours resemble a clear, early afternoon in 
 mid-February at 62°N, with snow cover above 500 m.
 
-This example uses laser elevations with a 3 metre spacing. Publicly available data covers all of Norway with a spacing of just 1 metre.
-We could potentially zoom in to the street level.
+This example uses laser elevations with a 3 metre spacing. Publicly available data covers all of Norway with a spacing of 1 metre or less.
+We could potentially zoom in to the street level. Both surface (with trees and houses) and terrain (cleaned of such) are available.
 
 <img src="resource/bitmap_detail.png" alt = "resource/bitmap_detail.png" style="display: inline-block; margin: 0 auto; max-width: 640px">
 
@@ -22,7 +22,7 @@ Rendering the finished bitmaps is not expected to run in one go. Intermediate st
 If an intermediate file is deleted, the corresponding step is triggered to rerun.
 Steps include:
 
-1) Define a `BmPartition` based on `home/BitmapMaps.ini`. Keywords overrule file values. Repl feedback for a 'preview'.
+1) Define a `SheetMatrixBuilder` based on `home/BitmapMaps.ini`. Keywords overrule file values. Repl feedback for a 'preview'.
 2) Establish folder hierarchy for storing intermediate data.
 3) User action if missing: Make requests for public data at høydedata.no (requires email). Download to appropriate folders.
 4) Unzip downloaded .zip files
@@ -46,6 +46,6 @@ Some changes from scripting workflow:
 
 - Establish BitmapMaps.ini, tune default printer data (the scripted / manual workflow map was missing 1 mm due to 'random' variations during printing).
 - Find a reliable way to print with actual scale. Use png's pHYs chunk, then print with an application that respects the settings. E.g. Gimp, MS Paint, and IrFanview.
-- Introduce the BmPartition (outer iterator) and SheetPartition (inner iterator for pixels). Change sheet numbering to start in SW corner. See figure:
+- Introduce the SheetMatrixBuilder (iterator for printable sheets) and SheetBuilder (iterator for pixels in a sheet). Change sheet numbering to start in SW corner. See figure:
 
-<img src="resource/map_sheet_utm_pix.svg" alt = "resource/map_sheet_utm_pix.svg" style="display: inline-block; margin: 0 auto; max-width: 640px">
+<img src="resource/matrix_sheet_pix_utm.svg" alt = "resource/matrix_sheet_pix_utm.svg" style="display: inline-block; margin: 0 auto; max-width: 640px">

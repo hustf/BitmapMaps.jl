@@ -9,14 +9,14 @@ is recommended.
 
 complete_sheets_first    The default 'true' means one sheet is fully processed, then the next sheet.
                          'false' means that each operation is finished for all sheets before the next operation. 
-pix_width, etc           Keyword names (like 'pix_width') are included in the default .ini file, with explanation.
+bm_pix_width, etc           Keyword names (like 'bm_pix_width') are included in the default .ini file, with explanation.
 
 # Example
 ```
 julia> run_bitmapmap_pipeline(;nrc = (2, 2));
-Bitmapmap configuration based on .ini file  BmPartition(
-        pix_width                        = 4510
-        pix_height                       = 6496
+Bitmapmap configuration based on .ini file  SheetMatrixBuilder(
+        bm_pix_width                        = 4510
+        bm_pix_height                       = 6496
         sheet_pix_width                  = 2255
         sheet_pix_height                 = 3248
         nrows                            = 2
@@ -39,10 +39,10 @@ Bitmapmap configuration based on .ini file  BmPartition(
 ```
 """
 function run_bitmapmap_pipeline(; complete_sheets_first = true, kwds...)
-    bmp = define_job(; kwds...)
-    ok_res = process_job(bmp, complete_sheets_first)
+    smb = define_job(; kwds...)
+    ok_res = process_job(smb, complete_sheets_first)
     if ok_res
-        printstyled("Finished job in folder $(joinpath(homedir(), bmp.pth))\n", color = :yellow)
+        printstyled("Finished job in folder $(joinpath(homedir(), smb.pth))\n", color = :yellow)
     end
 end
 
@@ -60,12 +60,12 @@ function define_job(; kwds...)
     if isnothing(match(r"(b|B)itmap(M|m)aps", pth))
         throw(ArgumentError("Any BmParition path must match regex r\"(b|B)itmap(M|m)aps\". Current path is $pth"))
     end
-    bmp = BmPartition(pwi, phe, pdens_dpi, nrc, southwest_corner, pix_to_utm_factor, pth)
-    show_augmented(bmp)
-    if geo_area(bmp) >= 16e6 
+    smb = SheetMatrixBuilder(pwi, phe, pdens_dpi, nrc, southwest_corner, pix_to_utm_factor, pth)
+    show_augmented(smb)
+    if geo_area(smb) >= 16e6 
         @info "Since geographical area per sheet is  > 16km², 'høydedata.no' will not provide consolidated single elevation data files. This may be acceptable."
     end
-    bmp
+    smb
 end
 
 
@@ -81,18 +81,18 @@ Make vector graphics and text covering the full map area. You may use RouteMap.j
 Make composite bitmaps: 
 =#
 
-function process_job(bmp, complete_sheets_first)
+function process_job(smb, complete_sheets_first)
     operations_order = [establish_folder, unzip_tif, consolidate_elevation_data]
     # Consider sharing an in-memory z-map and gradient map between operations.... No need to redo it.
     if complete_sheets_first
-        for shp in bmp # Might do this in parallel? Though a lot will be wating for file i/o...
+        for shp in smb # Might do this in parallel? Though a lot will be wating for file i/o...
             for fn in operations_order
                 call_func(fn, shp) || return false
             end
         end
     else
         for fn in operations_order
-            for shp in bmp
+            for shp in smb
                 call_func(fn, shp) || return false
             end
         end
