@@ -8,8 +8,8 @@ Make printable topographic relief maps. The foreground is vector graphics from [
 and the background is topographic relief maps based on elevation data. The hypsometric colours resemble a clear, early afternoon in 
 mid-February at 62°N, with snow cover above 500 m.
 
-This example uses laser elevations with a 3 metre spacing. Publicly available data covers all of Norway with a spacing of 1 metre or less.
-We could potentially zoom in to the street level. Both surface (with trees and houses) and terrain (cleaned of such) are available.
+This example uses laser elevations with a 3 metre spacing. Publicly available data covers all of Norway with a spacing of 1 metre or less,
+so we could potentially zoom in to the street level. Both surface (with trees and houses) and terrain (cleaned of such) are available.
 
 <img src="resource/bitmap_detail.png" alt = "resource/bitmap_detail.png" style="display: inline-block; margin: 0 auto; max-width: 640px">
 
@@ -38,9 +38,12 @@ Steps include:
     - vector graphics and text
 
 # Current state
-Debugging 5). Code copied from environment 'geoarrays' and in package 'RouteMap.jl' ' / example/ split '.
 
-A first map was made with scripting, ad hoc calculations and A4 sheets.
+A first map has been made with scripting, ad hoc calculations and A4 sheets. We're streamlining the production of maps.
+The current commit adds a tool for reusing downloaded files in other projects, `copy_relevant_tifs_to_folder`.
+
+In the pipeline, we're debugging 5). Code is adapted from environment 'geoarrays' and in package 'RouteMap.jl' ' / example/ split '.
+
 
 Some changes from scripting workflow:
 

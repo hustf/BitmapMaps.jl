@@ -5,6 +5,7 @@ bm_pix_width, bm_pix_height, sheet_pix_width, sheet_pix_height, sw_corner, pix_t
 smb = SheetMatrixBuilder(bm_pix_width, bm_pix_height, sheet_pix_width, sheet_pix_height, sw_corner, pix_to_utm_factor, "BitmapMaps/test")
 
 
+
 for (p, zfi) in zip([smb[1,1], smb[2,2]], ["../resource/eksport_796345_20240420.zip", "../resource/eksport_796340_20240420.zip"])
     BitmapMaps.establish_folder(p)
     zipfi = joinpath(@__DIR__, zfi)
@@ -28,12 +29,27 @@ end
 
 
 
-# Now consolidate
-for p in [smb[1,1], smb[2,2]]
+# Now consolidate (multiple) source files into CONSOLIDATED_FNAM in each sheet's folder.
+for p in [smb[2,2], smb[1,1] ]    
+    fnam_out = joinpath(BitmapMaps.full_folder_path(p), BitmapMaps.CONSOLIDATED_FNAM)
+    if isfile(fnam_out)
+        rm(fnam_out)
+    end
     BitmapMaps.consolidate_elevation_data(p)
-    @test isfile(joinpath(BitmapMaps.full_folder_path(p), BitmapMaps.CONSOLIDATED_FNAM))
+    @test isfile(fnam_out)
 end
 
+# Clean up
+for p in [smb[2,2], smb[1,1] ]    
+    fnam_out = joinpath(BitmapMaps.full_folder_path(p), BitmapMaps.CONSOLIDATED_FNAM)
+    if isfile(fnam_out)
+        rm(fnam_out)
+    end
+end
+
+
+#=
+# Do a bit of lower level testing....
 import GeoArrays
 using GeoArrays: crop, coords, bbox, Vertex, Center, indices
 using GeoArrays: bbox!, GeoArray, AffineMap, SVector
@@ -41,7 +57,6 @@ import PNGFiles
 using PNGFiles: Gray
 #BitmapMaps.consolidate_elevation_data(smb)
 
-# Do a bit of lower level testing....
 p = smb[1,1]
 fi = joinpath(BitmapMaps.full_folder_path(p), "dom1", "data", "dom1-33-1-428-189-63.tif")
 r, c, min_x, min_y, max_x, max_y = BitmapMaps.parse_folder_name(BitmapMaps.full_folder_path(p))
@@ -49,11 +64,59 @@ cbox = (;min_x, min_y, max_x, max_y)
 w = max_x - min_x
 h = max_y - min_y
 
-g_dest = let
+g = let
      A = zeros(Float32, w, h, 1)
      f = GeoArrays.AffineMap([1.0 0.0; 0.0 -1.0], 1.0 .* [min_x, max_y])
      GeoArray(A, f) 
 end
+# SW-NE Internal corner indices
+sw_internal_indices = indices(g, SVector{2}(min_x, min_y + 1), Vertex()).I
+ne_internal_indices = indices(g, SVector{2}(max_x - 1, max_y), Vertex()).I
+@test sw_internal_indices == (1, 8)
+@test ne_internal_indices == (6, 1)
+min_i, min_j, max_i, max_j = BitmapMaps.indices_internal(g, min_x, min_y, max_x, max_y)
+
+
+@test g.f(SVector(min_i - 1, min_j - 1)) .- (min_x, max_y) == [0, 0]
+@test g.f(SVector(max_i    , min_j - 1)) .- (max_x, max_y) == [0, 0]
+@test g.f(SVector(max_i    , min_j - 1)) .- (min_x, max_y) == [w, 0]
+@test g.f(SVector(min_i - 1 + w, min_j - 1)) .- (min_x, max_y) == [w, 0]
+
+@test integer_coords(g, min_i, min_j) == [min_x, max_y]
+@test integer_coords(g, max_i, min_j) == [max_x - 1, max_y]
+@test integer_coords(g, max_i, max_j) == [max_x - 1, min_y + 1]
+@test integer_coords(g, min_i, max_j) == [min_x, min_y + 1]
+
+bbox(g)
+
+
+
+
+
+
+Int.(coords(g, CartesianIndex((min_i, min_j)), Vertex())) == (min_x, max_y)
+
+coords(g, CartesianIndex((2, 2)), Vertex()) .- (min_x, min_y) .|> Int |> println
+coords(g, CartesianIndex((1, 8)), Vertex()) .- (min_x, min_y) .|> Int |> println
+coords(g, CartesianIndex((6, 8)), Vertex()) .- (min_x, min_y) .|> Int |> println
+
+
+
+
+
+
+
+
+
+
+
+g.f(SVector(min_i, min_j))
+coords(g,)
+
+
+
+
+
 ii_min_x, ii_min_y = indices(g_dest, (cbox.min_x, cbox.min_y)).I
 ii_max_x, ii_max_y = indices(g_dest, (cbox.max_x, cbox.max_y)).I
 bbox!(g_dest, (;min_x = min_x -1, min_y = min_y - 1, max_x, max_y))
@@ -73,7 +136,12 @@ end
 
 @test indices(g_dest, (min_x, max_y), Vertex()).I == (1, 1)
 indices(g_dest, (min_x, max_y - 1), Vertex()).I
-indices(g_dest, SVector{2}(min_x, min_y), Vertex()).I
+indices(g_dest, SVector{2}(min_x, min_y + 1), Vertex()).I
+
+
+
+
+
 coords(g_dest, CartesianIndex((2, 2)), Vertex()) .- (min_x, min_y) .|> Int |> println
 coords(g_dest, CartesianIndex((1, 8)), Vertex()) .- (min_x, min_y) .|> Int |> println
 coords(g_dest, CartesianIndex((6, 8)), Vertex()) .- (min_x, min_y) .|> Int |> println
@@ -151,24 +219,6 @@ indices(ga, northeast_external_corner(p), Vertex())
 indices(ga, (max_x, min_y), Vertex())
 ga[1, 553]
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 @test BitmapMaps.boxwidth(g_source) == w
 # The crop function returned a taller box than wanted. 
 BitmapMaps.boxheight(g_source) == h + 1
@@ -193,3 +243,4 @@ coords(g_source)[1]
 
 
 Tuple(indices(g_source, nw_source, Vertex())) # TODO add Vertex
+=#

@@ -42,7 +42,7 @@ export southwest_corner, southwest_external_corner, southwest_internal_corner
 
 export geo_grid_centre_single, geo_centre, bounding_box_external_string, show_augmented
 export geo_area
-
+export copy_relevant_tifs_to_folder
 export show_augmented_properties
 
 const CONSOLIDATED_FNAM = "Consolidated.tif"
@@ -55,4 +55,5 @@ include("pipeline.jl")
 include("establish_folder.jl")
 include("unzip_tif.jl")
 include("consolidate_elevation_data.jl")
+include("user_utilties.jl")
 end
