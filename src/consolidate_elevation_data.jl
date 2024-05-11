@@ -32,10 +32,10 @@ function consolidate_data_in_folder_to_geoarray(fofo)
     end
     copy_sources_into_destination!(g_dest, fnas_source)
     # Displaying this for feedback might allocate as much memory as what we're trying to do. Still, for debugging:
-    display(map(g_dest.A[:,:, 1]) do pix
-        nor = max(0.0, pix) / 1500
-        PNGFiles.Gray(nor)
-    end)
+    # display(map(g_dest.A[:,:, 1]) do pix
+    #    nor = max(0.0, pix) / 1500
+    #    PNGFiles.Gray(nor)
+    #end)
     # Write to consolidated file
     GeoArrays.write(joinpath(fofo, CONSOLIDATED_FNAM), g_dest)
     return true

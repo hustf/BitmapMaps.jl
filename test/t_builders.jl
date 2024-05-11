@@ -1,6 +1,6 @@
 using Test
 using BitmapMaps
-using BitmapMaps: SheetMatrixBuilder
+using BitmapMaps: SheetMatrixBuilder, row_col_of_sheet
 
 smb = SheetMatrixBuilder(3, 4, 1, 2, (43999, 6909048), 1, "nopath")
 @test length(smb) == 6
@@ -65,7 +65,6 @@ f_I_to_utm = state.f_I_to_utm
 
 
 for (i, shp) in enumerate(smb)
-     display(shp)
      xy = shp.pixel_origin_ref_to_bitmapmap
      i == 1 && @test xy == (0, 4)
      i == 2 && @test xy == (0, 0)
@@ -95,14 +94,11 @@ for i in 1:6
     i == 4 && @test xy == (3, 0)
     i == 5 && @test xy == (6, 4)
     i == 6 && @test xy == (6, 0)
-    @test xy == BitmapMaps._SheetPartition(smb, i).pixel_origin_ref_to_bitmapmap
+    @test xy == BitmapMaps._SheetBuilder(smb, i).pixel_origin_ref_to_bitmapmap
 end
 
 for (i, shp) in enumerate(smb)
-    shi1 = BitmapMaps._SheetPartition(smb, i)
-    @show i
-    display(shp)
-    display(shi1)
+    shi1 = BitmapMaps._SheetBuilder(smb, i)
     @test shi1.f_I_to_utm(CartesianIndex(2, 2)) == shp.f_I_to_utm(CartesianIndex(2, 2))
 end
 
@@ -113,43 +109,3 @@ end
 @test smb[1,3] == smb[1, 3]
 @test smb[1,3] == smb[5]
 @test smb[2,3] == smb[6]
-
-#=
-@test southwest_corner(smb) == southwest_corner(smb[1, 1]) 
-@test northeast_external_corner(smb) == northeast_external_corner(smb[2, 3]) # FIX. Also revise northeast_internal external w.r.t. southwest....
-@test northeast_internal_corner(smb) == northeast_internal_corner(smb[2, 3])
-
-@test geo_centre(smb) isa Tuple{Float64, Float64}
-@test geo_centre(smb[1,1]) isa Tuple{Float64, Float64}
-@test geo_grid_centre_single(smb) isa Tuple{Int64, Int64}
-@test geo_grid_centre_single(smb[1,1]) isa Tuple{Int64, Int64}
-
-
-@test all(geo_centre(smb)                  .> southwest_corner(smb))
-@test all(geo_centre(smb[1,1])             .> southwest_corner(smb[1,1]))
-@test all(geo_grid_centre_single(smb)      .> southwest_corner(smb))
-@test all(geo_grid_centre_single(smb[1,1]) .> southwest_corner(smb[1,1]))
-
-@test all(geo_centre(smb)                  .< northeast_internal_corner(smb))
-@test all(geo_centre(smb[1,1])             .< northeast_internal_corner(smb[1,1]))
-@test all(geo_grid_centre_single(smb)      .< northeast_internal_corner(smb))
-@test all(geo_grid_centre_single(smb[1,1]) .< northeast_internal_corner(smb[1,1]))
-
-
-# Check that a sheet's folder name matches its northeast_external_corner
-@test tryparse.(Int, split(smb[2,2].pthsh, ' ')[end - 1: end]) == collect(northeast_external_corner(smb[2, 2]))
-
-
-@test geo_area(smb) == smb.bm_pix_width * smb. bm_pix_height * pix_to_utm_factor^2
-@test geo_area(smb[1]) == (smb.bm_pix_width * smb. bm_pix_height * pix_to_utm_factor^2) / (smb.nrows * smb.ncols)
-
-@test bounding_box_external_string(smb) == "(43999 6909048)-(44017 6909064)"
-@test bounding_box_external_string(smb[1,1]) == "(43999 6909048)-(44005 6909056)"
-@test replace(BitmapMaps.bounding_box_polygon_string(smb), "\t" => "") == """
-    POLYGON ((43999 6909048, 44005 6909048, 44005 6909056, 43999 6909056, 43999 6909048),
-    (43999 6909056, 44005 6909056, 44005 6909064, 43999 6909064, 43999 6909056),
-    (44005 6909048, 44011 6909048, 44011 6909056, 44005 6909056, 44005 6909048),
-    (44005 6909056, 44011 6909056, 44011 6909064, 44005 6909064, 44005 6909056),
-    (44011 6909048, 44017 6909048, 44017 6909056, 44011 6909056, 44011 6909048),
-    (44011 6909056, 44017 6909056, 44017 6909064, 44011 6909064, 44011 6909056))"""
-=#

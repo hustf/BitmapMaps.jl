@@ -25,7 +25,9 @@ mkpath(dfona)
 @test_throws Exception copy_relevant_tifs_to_folder(joinpath(tempdir, source_folder), dfona)
 
 # Remove the bad tifs
+sleep(0.5) # prevent resource busy error....
 rm("$source_folder/a/1.tif")
+sleep(0.5) # prevent resource busy error....
 rm("$source_folder/b/2.tif")
 # Let's unpack a zip files from the /resource folder, which should be relevant.
 zipfi = joinpath(@__DIR__, "../resource/eksport_796345_20240420.zip")
@@ -45,5 +47,10 @@ mkpath(dfona)
 @test length(BitmapMaps.candidate_tif_names(source_folder, dfona)) == 2
 copy_relevant_tifs_to_folder(joinpath(tempdir, source_folder), dfona)
 @test length(BitmapMaps.candidate_tif_names(source_folder, dfona)) == 1 # One of the .tif were copied.
+
+# Methods     
+#    copy_relevant_tifs_to_folder(source_folder, smb::SheetMatrixBuilder)
+#    copy_relevant_tifs_to_folder(source_folder, sb::SheetBuilder)
+# are tested in 't_pipeline.jl'
 
 cd(olddir)

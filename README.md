@@ -42,7 +42,9 @@ Steps include:
 A first map has been made with scripting, ad hoc calculations and A4 sheets. We're streamlining the production of maps.
 The current commit adds a tool for reusing downloaded files in other projects, `copy_relevant_tifs_to_folder`.
 
-In the pipeline, we're debugging 5). Code is adapted from environment 'geoarrays' and in package 'RouteMap.jl' ' / example/ split '.
+In the pipeline, we're finishing tests for up to step 5). Tests currently fail to remove temporary directories - IOBusyError. We may need to release
+files opened by GeoArrays.jl....
+Code is adapted from environment 'geoarrays' and in package 'RouteMap.jl' ' / example/ split '.
 
 
 Some changes from scripting workflow:

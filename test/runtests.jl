@@ -18,12 +18,14 @@ end
     include("t_unzip_and_consolidate.jl")
 end
 
+@testset "Test user utilties" begin
+    include("t_user_utilties.jl")
+end
+
 @testset "Test BitmapMaps pipeline" begin
     include("t_pipeline.jl")
 end
 
-@testset "Test user utilties" begin
-    include("t_user_utilties.jl")
-end
+
 
 cd(olddir)

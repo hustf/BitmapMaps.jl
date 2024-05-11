@@ -53,12 +53,6 @@ northeast_internal_corner(p::SheetMatrixBuilder) = northeast_internal_corner(p[e
 northeast_external_corner(p::SheetBuilder) = (southeast_external_corner(p)[1], northwest_corner(p)[2])
 
 
-
-
-
-
-
-
 """
     geo_grid_centre_single(p)
     ---> Tuple{Int, Int}
@@ -68,7 +62,7 @@ This returns the most easterly and southerly elements in those cases.
 
 By 'the grid' we mean internal sample points of p.
 
-Also see 'geometric_grid_centre'.
+Also see `geo_centre`.
 """
 geo_grid_centre_single(p) = div.(southwest_internal_corner(p) .+ northeast_external_corner(p), 2)
 
@@ -79,13 +73,11 @@ geo_grid_centre_single(p) = div.(southwest_internal_corner(p) .+ northeast_exter
 This returns the centre point as a continuous coordinate. Since corner coordinates of
 `p` are integers, the centre lies at 'n.0' for odd dimensions of `p`, or 'n.5' for even.
 
-Also see 'geo_grid_centre_single'.
+Also see `geo_grid_centre_single`.
 """
 geo_centre(p) = (southwest_external_corner(p) .+ northeast_external_corner(p)) ./ 2
 
 bounding_box_external_string(p) = replace("$(southwest_external_corner(p))-$(northeast_external_corner(p))", "," => "")
-
-
 
 function geo_area(p)
     s, w = southwest_external_corner(p)
@@ -95,13 +87,14 @@ end
 
 # Well known text (for pasting elsewhere)
 
-function bounding_box_closed_polygon_string(p::SheetBuilder)
+function bounding_box_closed_polygon_string(p::T) where T <: Union{SheetBuilder, SheetMatrixBuilder}
     x1, y1 = southwest_external_corner(p)
     x3, y3 = northeast_external_corner(p)
     x2, y2 = x3, y1
     x4, y4 = x1, y3
    "($x1 $y1, $x2 $y2, $x3 $y3, $x4 $y4, $x1 $y1)"
 end
+
 
 function bounding_box_closed_polygon_string(p::SheetMatrixBuilder)
     s = ""
@@ -114,6 +107,31 @@ function bounding_box_closed_polygon_string(p::SheetMatrixBuilder)
     s
 end
 
+function bounding_box_closed_polygon_string(fna::String)
+    @assert isfile(fna)
+    @assert endswith(fna, r".tif|.TIF")
+    bounding_box_closed_polygon_string(bbox(GeoArrays.read(fna)))
+end
+function bounding_box_closed_polygon_string(bb::T) where T <: @NamedTuple{min_x::Float64, min_y::Float64, max_x::Float64, max_y::Float64}
+    x1 = Int(bb.min_x)
+    y1 = Int(bb.min_y)
+    x3 = Int(bb.max_x)
+    y3 = Int(bb.max_y)
+    x2, y2 = x3, y1
+    x4, y4 = x1, y3
+   "($x1 $y1, $x2 $y2, $x3 $y3, $x4 $y4, $x1 $y1)"
+end
+
+
+
+
+"""
+    bounding_box_polygon_string(fna::String)
+    bounding_box_polygon_string(p::SheetBuilder)
+    bounding_box_polygon_string(p::SheetMatrixBuilder)
+
+Paste output in e.g. https://nvdb-vegdata.github.io/nvdb-visrute/STM.
+"""
 bounding_box_polygon_string(p) = "POLYGON ($(bounding_box_closed_polygon_string(p)))"
 
 function show_augmented(p::SheetMatrixBuilder)
@@ -138,3 +156,4 @@ function show_augmented_properties(p)
     printstyled("(paste in e.g. https://nvdb-vegdata.github.io/nvdb-visrute/STM ):\n", color = :light_black)
     println("\t  ", bounding_box_polygon_string(p))
 end
+

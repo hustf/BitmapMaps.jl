@@ -1,5 +1,6 @@
 """
     run_bitmapmap_pipeline(; complete_sheets_first = true, kwds...)
+    --> SheetMatrixBuilder
 
 The job is defined in file BitmapMaps.ini, in user's home directory.
 You can overrule parameters with keywords, but changing the .ini file 
@@ -7,9 +8,9 @@ is recommended.
 
 # Arguments
 
-complete_sheets_first    The default 'true' means one sheet is fully processed, then the next sheet.
+`complete_sheets_first`    The default 'true' means one sheet is fully processed, then the next sheet.
                          'false' means that each operation is finished for all sheets before the next operation. 
-bm_pix_width, etc           Keyword names (like 'bm_pix_width') are included in the default .ini file, with explanation.
+`bm_pix_width`, etc           Keyword names (like `bm_pix_width`) are included in the default .ini file, with explanation.
 
 # Example
 ```
@@ -44,14 +45,15 @@ function run_bitmapmap_pipeline(; complete_sheets_first = true, kwds...)
     if ok_res
         printstyled("Finished job in folder $(joinpath(homedir(), smb.pth))\n", color = :yellow)
     end
+    smb
 end
 
 function define_job(; kwds...)
     # - Make a grid for individual printed pages. Each page is associated with an utm coordinate bounding box.
     pwi = get_kw_or_config_value(:pwi ,"Printer consistent capability", "Printable width mm", Int; kwds...)
     phe = get_kw_or_config_value(:phe ,"Printer consistent capability", "Printable height mm", Int; kwds...)
-    pdensmax_dpi = get_kw_or_config_value(:pdensmax ,"Printer consistent capability", "Stated density limit, dots per inch", Int; kwds...)
-    pdens_dpi = get_kw_or_config_value(:pdens ,"Printing pixel density", "Selected density, dots per inch", Int; kwds...)
+    pdensmax_dpi = get_kw_or_config_value(:pdensmax_dpi ,"Printer consistent capability", "Stated density limit, dots per inch", Int; kwds...)
+    pdens_dpi = get_kw_or_config_value(:pdens_dpi ,"Printing pixel density", "Selected density, dots per inch", Int; kwds...)
     southwest_corner = get_kw_or_config_value(:southwest_corner ,"Geographical position", "Southwest corner (easting northing)", Tuple{Int, Int}; kwds...)
     nrc = get_kw_or_config_value(:nrc ,"Number of printable sheets", "(rows columns)", Tuple{Int, Int}; kwds...)
     pix_to_utm_factor = get_kw_or_config_value(:pix_to_utm_factor, "Pixel to utm factor", "Pixel distance between elevation sampling points", Int; kwds...)
@@ -63,7 +65,7 @@ function define_job(; kwds...)
     smb = SheetMatrixBuilder(pwi, phe, pdens_dpi, nrc, southwest_corner, pix_to_utm_factor, pth)
     show_augmented(smb)
     if geo_area(smb) >= 16e6 
-        @info "Since geographical area per sheet is  > 16km², 'høydedata.no' will not provide consolidated single elevation data files. This may be acceptable."
+        @info "Since geographical area per sheet is  > 16km², 'høydedata.no' will not provide a single elevation data file per sheet. The pipieline will make a consolidated single file."
     end
     smb
 end

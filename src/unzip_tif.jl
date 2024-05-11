@@ -4,7 +4,7 @@
     unzip_tif(fofo)
 
 Unzip the .tif files in downloaded zip. Typically, unzipped files are
-largish, but easily compressable. See 'tif_full_filenames_buried_in_folder'
+largish, but easily compressable. See `tif_full_filenames_buried_in_folder`
 for candidates for deletion. Just keep the zip file and CONSOLIDATED_FNAM.
 """
 unzip_tif(p::SheetBuilder) = unzip_tif(full_folder_path(p))
@@ -44,7 +44,7 @@ function _unzip_tif(zipfile)
 end
 
 
-"""    
+"""   
     tif_full_filenames_buried_in_folder(pth)
 
 Excludes .tif files direcltly under 'metadata' folders

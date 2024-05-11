@@ -34,7 +34,7 @@ import Dates
 export save_png_with_phys
 export run_bitmapmap_pipeline
 # Export of builders and and utilties
-export SheetBuilder, SheetMatrixBuilder, row_col_of_sheet
+export SheetBuilder, SheetMatrixBuilder, full_folder_path
 export northeast_corner, northeast_external_corner, northeast_internal_corner
 export northwest_corner
 export southeast_corner, southeast_external_corner, southeast_internal_corner
@@ -42,7 +42,7 @@ export southwest_corner, southwest_external_corner, southwest_internal_corner
 
 export geo_grid_centre_single, geo_centre, bounding_box_external_string, show_augmented
 export geo_area
-export copy_relevant_tifs_to_folder
+export copy_relevant_tifs_to_folder, tif_full_filenames_buried_in_folder
 export show_augmented_properties
 
 const CONSOLIDATED_FNAM = "Consolidated.tif"

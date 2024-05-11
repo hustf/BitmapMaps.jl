@@ -3,10 +3,13 @@
 # necessary.
 # Run this prior to a consolidation step.
 """
-copy_relevant_tifs_to_folder((source_folder, destination_folder)
+    copy_relevant_tifs_to_folder((source_folder, destination_folder)
+    copy_relevant_tifs_to_folder(source_folder, smb::SheetMatrixBuilder)
+    copy_relevant_tifs_to_folder(source_folder, sb::SheetBuilder)
+    --> Vector{String}, full names of new files in destination
 
-- 'source_folder' is searched recursively. Each file is opened to find if it's relevant to the destination coordinates.
-- 'destination_folder' respects the integers naming scheme: "r c min_x min_y max_x max_y" (ref. 'parse_folder_name`).
+- `source_folder` is searched recursively. Each file is opened to find if it's relevant to the destination coordinates.
+- `destination_folder` respects the integers naming scheme: `r c min_x min_y max_x max_y` (ref. `parse_folder_name`).
    Relevant files copied in the first level of destination's hierarchy.
 
 Any files to be copied need to match the geographical area specified in destination folder name.
@@ -24,15 +27,28 @@ function copy_relevant_tifs_to_folder(source_folder, destination_folder)
     # only one will be copied.
     cs = candidate_tif_names(source_folder, destination_folder)
     # Candidate by candidate is checked for geographical match, then copied.
+    destination_files = String[]
     for cafna in cs
         s = bbox(GeoArrays.read(cafna))
         if is_source_relevant(d, s, cafna)
             dfna = file_name_at_dest(cafna, destination_folder)
             cp(cafna, dfna)
+            push!(destination_files, dfna)
         else
             @debug "Ignored $cafna\n\t because it does not overlap the geographical region $min_x $min_y $max_x $max_y"
         end
     end
+    destination_files
+end
+function copy_relevant_tifs_to_folder(source_folder, smb::SheetMatrixBuilder)
+    destination_files = String[]
+    for sb in smb
+        append!(destination_files, copy_relevant_tifs_to_folder(source_folder, sb))
+    end
+    destination_files
+end
+function copy_relevant_tifs_to_folder(source_folder, sb::SheetBuilder)
+    copy_relevant_tifs_to_folder(source_folder, full_folder_path(sb))
 end
 
 
@@ -42,7 +58,7 @@ function file_name_at_dest(full_file_name, destination_folder)
 end
 
 """
-candidate_tif_names(source_folder, destination_folder))
+    candidate_tif_names(source_folder, destination_folder))
 
 Candidates for copying based on file names, and what already exists anywhere
 in destination folder hierarchy.
