@@ -36,7 +36,9 @@ function _unzip_tif(zipfile)
                 mkpath(folder)
             end
             if ! isfile(fullFilePath)
-                write(fullFilePath, read(f))
+                open(fullFilePath, "w") do io
+                    write(io, read(f))
+                end
             end
         end
     end

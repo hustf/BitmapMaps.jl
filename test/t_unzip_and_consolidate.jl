@@ -43,7 +43,7 @@ end
 for p in [smb[2,2], smb[1,1] ]
     fnam_out = joinpath(BitmapMaps.full_folder_path(p), BitmapMaps.CONSOLIDATED_FNAM)
     if isfile(fnam_out)
-        sleep(0.5) # prevent resource busy error....
+        sleep(1) # prevent resource busy error....
         rm(fnam_out)
     end
 end

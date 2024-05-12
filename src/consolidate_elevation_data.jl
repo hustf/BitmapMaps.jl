@@ -64,6 +64,7 @@ function sample_values_larger_than_limit!(g_dest::GeoArray, fna_source::String)
     if is_source_relevant(g_dest, g_source, fna_source)
         sample_values_larger_than_limit!(g_dest, g_source)
     end
+    g_dest
 end
 
 function sample_values_larger_than_limit!(g_dest::GeoArray, g_source::GeoArray)

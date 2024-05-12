@@ -4,7 +4,7 @@ using BitmapMaps
 # cleanup
 for fo in ["test1", "test2", "test3"]
     if ispath(joinpath(homedir(), "BitmapMaps", fo))
-        sleep(0.5) # prevent resource busy error....
+        sleep(1) # prevent resource busy error....
         rm(joinpath(homedir(), "BitmapMaps", fo), recursive = true)
     end
 end
@@ -72,29 +72,34 @@ smb = @test_logs(
     pdens_dpi, pwi, phe, complete_sheets_first)
     )
 
+
+
 @test abs(smb.sheet_pix_width - sheet_pix_width) <= 4 # Good enough, fits inside data
 @test smb.nrows == 1
 @test smb.ncols == 2
 @test ispath(full_folder_path(smb[1,1]))
 @test ispath(full_folder_path(smb[1,2]))
+
+# Now copy the relevant files to the relevant directories
 fnas = copy_relevant_tifs_to_folder(tmpdir_pipeline, smb)
-# One of the sheets is based off two files, the other sheet is fully covered by one file.
+# One of the sheets is based off two files, the other sheet is fully covered by one of those two files.
 @test length(fnas) == 3
 
+# Run the pipeline again, this time proceeding further
 smb = run_bitmapmap_pipeline(;nrc, pix_to_utm_factor, pth, southwest_corner = (43200, 6909000), 
-    pdens_dpi, pwi, phe, complete_sheets_first)
-
-
-
+    pdens_dpi, pwi, phe)
 @test ispath(joinpath(full_folder_path(smb[1,1]), BitmapMaps.CONSOLIDATED_FNAM))
 @test ispath(joinpath(full_folder_path(smb[1,2]), BitmapMaps.CONSOLIDATED_FNAM))
-
-
 
 # Cleanup
 for fo in ["test1", "test2", "test3"]
     if ispath(joinpath(homedir(), "BitmapMaps", fo))
-        sleep(0.5) # prevent resource busy error....
-        rm(joinpath(homedir(), "BitmapMaps", fo), recursive = true)
+        # reading a .tif files unfortunately leaves them open. 
+        # The files are released when we close Julia, so not worth putting effort into fixing. 
+        # We can cleanup at start instead.
+        try
+            rm(joinpath(homedir(), "BitmapMaps", fo), recursive = true)
+        catch
+        end
     end
 end
