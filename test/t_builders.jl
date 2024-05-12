@@ -64,15 +64,15 @@ f_I_to_utm = state.f_I_to_utm
 @test_throws BoundsError f_I_to_utm(pix_iter[4, 4])
 
 
-for (i, shp) in enumerate(smb)
-     xy = shp.pixel_origin_ref_to_bitmapmap
+for (i, sb) in enumerate(smb)
+     xy = sb.pixel_origin_ref_to_bitmapmap
      i == 1 && @test xy == (0, 4)
      i == 2 && @test xy == (0, 0)
      i == 3 && @test xy == (3, 4)
      i == 4 && @test xy == (3, 0)
      i == 5 && @test xy == (6, 4)
      i == 6 && @test xy == (6, 0)
-     @test i == shp.sheet_number
+     @test i == sb.sheet_number
 end
 
 for (i, _) in enumerate(smb)
@@ -86,8 +86,8 @@ for (i, _) in enumerate(smb)
 end
 
 for i in 1:6
-    shp = smb[i]
-    xy = shp.pixel_origin_ref_to_bitmapmap
+    sb = smb[i]
+    xy = sb.pixel_origin_ref_to_bitmapmap
     i == 1 && @test xy == (0, 4)
     i == 2 && @test xy == (0, 0)
     i == 3 && @test xy == (3, 4)
@@ -97,9 +97,9 @@ for i in 1:6
     @test xy == BitmapMaps._SheetBuilder(smb, i).pixel_origin_ref_to_bitmapmap
 end
 
-for (i, shp) in enumerate(smb)
+for (i, sb) in enumerate(smb)
     shi1 = BitmapMaps._SheetBuilder(smb, i)
-    @test shi1.f_I_to_utm(CartesianIndex(2, 2)) == shp.f_I_to_utm(CartesianIndex(2, 2))
+    @test shi1.f_I_to_utm(CartesianIndex(2, 2)) == sb.f_I_to_utm(CartesianIndex(2, 2))
 end
 
 @test_throws BoundsError smb[0,1]

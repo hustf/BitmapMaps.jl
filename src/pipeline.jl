@@ -1,6 +1,6 @@
 """
     run_bitmapmap_pipeline(; complete_sheets_first = true, kwds...)
-    --> SheetMatrixBuilder
+    ---> SheetMatrixBuilder
 
 The job is defined in file BitmapMaps.ini, in user's home directory.
 You can overrule parameters with keywords, but changing the .ini file 
@@ -40,7 +40,7 @@ Bitmapmap configuration based on .ini file  SheetMatrixBuilder(
 ```
 """
 function run_bitmapmap_pipeline(; complete_sheets_first = true, kwds...)
-    smb = define_job(; kwds...)
+    smb = define_builder(; kwds...)
     ok_res = process_job(smb, complete_sheets_first)
     if ok_res
         printstyled("Finished job in folder $(joinpath(homedir(), smb.pth))\n", color = :yellow)
@@ -48,7 +48,7 @@ function run_bitmapmap_pipeline(; complete_sheets_first = true, kwds...)
     smb
 end
 
-function define_job(; kwds...)
+function define_builder(; kwds...)
     # - Make a grid for individual printed pages. Each page is associated with an utm coordinate bounding box.
     pwi = get_kw_or_config_value(:pwi ,"Printer consistent capability", "Printable width mm", Int; kwds...)
     phe = get_kw_or_config_value(:phe ,"Printer consistent capability", "Printable height mm", Int; kwds...)
@@ -71,40 +71,33 @@ function define_job(; kwds...)
 end
 
 
-
-#= TODO: Good func names from:
-Establish folder
-Consolidate elevation data
-Sample and serialize elevation data.
-Identify water surfaces.
-Make topographic reliefs
-Make elevation contours
-Make vector graphics and text covering the full map area. You may use RouteMap.jl for this step.
-Make composite bitmaps: 
-=#
-
 function process_job(smb, complete_sheets_first)
-    operations_order = [establish_folder, unzip_tif, consolidate_elevation_data]
+    #= TODO: Good func names for:
+    Make topographic reliefs
+    Make vector graphics and text covering the full map area. You may use RouteMap.jl for this step.
+    Make composite bitmaps
+    =#
+    operations_order = [establish_folder, unzip_tif, consolidate_elevation_data, water_overlay, contour_lines_overlay]
     # Consider sharing an in-memory z-map and gradient map between operations.... No need to redo it.
     if complete_sheets_first
-        for shp in smb # Might do this in parallel? Though a lot will be wating for file i/o...
+        for sb in smb # Might do this in parallel? Though a lot will be wating for file i/o...
             for fn in operations_order
-                call_func(fn, shp) || return false
+                call_func(fn, sb) || return false
             end
         end
     else
         for fn in operations_order
-            for shp in smb
-                call_func(fn, shp) || return false
+            for sb in smb
+                call_func(fn, sb) || return false
             end
         end
     end
     true
 end
-function call_func(fn, shp)
-    ok_res = fn(shp)
+function call_func(fn, sb)
+    ok_res = fn(sb)
     if ! ok_res
-        @warn "Could not finish $fn($shp) with success. Exiting."
+        @warn "Could not finish $fn($sb) with success. Exiting."
         return false
     else
         @debug "Finished $fn"

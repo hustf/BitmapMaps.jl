@@ -11,7 +11,7 @@
     southwest_external_corner(p::SheetBuilder)
     northeast_internal_corner(p::SheetBuilder)
     northeast_external_corner(p::SheetBuilder)
-    --> Tuple(Int, Int)
+    ---> Tuple(Int, Int)
 
 An entire SheetMatrixBuilder is divided into sheets. Every SheetMatrixBuilder method refers to 'external' borders.
 A SheetBuilder is a subset of a BmParition. It shares corners with neighbouring sheets.
@@ -96,11 +96,11 @@ function bounding_box_closed_polygon_string(p::T) where T <: Union{SheetBuilder,
 end
 
 
-function bounding_box_closed_polygon_string(p::SheetMatrixBuilder)
+function bounding_box_closed_polygon_string(smb::SheetMatrixBuilder)
     s = ""
-    for shp in p
-        s *= "$(bounding_box_closed_polygon_string(shp))"
-        if shp.sheet_number !== length(p)
+    for sb in smb
+        s *= "$(bounding_box_closed_polygon_string(sb))"
+        if sb.sheet_number !== length(smb)
             s *= ",\n\t\t"
         end
     end

@@ -1,3 +1,6 @@
+"""
+establish_folder(p::SheetBuilder) ---> Bool
+"""
 function establish_folder(p::SheetBuilder)
     fullpth = full_folder_path(p)
     if ! ispath(fullpth)
@@ -5,6 +8,7 @@ function establish_folder(p::SheetBuilder)
     end
     ispath(fullpth)
 end
+
 full_folder_path(p::SheetBuilder) = joinpath(homedir(), p.pthsh)
 full_folder_path(p::SheetMatrixBuilder) = joinpath(homedir(), p.pth)
 

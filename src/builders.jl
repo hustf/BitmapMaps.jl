@@ -120,7 +120,7 @@ end
 
 An object specifying the map and helping with making it.
 
-See `pipeline.jl/define_job(;kwds)` for typical construction.
+See `pipeline.jl/define_builder(;kwds)` for typical construction.
 
 See `SheetBuilder` and `resource/matrix_sheet_pix_utm.svg` for an example.
 """
@@ -161,40 +161,40 @@ function SheetMatrixBuilder(pwi::Int, phe::Int, pdens_dpi::Int, nrc::Tuple{Int, 
     SheetMatrixBuilder(bm_pix_width, bm_pix_height, sheet_pix_width, sheet_pix_height, southwest_corner, pix_to_utm_factor, pth)
 end
 
-function Base.show(io::IO, ::MIME"text/plain", p::SheetMatrixBuilder)
+function Base.show(io::IO, ::MIME"text/plain", smb::SheetMatrixBuilder)
     colwi = 32
     println(io, "SheetMatrixBuilder(")
     for sy in fieldnames(SheetMatrixBuilder)
-        va = getfield(p, sy)
+        va = getfield(smb, sy)
         print(io, rpad("\t$sy", colwi), " = ", va)
         println(sy !== :pix_to_utm_factor ? "" : ")")
     end
 end
 
 
-function _SheetBuilder(p::SheetMatrixBuilder, sheet_number::Int)
+function _SheetBuilder(smb::SheetMatrixBuilder, sheet_number::Int)
     # No bounds in this "private" function, 'iterate' and 'getindex' should do that.
-    pix_iter = CartesianIndices((1:p.sheet_pix_height, 1:p.sheet_pix_width))
-    r, c = row_col_of_sheet(p, sheet_number)
-    opx = (c - 1) * p.sheet_pix_width
-    opy = p.bm_pix_height - p.sheet_pix_height - (r - 1) * p.sheet_pix_height
+    pix_iter = CartesianIndices((1:smb.sheet_pix_height, 1:smb.sheet_pix_width))
+    r, c = row_col_of_sheet(smb, sheet_number)
+    opx = (c - 1) * smb.sheet_pix_width
+    opy = smb.bm_pix_height - smb.sheet_pix_height - (r - 1) * smb.sheet_pix_height
     pixel_origin_ref_to_bitmapmap = (opx, opy)
-    sheet_lower_left_utm = p.southwest_corner .+ p.pix_to_utm_factor .* (opx, (r - 1) * p.sheet_pix_height)
+    sheet_lower_left_utm = smb.southwest_corner .+ smb.pix_to_utm_factor .* (opx, (r - 1) * smb.sheet_pix_height)
     # The local folder name includes row, column, min_easting, min_northing, max_easting, max_northing. This simplifies
     # the manual data ordering process (the web api requires user rights).
     min_easting, min_northing = sheet_lower_left_utm
-    max_easting_external = min_easting + p.sheet_pix_width * p.pix_to_utm_factor
-    max_northing_external = min_northing + p.sheet_pix_height * p.pix_to_utm_factor
-    pthsh = joinpath(p.pth, "$r $c  $min_easting $min_northing  $max_easting_external $max_northing_external")
-    SheetBuilder(sheet_lower_left_utm, p.pix_to_utm_factor, pixel_origin_ref_to_bitmapmap, pix_iter, pthsh, sheet_number)
+    max_easting_external = min_easting + smb.sheet_pix_width * smb.pix_to_utm_factor
+    max_northing_external = min_northing + smb.sheet_pix_height * smb.pix_to_utm_factor
+    pthsh = joinpath(smb.pth, "$r $c  $min_easting $min_northing  $max_easting_external $max_northing_external")
+    SheetBuilder(sheet_lower_left_utm, smb.pix_to_utm_factor, pixel_origin_ref_to_bitmapmap, pix_iter, pthsh, sheet_number)
 end
 
 Base.iterate(smb::SheetMatrixBuilder) = _SheetBuilder(smb, 1), _SheetBuilder(smb, 2)
 
-function Base.iterate(p::SheetMatrixBuilder, state::SheetBuilder)
-    state.sheet_number > p.nrows * p.ncols && return nothing
+function Base.iterate(smb::SheetMatrixBuilder, state::SheetBuilder)
+    state.sheet_number > smb.nrows * smb.ncols && return nothing
     # return: the one to use next, the one after that
-    state, _SheetBuilder(p, state.sheet_number + 1)
+    state, _SheetBuilder(smb, state.sheet_number + 1)
 end
 
 
@@ -205,12 +205,12 @@ Base.axes(smb::SheetBuilder) = map(Base.oneto, size(smb))
 
 
 
-row_col_of_sheet(p::SheetMatrixBuilder, sheet_number::Int) = row_col_of_sheet(p.nrows, sheet_number)
+row_col_of_sheet(smb::SheetMatrixBuilder, sheet_number::Int) = row_col_of_sheet(smb.nrows, sheet_number)
 row_col_of_sheet(nrows::Int, sheetnumber::Int) = mod1(sheetnumber, nrows), div(sheetnumber - 1, nrows) + 1
 
-function Base.getindex(p::SheetMatrixBuilder, i::Int)
-    1 <= i <= p.ncols * p.nrows || throw(BoundsError(p, i))
-    _SheetBuilder(p, i)
+function Base.getindex(smb::SheetMatrixBuilder, i::Int)
+    1 <= i <= smb.ncols * smb.nrows || throw(BoundsError(smb, i))
+    _SheetBuilder(smb, i)
 end
 
 

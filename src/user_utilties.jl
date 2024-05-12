@@ -6,7 +6,7 @@
     copy_relevant_tifs_to_folder((source_folder, destination_folder)
     copy_relevant_tifs_to_folder(source_folder, smb::SheetMatrixBuilder)
     copy_relevant_tifs_to_folder(source_folder, sb::SheetBuilder)
-    --> Vector{String}, full names of new files in destination
+    ---> Vector{String}, full names of new files in destination
 
 - `source_folder` is searched recursively. Each file is opened to find if it's relevant to the destination coordinates.
 - `destination_folder` respects the integers naming scheme: `r c min_x min_y max_x max_y` (ref. `parse_folder_name`).

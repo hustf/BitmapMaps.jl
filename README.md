@@ -17,19 +17,24 @@ The example includes default elevation contours every 100 m with a fatter curve 
 
 # How does it do it?
 
-Rendering the finished bitmaps is not expected to run in one go. Intermediate step results are saved in a folder structure defined in an .ini file. The .ini file is generated automatically, but can be updated by user.
+Rendering the finished bitmaps is not expected to run in one go. As a minimum, a folder hierarchy is established at the first go, user moves in data, and bitmaps are rendered after the second call.
+
+Intermediate step results are saved in a folder structure defined in an .ini file. The .ini file is generated automatically, but can be updated by user.
 
 If an intermediate file is deleted, the corresponding step is triggered to rerun.
-Steps include:
 
-1) Define a `SheetMatrixBuilder` based on `home/BitmapMaps.ini`. Keywords overrule file values. Repl feedback for a 'preview'.
-2) Establish folder hierarchy for storing intermediate data.
-3) User action if missing: Make requests for public data at høydedata.no (requires email). Download to appropriate folders.
-4) Unzip downloaded .zip files
-5) Consolidate elevation data.
-6) Identify water surfaces.
+Steps in the pipeline:
+
+1) Define a `SheetMatrixBuilder` based on `home/BitmapMaps.ini`. Keywords overrule file values. Repl feedback for a preview of the bitmap's geographical extent and division into sheets (`define_builder`).
+2) Establish folder hierarchy for storing intermediate data (`establish_folder`).
+3) User action if missing: 
+  - Make requests for public data at høydedata.no (requires email). Download to each sheet's folder.
+  - Or, if data exists locally: (`copy_relevant_tifs_to_folder`)
+4) Unzip elevation data (`unzip_tif`)
+5) Consolidate elevation data (`consolidate_elevation_data`).
+6) Identify water surfaces (`water_overlay`).
 7) Make topographic reliefs
-8) Make elevation contours
+8) Make elevation contours (`contour_lines_overlay`)
 9) Make vector graphics and text covering the full map area. You may use RouteMap.jl for this step.
 10) Make composite bitmaps: 
     - topographic reliefs 
@@ -37,20 +42,25 @@ Steps include:
     - elevation countours 
     - vector graphics and text
 
+# Example
+```
+using BitmapMaps
+smb = run_bitmapmap_pipeline(;complete_sheets_first) # This makes a default .ini and establishes all folders
+copy_relevant_tifs_to_folder("yourpath", smb)
+run_bitmapmap_pipeline()
+```
 # Current state
 
 A first map has been made with scripting, ad hoc calculations and A4 sheets. We're streamlining the production of maps.
-The current commit adds a tool for reusing downloaded files in other projects, `copy_relevant_tifs_to_folder`.
 
-In the pipeline, we're finishing tests for up to step 5). Tests currently fail to remove temporary directories - IOBusyError. We may need to release
-files opened by GeoArrays.jl....
+The last commit adds a skeleton for steps 6 and 8.
+
 Code is adapted from environment 'geoarrays' and in package 'RouteMap.jl' ' / example/ split '.
-
 
 Some changes from scripting workflow:
 
 - Establish BitmapMaps.ini, tune default printer data (the scripted / manual workflow map was missing 1 mm due to 'random' variations during printing).
-- Find a reliable way to print with actual scale. Use png's pHYs chunk, then print with an application that respects the settings. E.g. Gimp, MS Paint, and IrFanview.
+- Found a reliable way to print with actual scale. Use png's pHYs chunk, then print with an application that respects the settings. E.g. Gimp, MS Paint, and IrFanview.
 - Introduce the SheetMatrixBuilder (iterator for printable sheets) and SheetBuilder (iterator for pixels in a sheet). Change sheet numbering to start in SW corner. See figure:
 
 <img src="resource/matrix_sheet_pix_utm.svg" alt = "resource/matrix_sheet_pix_utm.svg" style="display: inline-block; margin: 0 auto; max-width: 640px">

@@ -1,13 +1,14 @@
 
 """
-    unzip_tif(p::SheetBuilder)
+    unzip_tif(sb::SheetBuilder)
     unzip_tif(fofo)
+    ---> Bool
 
 Unzip the .tif files in downloaded zip. Typically, unzipped files are
 largish, but easily compressable. See `tif_full_filenames_buried_in_folder`
 for candidates for deletion. Just keep the zip file and CONSOLIDATED_FNAM.
 """
-unzip_tif(p::SheetBuilder) = unzip_tif(full_folder_path(p))
+unzip_tif(sb::SheetBuilder) = unzip_tif(full_folder_path(sb))
 function unzip_tif(fofo)
     if isfile(joinpath(fofo, CONSOLIDATED_FNAM))
         @debug "$CONSOLIDATED_FNAM in $fofo already exists. Exiting `unzip_tif`."

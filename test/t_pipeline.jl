@@ -35,13 +35,15 @@ end
 # Work with the limited data in /resource
 # Unzip the files to a temporary folder, where the folder name does not provide relevant info. 
 tmpdir_pipeline = mktempdir()
-for zfi in ["../resource/eksport_796345_20240420.zip", "../resource/eksport_796340_20240420.zip"]
-    zipfi = joinpath(@__DIR__, zfi)
-    dest = joinpath(tmpdir_pipeline, splitdir(zipfi)[2])
-    if ! isfile(dest)
-        cp(zipfi, dest)
+let
+    for zfi in ["../resource/eksport_796345_20240420.zip", "../resource/eksport_796340_20240420.zip"]
+        zipfi = joinpath(@__DIR__, zfi)
+        dest = joinpath(tmpdir_pipeline, splitdir(zipfi)[2])
+        if ! isfile(dest)
+            cp(zipfi, dest)
+        end
+        println(dest)
     end
-    println(dest)
 end
 # A zip file now exists in tmpdir_pipeline, as if downloaded by user.
 # Extract and inspect. 

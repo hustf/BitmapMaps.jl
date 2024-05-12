@@ -1,8 +1,12 @@
-function consolidate_elevation_data(shp)
-    consolidated = consolidate_data_in_folder_to_geoarray(full_folder_path(shp))
+
+"""
+    consolidate_elevation_data(sb) ---> Bool
+"""
+function consolidate_elevation_data(sb)
+    consolidated = consolidate_data_in_folder_to_geoarray(full_folder_path(sb))
     @assert consolidated isa Bool
     if ! consolidated
-        @info "Could not make consolidated .tif for sheet  with folder path $(shp.pthsh). Download and unzip .tif files? Exiting."
+        @info "Could not make consolidated .tif for sheet  with folder path $(sb.pthsh). Download and unzip .tif files? Exiting."
     end
     return consolidated
 end
