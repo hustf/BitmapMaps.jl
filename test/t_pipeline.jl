@@ -47,7 +47,7 @@ let
 end
 # A zip file now exists in tmpdir_pipeline, as if downloaded by user.
 # Extract and inspect. 
-BitmapMaps.unzip_tif(tmpdir_pipeline)
+unzip_tif(tmpdir_pipeline)
 fnas = tif_full_filenames_buried_in_folder(tmpdir_pipeline)
 @test BitmapMaps.bounding_box_polygon_string.(fnas)== ["POLYGON ((43200 6909000, 44000 6909000, 44000 6909600, 43200 6909600, 43200 6909000))", "POLYGON ((44000 6909000, 44800 6909000, 44800 6909600, 44000 6909600, 44000 6909000))"]
 

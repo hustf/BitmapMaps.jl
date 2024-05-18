@@ -1,3 +1,7 @@
+# TODO consider this roundoff limits our control of the sheet size:
+# sheet_pix_width = floor(pwi * pdens_dpi / 25.4)
+# Maybe don't use pwi [mm] and pdens_dpi [inch⁻¹] as integer inputs.
+# Better would be to allow floating point dpi or density in terms of meters.
 module BitmapMaps
 using IniFile
 import Base: iterate, length, getindex, size, axes
@@ -8,7 +12,7 @@ using FileIO: load
 
 # For adding physical print widths to png files in png_phys.jl
 import PNGFiles
-using PNGFiles: N0f8, RGBA, AbstractGray, AbstractRGB
+using PNGFiles: N0f8, RGBA, AbstractGray, AbstractRGB, Gray
 using PNGFiles: _save, png_init_io, close_png, png_uint_32
 using PNGFiles: Z_BEST_SPEED, Z_RLE, PNG_FILTER_PAETH, Z_DEFAULT_STRATEGY
 using PNGFiles: Z_FIXED, Z_NO_COMPRESSION, Z_BEST_COMPRESSION
@@ -30,6 +34,14 @@ import GeoArrays
 using GeoArrays: GeoArray, bbox, bbox_overlap, Vertex, coords, indices, crop
 # Feedback
 import Dates
+# Calculating gradients
+import ImageFiltering
+using ImageFiltering: imgradients, KernelFactors
+# Identify water
+import ImageSegmentation
+using ImageSegmentation: felzenszwalb, labels_map, segment_pixel_count, segment_mean
+import ImageMorphology
+using ImageMorphology: erode!, dilate!
 # Exports
 export save_png_with_phys
 export run_bitmapmap_pipeline

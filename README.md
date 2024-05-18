@@ -53,14 +53,15 @@ run_bitmapmap_pipeline()
 
 A first map has been made with scripting, ad hoc calculations and A4 sheets. We're streamlining the production of maps.
 
-The last commit adds a skeleton for steps 6 and 8.
+Code is being adapted from environment 'geoarrays', package 'RouteMap.jl' ' / example/ split ' and environment 'tutorial_images' / 'image segmentation.jl'.
 
-Code is adapted from environment 'geoarrays' and in package 'RouteMap.jl' ' / example/ split '.
+We implemented and tested up to step 6 here, and have a skeleton for step 8.
 
 Some changes from scripting workflow:
 
 - Establish BitmapMaps.ini, tune default printer data (the scripted / manual workflow map was missing 1 mm due to 'random' variations during printing).
 - Found a reliable way to print with actual scale. Use png's pHYs chunk, then print with an application that respects the settings. E.g. Gimp, MS Paint, and IrFanview.
+- Identifying water surface is now done with a more advanced algorithm. Manual corrections will hopefully be less of a requirement.
 - Introduce the SheetMatrixBuilder (iterator for printable sheets) and SheetBuilder (iterator for pixels in a sheet). Change sheet numbering to start in SW corner. See figure:
 
 <img src="resource/matrix_sheet_pix_utm.svg" alt = "resource/matrix_sheet_pix_utm.svg" style="display: inline-block; margin: 0 auto; max-width: 640px">

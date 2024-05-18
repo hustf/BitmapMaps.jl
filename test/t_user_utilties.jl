@@ -35,7 +35,7 @@ pth = "$source_folder/a/"
 fzip = joinpath(pth, splitdir(zipfi)[2])
 cp(zipfi, fzip)
 # A downloaded and relevant .zip file now exists in source_folder/a. Unzip it to two  .tif files
-BitmapMaps.unzip_tif(pth)
+unzip_tif(pth)
 @test length(BitmapMaps.candidate_tif_names(source_folder, dfona)) == 2
 # But these .tif files cover another area than defined by our folder name
 copy_relevant_tifs_to_folder(joinpath(tempdir, source_folder), dfona)

@@ -16,7 +16,7 @@ for (p, zfi) in zip([smb[1,1], smb[2,2]], ["../resource/eksport_796345_20240420.
     # A downloaded and relevant zip file now exists as if downloaded by user.
     # Example export settings are found in /resource/hoydedata export settings.png
     # Other export options work, too.
-    BitmapMaps.unzip_tif(p)
+    unzip_tif(p)
     if p == smb[2,2]
         @test isfile(joinpath(BitmapMaps.full_folder_path(p), "dom1", "data", "dom1-33-1-428-189-63.tif"))
     end

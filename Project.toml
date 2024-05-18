@@ -1,14 +1,17 @@
 name = "BitmapMaps"
 uuid = "dcf5437e-85d8-460a-98f8-69920db83c61"
 authors = ["hustf <hustf@users.noreply.github.com> and contributors"]
-version = "0.0.13"
+version = "0.0.14"
 
 [deps]
 Dates = "ade2ca70-3891-5945-98fb-dc099432e06a"
 FileIO = "5789e2e9-d7fb-5bc7-8068-2c6fae9b9549"
 GeoArrays = "2fb1d81b-e6a0-5fc5-82e6-8e06903437ab"
+ImageCore = "a09fc81d-aa75-5fe9-8630-4744c3626534"
+ImageFiltering = "6a3955dd-da59-5b1f-98d4-e7296123deb5"
 ImageIO = "82e4d734-157c-48bb-816b-45c225c6df19"
 ImageMorphology = "787d08f9-d448-5407-9aad-5290dd7ab264"
+ImageSegmentation = "80713f31-8817-5129-9cf8-209ff8fb23e1"
 ImageShow = "4e3cecfd-b093-5904-9786-8bbb286a6a31"
 IniFile = "83e8ac13-25f8-5344-8a64-a9f2b223428f"
 LuxorLayout = "909dfbbc-cb73-418e-9556-eed3773b40ca"

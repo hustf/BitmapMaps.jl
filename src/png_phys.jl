@@ -1,26 +1,32 @@
 
 """
     save_png_with_phys(fpath::String,
-    image::S,
-    pt_per_m::Int;
-    compression_level::Integer = Z_BEST_SPEED,
-    compression_strategy::Integer = Z_RLE,
-    filters::Integer = Int(PNG_FILTER_PAETH),
-    file_gamma::Union{Nothing,Float64} = nothing,
-    background::Union{Nothing,UInt8,AbstractGray,AbstractRGB} = nothing,
-) where {
-    T,
-    S<:Union{AbstractMatrix{T},AbstractArray{T,3}}
-}
-    ---> nothing
+        image::S,
+        pt_m⁻¹::Int;
+        compression_level::Integer = Z_BEST_SPEED,
+        compression_strategy::Integer = Z_RLE,
+        filters::Integer = Int(PNG_FILTER_PAETH),
+        file_gamma::Union{Nothing,Float64} = nothing,
+        background::Union{Nothing,UInt8,AbstractGray,AbstractRGB} = nothing,
+    ) where {
+        T,
+        S<:Union{AbstractMatrix{T},AbstractArray{T,3}}
+    }
+        ---> nothing
 
-Set the pHYs chunk values to pt_per_m for both vertical and horizontal, unlike 'PNGFiles.save'.
+Set the pHYs chunk values to `pt_m⁻¹` for both vertical and horizontal, unlike 'PNGFiles.save'.
 This is used for printing with e.g. IrfanView, but is ignored by the default win64 printing
 via default apps.
+
+    300 dpi == 300 dots per inch == 300 dots inch⁻¹ == 300 * / (0.0254 m) == 11811 dots per meter
+
+If the A4 printable width is 0.191 m and the number of pixels or dots in the image is 640:
+
+    pt_m⁻¹ == Int(round(640 / 0.191)) == 3351
 """
 function save_png_with_phys(fpath::String,
         image::S,
-        density_pt_per_m::Int;
+        density_pt_m⁻¹::Int;
         compression_level::Integer = Z_BEST_SPEED,
         compression_strategy::Integer = Z_RLE,
         filters::Integer = Int(PNG_FILTER_PAETH),
@@ -39,13 +45,13 @@ function save_png_with_phys(fpath::String,
     fp == C_NULL && error("Could not open $(fpath) for writing")
 
     png_ptr = create_write_struct()
-    @debug "save_png_with_phys:" fpath png_ptr pt_per_m
+    @debug "save_png_with_phys:" fpath png_ptr pt_m⁻¹
     info_ptr = create_info_struct(png_ptr)
     png_init_io(png_ptr, fp)
 
     # Set the pHYs chunk here, unlike 'PNGFiles.save'
-    res_x = png_uint_32(density_pt_per_m)
-    res_y = png_uint_32(density_pt_per_m)
+    res_x = png_uint_32(density_pt_m⁻¹)
+    res_y = png_uint_32(density_pt_m⁻¹)
     unit_type = Cint(1)
     
     png_set_pHYs(png_ptr, info_ptr, res_x, res_y, unit_type)
