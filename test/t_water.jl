@@ -8,7 +8,6 @@
 # Move the .tif file from /resource to a temporary directory.
 using BitmapMaps
 using Test
-using BitmapMaps: Gray, N0f8
 
 tmpdir_water = mktempdir()
 let

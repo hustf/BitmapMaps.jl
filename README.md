@@ -33,7 +33,7 @@ Steps in the pipeline:
 4) Unzip elevation data (`unzip_tif`)
 5) Consolidate elevation data (`consolidate_elevation_data`).
 6) Identify water surfaces (`water_overlay`).
-7) Make topographic reliefs
+7) Make topographic reliefs (`topo_relief`) from a hardcoded hypsometric colour pallette.
 8) Make elevation contours (`contour_lines_overlay`)
 9) Make vector graphics and text covering the full map area. You may use RouteMap.jl for this step.
 10) Make composite bitmaps: 
@@ -55,13 +55,14 @@ A first map has been made with scripting, ad hoc calculations and A4 sheets. We'
 
 Code is being adapted from environment 'geoarrays', package 'RouteMap.jl' ' / example/ split ' and environment 'tutorial_images' / 'image segmentation.jl'.
 
-We implemented and tested up to step 6 here, and have a skeleton for step 8.
+We implemented and tested up to step 6 here, and have a skeleton for steps 7-8. Working on step 7, last commit implemented the pallettes.
 
 Some changes from scripting workflow:
 
 - Establish BitmapMaps.ini, tune default printer data (the scripted / manual workflow map was missing 1 mm due to 'random' variations during printing).
 - Found a reliable way to print with actual scale. Use png's pHYs chunk, then print with an application that respects the settings. E.g. Gimp, MS Paint, and IrFanview.
 - Identifying water surface is now done with a more advanced algorithm. Manual corrections will hopefully be less of a requirement.
+- The colour pallette is FixedPointNumbers.Normed{UInt8, 8}, not Float64 - based
 - Introduce the SheetMatrixBuilder (iterator for printable sheets) and SheetBuilder (iterator for pixels in a sheet). Change sheet numbering to start in SW corner. See figure:
 
 <img src="resource/matrix_sheet_pix_utm.svg" alt = "resource/matrix_sheet_pix_utm.svg" style="display: inline-block; margin: 0 auto; max-width: 640px">

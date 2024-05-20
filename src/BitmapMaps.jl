@@ -12,7 +12,7 @@ using FileIO: load
 
 # For adding physical print widths to png files in png_phys.jl
 import PNGFiles
-using PNGFiles: N0f8, RGBA, AbstractGray, AbstractRGB, Gray
+using PNGFiles: N0f8, RGBA, RGB, AbstractGray, AbstractRGB, Gray
 using PNGFiles: _save, png_init_io, close_png, png_uint_32
 using PNGFiles: Z_BEST_SPEED, Z_RLE, PNG_FILTER_PAETH, Z_DEFAULT_STRATEGY
 using PNGFiles: Z_FIXED, Z_NO_COMPRESSION, Z_BEST_COMPRESSION
@@ -58,13 +58,17 @@ export copy_relevant_tifs_to_folder, tif_full_filenames_buried_in_folder, unzip_
 export show_augmented_properties
 
 const CONSOLIDATED_FNAM = "Consolidated.tif"
+const HYPSOMETRIC_FNAM = "Hypsometric.png"
+const TOPORELIEF_FNAM = "Toporelief.png"
 const WATER_FNAM = "Water.png"
 const CONTOUR_FNAM = "Contour.png"
 
 include("ini_file.jl")
 include("png_phys.jl")
+include("pallette.jl")
 include("builders.jl")
 include("builders_utilties.jl")
+include("topo_relief.jl")
 include("pipeline.jl")
 include("establish_folder.jl")
 include("unzip_tif.jl")

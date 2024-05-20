@@ -77,7 +77,7 @@ function process_job(smb, complete_sheets_first)
     Make vector graphics and text covering the full map area. You may use RouteMap.jl for this step.
     Make composite bitmaps
     =#
-    operations_order = [establish_folder, unzip_tif, consolidate_elevation_data, water_overlay, contour_lines_overlay]
+    operations_order = [establish_folder, unzip_tif, consolidate_elevation_data, water_overlay, topo_relief, contour_lines_overlay]
     # Consider sharing an in-memory z-map and gradient map between operations.... No need to redo it.
     if complete_sheets_first
         for sb in smb # Might do this in parallel? Though a lot will be wating for file i/o...
