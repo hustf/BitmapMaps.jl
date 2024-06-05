@@ -1,11 +1,12 @@
 name = "BitmapMaps"
 uuid = "dcf5437e-85d8-460a-98f8-69920db83c61"
 authors = ["hustf <hustf@users.noreply.github.com> and contributors"]
-version = "0.0.15"
+version = "0.0.16"
 
 [deps]
 Dates = "ade2ca70-3891-5945-98fb-dc099432e06a"
 FileIO = "5789e2e9-d7fb-5bc7-8068-2c6fae9b9549"
+GDAL_jll = "a7073274-a066-55f0-b90d-d619367d196c"
 GeoArrays = "2fb1d81b-e6a0-5fc5-82e6-8e06903437ab"
 ImageCore = "a09fc81d-aa75-5fe9-8630-4744c3626534"
 ImageFiltering = "6a3955dd-da59-5b1f-98d4-e7296123deb5"
@@ -16,7 +17,9 @@ ImageShow = "4e3cecfd-b093-5904-9786-8bbb286a6a31"
 IniFile = "83e8ac13-25f8-5344-8a64-a9f2b223428f"
 LuxorLayout = "909dfbbc-cb73-418e-9556-eed3773b40ca"
 PNGFiles = "f57f5aa1-a3ce-4bc8-8ab9-96f992907883"
+PROJ_jll = "58948b4f-47e0-5654-a9ad-f609743f8632"
 Pango_jll = "36c8627f-9965-5494-a995-c6b170f724f3"
+SHA = "ea8e919c-243c-51af-8825-aaa63cd721ce"
 Serialization = "9e88b42a-f829-5b0c-bbe9-9e923198166b"
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 ZipFile = "a5390f91-8eb1-5f08-bee0-b1d1ffed6cea"

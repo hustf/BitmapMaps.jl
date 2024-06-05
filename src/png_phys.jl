@@ -1,6 +1,6 @@
 
 """
-    save_png_with_phys(fpath::String,
+    save_png_with_phys(ffna::String,
         image::S,
         pt_m⁻¹::Int;
         compression_level::Integer = Z_BEST_SPEED,
@@ -24,7 +24,7 @@ If the A4 printable width is 0.191 m and the number of pixels or dots in the ima
 
     pt_m⁻¹ == Int(round(640 / 0.191)) == 3351
 """
-function save_png_with_phys(fpath::String,
+function save_png_with_phys(ffna::String,
         image::S,
         density_pt_m⁻¹::Int;
         compression_level::Integer = Z_BEST_SPEED,
@@ -41,11 +41,11 @@ function save_png_with_phys(fpath::String,
     @assert 2 <= ndims(image) <= 3
     @assert size(image, 3) <= 4
 
-    fp = ccall(:fopen, Ptr{Cvoid}, (Cstring, Cstring), fpath, "wb")
-    fp == C_NULL && error("Could not open $(fpath) for writing")
+    fp = ccall(:fopen, Ptr{Cvoid}, (Cstring, Cstring), ffna, "wb")
+    fp == C_NULL && error("Could not open $(ffna) for writing")
 
     png_ptr = create_write_struct()
-    @debug "save_png_with_phys:" fpath png_ptr pt_m⁻¹
+    @debug "save_png_with_phys:" ffna png_ptr density_pt_m⁻¹
     info_ptr = create_info_struct(png_ptr)
     png_init_io(png_ptr, fp)
 
@@ -69,7 +69,7 @@ function save_png_with_phys(fpath::String,
 end
 
 """
-    get_pHYs_chunk_res_x_y_unit(fpath; silent = false)
+    get_pHYs_chunk_res_x_y_unit(ffna; silent = false)
     ---> res_x::Int, res_y, unit_type
 
 unit_type == 1 signifies res_x and res_y are given in units
@@ -77,8 +77,8 @@ pixels per printed meter.
 
 For inspection / checking
 """
-function get_pHYs_chunk_res_x_y_unit(fpath; silent = false)
-    fp = open_png(fpath) # pointer
+function get_pHYs_chunk_res_x_y_unit(ffna; silent = false)
+    fp = open_png(ffna) # pointer
     png_ptr = create_read_struct()
     info_ptr = create_info_struct(png_ptr)
     png_init_io(png_ptr, fp)

@@ -13,7 +13,7 @@ so we could potentially zoom in to the street level. Both surface (with trees an
 
 <img src="resource/bitmap_detail.png" alt = "resource/bitmap_detail.png" style="display: inline-block; margin: 0 auto; max-width: 640px">
 
-The example includes default elevation contours every 100 m with a fatter curve at 1000 m. The map projection is, unusually, follows the UTM grid, which is shown with 1 km spacing.
+The example includes default elevation contours every 100 m with a fatter curve at 1000 m. The map projection,, unusually, follows the UTM grid, which is shown with 1 km spacing.
 
 # How does it do it?
 
@@ -55,14 +55,20 @@ A first map has been made with scripting, ad hoc calculations and A4 sheets. We'
 
 Code is being adapted from environment 'geoarrays', package 'RouteMap.jl' ' / example/ split ' and environment 'tutorial_images' / 'image segmentation.jl'.
 
-We implemented and tested up to step 6 here, and have a skeleton for steps 7-8. Working on step 7, last commit implemented the pallettes.
+We implemented and tested up to step 6 here, and have a skeleton for steps 7-8.
 
-Some changes from scripting workflow:
+In the current commit, we struggled with finding good function names related to bounding boxes and (cropped extents). We still aren't satisfied. Does the extent
+of a file include zero-padded regions? We have sort-of landed on using different, longer, function names for .tif files, loaded geoarrays, and builders.
+
+Also currently, the type 'SheetMatrixBuilder' is over-determined. Using inches as a unit and then demanding integer values leads to some inconsistency. We'll get rid of that 
+by changing the type - in the next revision?
+
+Some of the changes from scripting workflow:
 
 - Establish BitmapMaps.ini, tune default printer data (the scripted / manual workflow map was missing 1 mm due to 'random' variations during printing).
-- Found a reliable way to print with actual scale. Use png's pHYs chunk, then print with an application that respects the settings. E.g. Gimp, MS Paint, and IrFanview.
+- Found a reliable way to print with actual scale. Use png's pHYs chunk, then print with an application that respects the settings. E.g. `Gimp`, `MS Paint`, and `IrFanview`.
 - Identifying water surface is now done with a more advanced algorithm. Manual corrections will hopefully be less of a requirement.
-- The colour pallette is FixedPointNumbers.Normed{UInt8, 8}, not Float64 - based
+- The colour palette is FixedPointNumbers.Normed{UInt8, 8}, not Float64 - based
 - Introduce the SheetMatrixBuilder (iterator for printable sheets) and SheetBuilder (iterator for pixels in a sheet). Change sheet numbering to start in SW corner. See figure:
 
-<img src="resource/matrix_sheet_pix_utm.svg" alt = "resource/matrix_sheet_pix_utm.svg" style="display: inline-block; margin: 0 auto; max-width: 640px">
+<img src="resource/matrix_sheet_cell_utm.svg" alt = "resource/matrix_sheet_cell_utm.svg" style="display: inline-block; margin: 0 auto; max-width: 640px">

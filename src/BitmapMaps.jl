@@ -1,15 +1,16 @@
 # TODO consider this roundoff limits our control of the sheet size:
-# sheet_pix_width = floor(pwi * pdens_dpi / 25.4)
+# sheet_cell_width = floor(pwi * pdens_dpi / 25.4)
 # Maybe don't use pwi [mm] and pdens_dpi [inch⁻¹] as integer inputs.
 # Better would be to allow floating point dpi or density in terms of meters.
 module BitmapMaps
-using IniFile
+# Extend methods for builders
 import Base: iterate, length, getindex, size, axes
+# Read defaults
+using IniFile
 # For loading and displaying png:
 import FileIO
 import ImageShow
 using FileIO: load
-
 # For adding physical print widths to png files in png_phys.jl
 import PNGFiles
 using PNGFiles: N0f8, RGBA, RGB, AbstractGray, AbstractRGB, Gray
@@ -27,11 +28,13 @@ using PNGFiles: PNG_INFO_pHYs, png_get_pHYs
 import LuxorLayout
 using LuxorLayout: Point # Maybe no need
 import Base: show
-# ZipFile
+# ZipFile and comparing file hashes:
 import ZipFile
+import SHA
+using SHA: sha256
 # GeoArray
 import GeoArrays
-using GeoArrays: GeoArray, bbox, bbox_overlap, Vertex, coords, indices, crop
+using GeoArrays: GeoArray, bbox, bbox_overlap, Vertex, coords, indices, crop, SVector
 # Feedback
 import Dates
 # Calculating gradients
@@ -52,13 +55,12 @@ export northwest_corner
 export southeast_corner, southeast_external_corner, southeast_internal_corner
 export southwest_corner, southwest_external_corner, southwest_internal_corner
 
-export geo_grid_centre_single, geo_centre, bounding_box_external_string, show_augmented
-export geo_area
+export geo_grid_centre_single, geo_centre, nonzero_raster_string, polygon_string, show_augmented
+export geo_area, nonzero_raster_closed_polygon_string, raster_polygon_string, nonzero_raster_rect
 export copy_relevant_tifs_to_folder, tif_full_filenames_buried_in_folder, unzip_tif
-export show_augmented_properties
+export show_augmented_properties, readclose
 
 const CONSOLIDATED_FNAM = "Consolidated.tif"
-const HYPSOMETRIC_FNAM = "Hypsometric.png"
 const TOPORELIEF_FNAM = "Toporelief.png"
 const WATER_FNAM = "Water.png"
 const CONTOUR_FNAM = "Contour.png"
@@ -68,6 +70,7 @@ include("png_phys.jl")
 include("pallette.jl")
 include("builders.jl")
 include("builders_utilties.jl")
+include("geoarray_utilties.jl")
 include("topo_relief.jl")
 include("pipeline.jl")
 include("establish_folder.jl")

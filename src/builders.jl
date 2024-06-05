@@ -15,13 +15,13 @@ A SheetBuilder is one sheet in a collection defined by `SheetMatrixBuilder`.
 
 The sheet's upper left corner given in a pixel coordinate system for the entire sheets matrix.
 
-- pix_iter::CartesianIndices{2, Tuple{UnitRange{Int64}, UnitRange{Int64}}}
+- cell_iter::CartesianIndices{2, Tuple{UnitRange{Int64}, UnitRange{Int64}}}
 
-Iterate over every pixel index `I` in the current sheet, starting top left. This field is the same for every sheet in a SheetMatrixBuilder.
+Iterate over every pixel / cell index `I` in the current sheet, starting top left. This field is the same for every sheet in a SheetMatrixBuilder.
 
 - f_I_to_utm::Function
 
-f_I_to_utm(I) transforms a pixel index I for this sheet to an UTM coordinate. About UTM coordinates, see `GeoArrays.jl`.
+f_I_to_utm(I) transforms a cell index I for this sheet to an UTM coordinate. About UTM coordinates, see `GeoArrays.jl`.
 
 - sheet_number::Int
 
@@ -35,22 +35,23 @@ Note, this is not the recommended usage. Intended is: `run_bitmapmap_pipeline`.
 ```
 julia> using BitmapMaps
 
-julia> bitmapmap = let
-           bm_pix_width, bm_pix_height = 9, 8              # Actual full bitmapmap sizes would be thousands of pixels
-           sheet_pix_width, sheet_pix_height = 3, 4        # 12 sheets, over which bm_pixels can be evenly divided
+julia> smb = let
+           bm_cell_width, bm_cell_height = 9, 8              # Actual full bitmapmap sizes would be thousands of pixels
+           sheet_cell_width, sheet_cell_height = 3, 4        # 12 sheets, over which bm_pixels can be evenly divided
            southwest_corner = (43999, 6909048)             # Utm zone coordinates, the corner is lower left in smb[1, 1] (defined below)
-           pix_to_utm_factor = 2                           # One horizontal or vertical pixel distance equals 2 metres easting or 2 metres northing
+           cell_to_utm_factor = 2                           # One horizontal or vertical cell distance equals 2 metres easting or 2 metres northing
+           sheet_cell_width_mm = 191                        # This value is the default in the .ini file.
            pth = "BitmapMaps/example"
            #
-           SheetMatrixBuilder(bm_pix_width, bm_pix_height, sheet_pix_width, sheet_pix_height, southwest_corner, pix_to_utm_factor, pth)
+           SheetMatrixBuilder(bm_cell_width, bm_cell_height, sheet_cell_width, sheet_cell_height, southwest_corner, cell_to_utm_factor, sheet_cell_width_mm, pth)
        end;
 
-
-julia> display.(bitmapmap);   # Broadcasting, mapping, iterations are defined.
+TODO: UPDATE
+julia> display.(smg;   # Broadcasting, mapping, iterations are defined.
        SheetBuilder(
                pixel_origin_ref_to_bitmapmap = (0, 4)
-               pix_iter or I =                 CartesianIndices((1:4, 1:3))
-               f_I_to_utm(first(pix_iter)) =   (43999, 6909054)
+               cell_iter or I =                 CartesianIndices((1:4, 1:3))
+               f_I_to_utm(first(cell_iter)) =   (43999, 6909054)
                sheet_number =                  1
         )
         ⋮
@@ -65,7 +66,7 @@ SheetBuilder((6, 0), (1:4, 1:3), f(I) -> utm, 6 )
 
 julia> utm_coordinates_of_pixels_in_sheet = let
     sheetpartition = bitmapmap[1]
-    map(sheetpartition.f_I_to_utm, sheetpartition.pix_iter)
+    map(sheetpartition.f_I_to_utm, sheetpartition.cell_iter)
 end
 4×3 Matrix{Tuple{Int64, Int64}}:
 (43999, 6909054)  (44001, 6909054)  (44003, 6909054)
@@ -76,117 +77,138 @@ end
 """
 @kwdef struct SheetBuilder
     pixel_origin_ref_to_bitmapmap::Tuple{Int64, Int64}
-    pix_iter::CartesianIndices{2, Tuple{UnitRange{Int64}, UnitRange{Int64}}}
+    cell_iter::CartesianIndices{2, Tuple{UnitRange{Int64}, UnitRange{Int64}}}
     f_I_to_utm::Function
     sheet_number::Int
+    sheet_width_mm::Int
     pthsh::String
 end
 
-function SheetBuilder(sheet_lower_left_utm, pix_dist, pixel_origin_ref_to_bitmapmap, pix_iter, pthsh, sheet_number)
-    sheet_pix_height = size(pix_iter)[1]
+function SheetBuilder(sheet_lower_left_utm, cell_size, pixel_origin_ref_to_bitmapmap, cell_iter, sheet_width_mm, pthsh, sheet_number)
+    sheet_cell_height = size(cell_iter)[1]
     function f_I_to_utm(I::CartesianIndex)
-        easting_offset =   (I[2] - 1) * pix_dist
-        northing_offset =  (sheet_pix_height - I[1] + 1) * pix_dist
+        easting_offset =   (I[2] - 1) * cell_size
+        northing_offset =  (sheet_cell_height - I[1] + 1) * cell_size
         (easting_offset, northing_offset) .+ sheet_lower_left_utm
     end
-    SheetBuilder(;pixel_origin_ref_to_bitmapmap, pix_iter, f_I_to_utm, pthsh, sheet_number)
+    SheetBuilder(;pixel_origin_ref_to_bitmapmap, cell_iter, f_I_to_utm, sheet_width_mm, pthsh, sheet_number)
 end
 
-function Base.show(io::IO, ::MIME"text/plain", shi::SheetBuilder)
+function Base.show(io::IO, ::MIME"text/plain", sb::SheetBuilder)
     colwi = 32
     println(io, "SheetBuilder(")
-    println(io, rpad("\tpixel_origin_ref_to_bitmapmap = ", colwi), shi.pixel_origin_ref_to_bitmapmap)
-    println(io, rpad("\tpix_iter or I = ", colwi), shi.pix_iter)
-    println(io, rpad("\tf_I_to_utm(first(pix_iter)) = ", colwi), shi.f_I_to_utm(first(shi.pix_iter)))
-    println(io, rpad("\tpthsh = ", colwi), shi.pthsh)
-    println(io, rpad("\tsheet_number = ", colwi), shi.sheet_number)
+    println(io, rpad("    pixel_origin_ref_to_bitmapmap = ", colwi), sb.pixel_origin_ref_to_bitmapmap)
+    println(io, rpad("    cell_iter or I = ", colwi), sb.cell_iter)
+    println(io, rpad("    f_I_to_utm(first(cell_iter)) = ", colwi), sb.f_I_to_utm(first(sb.cell_iter)))
+    println(io, rpad("    sheet_width_mm = ", colwi), sb.sheet_width_mm)
+    println(io, rpad("    pthsh = ", colwi), sb.pthsh)
+    println(io, rpad("    sheet_number = ", colwi), sb.sheet_number)
     println(io, " )")
 end
-function Base.show(io::IO, shi::SheetBuilder)
+function Base.show(io::IO, sb::SheetBuilder)
     print(io, "SheetBuilder(")
-    print(io, shi.pixel_origin_ref_to_bitmapmap, ", ")
-    print(io, shi.pix_iter.indices, ", ")
+    print(io, sb.pixel_origin_ref_to_bitmapmap, ", ")
+    print(io, sb.cell_iter.indices, ", ")
     print(io, "f(I) -> utm", ", ")
-    print(io, "pthsh = ", shi.pthsh)
-    print(io, shi.sheet_number)
+    print(io, sb.sheet_width_mm, ", ")
+    print(io, repr(sb.pthsh), ", ")
+    print(io, sb.sheet_number)
     println(io, " )")
 end
 
 
 
 """
-    SheetMatrixBuilder(bm_pix_width, bm_pix_height, sheet_pix_width, sheet_pix_height, southwest_corner, pix_to_utm_factor, pth)
-    SheetMatrixBuilder(pwi::Int, phe::Int, pdens_dpi::Int, nrc::Tuple{Int, Int}, southwest_corner::Tuple{Int, Int}, pix_to_utm_factor::Int, pth)
+    SheetMatrixBuilder(bm_cell_width, bm_cell_height, sheet_cell_width, sheet_cell_height, southwest_corner, cell_to_utm_factor, pth)
+    SheetMatrixBuilder(pwi::Int, phe::Int, pdens_dpi::Int, nrc::Tuple{Int, Int}, southwest_corner::Tuple{Int, Int}, cell_to_utm_factor::Int, pth)
+    SheetMatrixBuilder(bm_cell_width::Int, bm_cell_height::Int, sheet_cell_width::Int, sheet_cell_height::Int, nrows::Int, ncols::Int, southwest_corner::Tuple{Int, Int}, 
+        sheet_indices::CartesianIndices{2, Tuple{UnitRange{Int64}, UnitRange{Int64}}}, cell_to_utm_factor::Int, pth::String)
 
 An object specifying the map and helping with making it.
+These constructors aren't intended for use directly, but should allow parseable output. Instead, see `pipeline.jl/define_builder(;kwds)` for typical construction.
 
-See `pipeline.jl/define_builder(;kwds)` for typical construction.
-
-See `SheetBuilder` and `resource/matrix_sheet_pix_utm.svg` for an example.
+See `SheetBuilder` and `resource/matrix_sheet_cell_utm.svg` for an example.
 """
 struct SheetMatrixBuilder
-    bm_pix_width::Int
-    bm_pix_height::Int
-    sheet_pix_width::Int
-    sheet_pix_height::Int
+    bm_cell_width::Int
+    bm_cell_height::Int
+    sheet_cell_width::Int
+    sheet_cell_height::Int
     nrows::Int
     ncols::Int
     southwest_corner::Tuple{Int, Int}
     sheet_indices::CartesianIndices{2, Tuple{UnitRange{Int64}, UnitRange{Int64}}}
-    pix_to_utm_factor::Int
+    cell_to_utm_factor::Int
+    sheet_width_mm::Int
     pth::String
-    function SheetMatrixBuilder(bm_pix_width, bm_pix_height, sheet_pix_width, sheet_pix_height, southwest_corner, pix_to_utm_factor, pth)
-        ncols = bm_pix_width / sheet_pix_width |> ceil |> Integer
-        nrows = bm_pix_height / sheet_pix_height |> ceil |> Integer
+    function SheetMatrixBuilder(bm_cell_width, bm_cell_height, sheet_cell_width, sheet_cell_height, southwest_corner, cell_to_utm_factor, sheet_width_mm, pth)
+        ncols = bm_cell_width / sheet_cell_width |> ceil |> Integer
+        nrows = bm_cell_height / sheet_cell_height |> ceil |> Integer
         if ncols < 1 || nrows < 1
-            throw(ArgumentError("bm_pix_... must be greater than corresponding sheet_pix... "))
+            throw(ArgumentError("bm_cell_... must be greater than corresponding sheet_pix... "))
         end
-        if sheet_pix_width * ncols !== bm_pix_width
-            throw(ArgumentError("bm_pix_width $bm_pix_width must be an integer times sheet_pix_width $sheet_pix_width"))
+        if sheet_cell_width * ncols !== bm_cell_width
+            throw(ArgumentError("bm_cell_width $bm_cell_width must be an integer times sheet_cell_width $sheet_cell_width"))
         end
-        if sheet_pix_height * nrows !== bm_pix_height
-            throw(ArgumentError("bm_pix_height $bm_pix_height must be an integer times sheet_pix_height $sheet_pix_width"))
+        if sheet_cell_height * nrows !== bm_cell_height
+            throw(ArgumentError("bm_cell_height $bm_cell_height must be an integer times sheet_cell_height $sheet_cell_width"))
         end
         sheet_indices = CartesianIndices((1:nrows, 1:ncols))
-        new(bm_pix_width, bm_pix_height, sheet_pix_width, sheet_pix_height, nrows, ncols, southwest_corner, sheet_indices, pix_to_utm_factor, pth)
+        new(bm_cell_width, bm_cell_height, sheet_cell_width, sheet_cell_height, nrows, ncols, southwest_corner, sheet_indices, cell_to_utm_factor, sheet_width_mm, pth)
     end
 end
 
-function SheetMatrixBuilder(pwi::Int, phe::Int, pdens_dpi::Int, nrc::Tuple{Int, Int}, southwest_corner::Tuple{Int, Int}, pix_to_utm_factor::Int, pth::String)
-    sheet_pix_width = floor(pwi * pdens_dpi / 25.4)
-    sheet_pix_height = floor(phe * pdens_dpi / 25.4)
+function SheetMatrixBuilder(pwi::Int, phe::Int, pdens_dpi::Int, nrc::Tuple{Int, Int}, southwest_corner::Tuple{Int, Int}, cell_to_utm_factor::Int, pth::String)
+    sheet_cell_width = floor(pwi * pdens_dpi / 25.4)
+    sheet_cell_height = floor(phe * pdens_dpi / 25.4)
     nrows, ncols = nrc
-    bm_pix_width = ncols * sheet_pix_width
-    bm_pix_height = nrows * sheet_pix_height
-    SheetMatrixBuilder(bm_pix_width, bm_pix_height, sheet_pix_width, sheet_pix_height, southwest_corner, pix_to_utm_factor, pth)
+    bm_cell_width = ncols * sheet_cell_width
+    bm_cell_height = nrows * sheet_cell_height
+    sheet_width_mm = Int(ceil(sheet_cell_width / (pdens_dpi / 25.4)))
+    SheetMatrixBuilder(bm_cell_width, bm_cell_height, sheet_cell_width, sheet_cell_height, southwest_corner, cell_to_utm_factor, sheet_width_mm, pth)
+end
+# This method is 'over-determined', but allows parsing output (that also contains the same information more than twice)
+function SheetMatrixBuilder(bm_cell_width::Int, bm_cell_height::Int, sheet_cell_width::Int, sheet_cell_height::Int, nrows::Int, ncols::Int, southwest_corner::Tuple{Int, Int}, 
+    sheet_indices::CartesianIndices{2, Tuple{UnitRange{Int64}, UnitRange{Int64}}}, cell_to_utm_factor::Int, sheet_width_mm::Int, pth::String)
+    @assert nrows == Int(ceil(bm_cell_height / sheet_cell_height))
+    @assert ncols == Int(ceil(bm_cell_width / sheet_cell_width ))
+    @assert sheet_indices == CartesianIndices((1:nrows, 1:ncols))
+    SheetMatrixBuilder(bm_cell_width, bm_cell_height, sheet_cell_width, sheet_cell_height, southwest_corner, cell_to_utm_factor, sheet_width_mm, pth)
 end
 
+
+
 function Base.show(io::IO, ::MIME"text/plain", smb::SheetMatrixBuilder)
-    colwi = 32
-    println(io, "SheetMatrixBuilder(")
+    print(io, "SheetMatrixBuilder(")
     for sy in fieldnames(SheetMatrixBuilder)
         va = getfield(smb, sy)
-        print(io, rpad("\t$sy", colwi), " = ", va)
-        println(sy !== :pix_to_utm_factor ? "" : ")")
+        colwi = sy == :bm_cell_width ? 9 : 28
+        print(io, lpad(repr(va), colwi))
+        if sy !== :pth
+            println(io, ", # ", "$sy")
+        else
+            println(io, ") # ", "$sy")
+        end
     end
 end
 
 
 function _SheetBuilder(smb::SheetMatrixBuilder, sheet_number::Int)
     # No bounds in this "private" function, 'iterate' and 'getindex' should do that.
-    pix_iter = CartesianIndices((1:smb.sheet_pix_height, 1:smb.sheet_pix_width))
+    cell_iter = CartesianIndices((1:smb.sheet_cell_height, 1:smb.sheet_cell_width))
     r, c = row_col_of_sheet(smb, sheet_number)
-    opx = (c - 1) * smb.sheet_pix_width
-    opy = smb.bm_pix_height - smb.sheet_pix_height - (r - 1) * smb.sheet_pix_height
+    opx = (c - 1) * smb.sheet_cell_width
+    opy = smb.bm_cell_height - smb.sheet_cell_height - (r - 1) * smb.sheet_cell_height
     pixel_origin_ref_to_bitmapmap = (opx, opy)
-    sheet_lower_left_utm = smb.southwest_corner .+ smb.pix_to_utm_factor .* (opx, (r - 1) * smb.sheet_pix_height)
+    sheet_lower_left_utm = smb.southwest_corner .+ smb.cell_to_utm_factor .* (opx, (r - 1) * smb.sheet_cell_height)
+    sheet_width_mm = smb.sheet_width_mm
     # The local folder name includes row, column, min_easting, min_northing, max_easting, max_northing. This simplifies
     # the manual data ordering process (the web api requires user rights).
     min_easting, min_northing = sheet_lower_left_utm
-    max_easting_external = min_easting + smb.sheet_pix_width * smb.pix_to_utm_factor
-    max_northing_external = min_northing + smb.sheet_pix_height * smb.pix_to_utm_factor
+    max_easting_external = min_easting + smb.sheet_cell_width * smb.cell_to_utm_factor
+    max_northing_external = min_northing + smb.sheet_cell_height * smb.cell_to_utm_factor
     pthsh = joinpath(smb.pth, "$r $c  $min_easting $min_northing  $max_easting_external $max_northing_external")
-    SheetBuilder(sheet_lower_left_utm, smb.pix_to_utm_factor, pixel_origin_ref_to_bitmapmap, pix_iter, pthsh, sheet_number)
+    SheetBuilder(sheet_lower_left_utm, smb.cell_to_utm_factor, pixel_origin_ref_to_bitmapmap, cell_iter, sheet_width_mm, pthsh, sheet_number)
 end
 
 Base.iterate(smb::SheetMatrixBuilder) = _SheetBuilder(smb, 1), _SheetBuilder(smb, 2)

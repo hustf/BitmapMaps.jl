@@ -7,21 +7,21 @@ Output is image files with full transparency outside water surfaces, for manual 
 """
 function water_overlay(sb::SheetBuilder)
     # Extract the utm / metre distance between neigbouring pixels
-    pix_dist = sb.f_I_to_utm(CartesianIndex(1,2))[1] - sb.f_I_to_utm(CartesianIndex(1,1))[1]
+    cell_size = sb.f_I_to_utm(CartesianIndex(1,2))[1] - sb.f_I_to_utm(CartesianIndex(1,1))[1]
     # Go ahead
-    water_overlay(full_folder_path(sb), pix_dist)
+    water_overlay(full_folder_path(sb), cell_size)
 end
-function water_overlay(fofo, pix_dist)
+function water_overlay(fofo, cell_size)
     if isfile(joinpath(fofo, WATER_FNAM))
         @debug "$WATER_FNAM in $fofo already exists. Exiting `water_overlay`."
         return true
     end
     ffna = joinpath(fofo, CONSOLIDATED_FNAM)
     elevations = let 
-        z = GeoArrays.read(ffna)
+        z = readclose(ffna)
         transpose(z.A[:, :, 1])
     end
-    lm_bool = is_water_surface(elevations, pix_dist)
+    lm_bool = is_water_surface(elevations, cell_size)
     ice_elevation = 1000.0 # Hardcoded that lakes above 1000m are frozen.
     save_lakes_overlay_png(lm_bool, elevations, ice_elevation, fofo)
     true
@@ -91,7 +91,7 @@ end
 
 function lake_matrix(steep_matrix, k, lake_steepness_max, lake_pixels_min)
     # Divide the steepness matrix into segments, based on proximity and steepness difference.
-    # Note that we don't use the minimum pixel count argument here. We apply it later. 
+    # Note that we don't have or use a minimum cell count argument here. will apply a size check later. 
     steep_segments = felzenszwalb(steep_matrix, k)
     is_flat(i) = segment_mean(steep_segments, i) < lake_steepness_max
     is_large(i) = segment_pixel_count(steep_segments, i) >= lake_pixels_min
@@ -103,7 +103,8 @@ function lake_matrix(steep_matrix, k, lake_steepness_max, lake_pixels_min)
     # A common artifact is lines across a lake, possibly from power lines. 
     # Let's grow the lakes, then shrink, with 8-connectivity to add
     # lake shores.
-    erode!(dilate!(islake_matrix))
+    dilate!(islake_matrix, copy(islake_matrix))
+    erode!(islake_matrix, copy(islake_matrix))
     # We are confident that positives are true positives. Still, we have lots of fake negatives
     # inside of the lake regions. They would appear as islands that are really just noise, waves, 
     # or recalibration. Most of them coindicentally fall below lake_pixels_min:

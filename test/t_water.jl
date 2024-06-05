@@ -1,5 +1,5 @@
-# The algorithm and parameter values is optimized for in environments/tutorial_images/image_segmentation.jl
-# Since these parameter values are well optimized, we use those hardcoded here.
+# The algorithm and parameter values were optimized for a data set around 62.14111170231884N, 5.572971578864545E.
+# Further refinements are hardcoded in this package. 
 #
 # Work with the limited data in /resource. This area contains one tiny lake, hard to identify due 
 # to noise, but without some typical artefacts. A small corner of 'Holmevatnet' / Gurskøy is included,
@@ -20,17 +20,18 @@ end
 # Extract and inspect.
 unzip_tif(tmpdir_water) 
 fna = first(tif_full_filenames_buried_in_folder(tmpdir_water))
-@test BitmapMaps.bounding_box_polygon_string(fna)== "POLYGON ((18294 6937562, 18449 6937562, 18449 6937717, 18294 6937717, 18294 6937562))"
+@test polygon_string(fna) ==  "POLYGON ((18295 6937562, 18450 6937562, 18450 6937716, 18295 6937716, 18295 6937562))"
 
-# This file is already 'consolidated', i.e. dense. The point here is not to test the pipeline, so we 
-# test on the level inside `water_overlay` first.
-
+# This file is not 'consolidated', it is zero-valued on the eastern edge. But the point here is 
+# not to test the pipeline, so we test on the level inside `water_overlay` first.
 elevations = let 
-    z = BitmapMaps.GeoArrays.read(fna)
+    z = readclose(fna)
     transpose(z.A[:, :, 1])
 end
 @test maximum(elevations) == 553.9368f0
 @test eltype(elevations) == Float32
+
+@test sum(iszero.(elevations)) == 155 # Eastern edge zero
 lm_bool = BitmapMaps.is_water_surface(elevations, 1)
 @test sum(lm_bool) == 5205 # This lake's identified surface are is 5205m²
 img = BitmapMaps.save_lakes_overlay_png(lm_bool, elevations, 1000, tmpdir_water)
@@ -45,13 +46,14 @@ cp(fna, joinpath(tmpdir_water, BitmapMaps.CONSOLIDATED_FNAM))
 sb = let
     sheet_lower_left_utm = (18294, 6937562)
     pixel_origin_ref_to_bitmapmap = (0, 0)
-    sheet_pix_width = 18449 -18294
-    sheet_pix_height = 6937717 - 6937562
-    pix_iter = CartesianIndices((1:sheet_pix_height, 1:sheet_pix_width))
+    sheet_cell_width = 18449 -18294
+    sheet_cell_height = 6937717 - 6937562
+    cell_iter = CartesianIndices((1:sheet_cell_height, 1:sheet_cell_width))
     pthsh = tmpdir_water
     sheet_number = 1
-    pix_dist = 1
-    SheetBuilder(sheet_lower_left_utm, pix_dist, pixel_origin_ref_to_bitmapmap, pix_iter, pthsh, sheet_number)
+    cell_size = 1
+    sheet_width_mm = 191
+    SheetBuilder(sheet_lower_left_utm, cell_size, pixel_origin_ref_to_bitmapmap, cell_iter, sheet_width_mm, pthsh, sheet_number)
 end
 # Pass this sheet builder to the interface, see if that makes us another WATER_FNAM file...
 BitmapMaps.water_overlay(sb)

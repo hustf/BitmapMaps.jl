@@ -1,7 +1,11 @@
-# The pipeline has a consolidation step, but it requires user download elevation data from online.
-# However, if data already exists locally, perhaps when zooming in on a region, downloading is not
-# necessary.
-# Run this prior to a consolidation step.
+# The pipeline has a consolidation step, but the pipeline requires that user download relevant elevation data from online.
+#
+# However, if data already exists locally for another bitmapmap, these functions
+# can help with local file management.
+# 
+# To build the folder structure first, you can either `run_bitmapmap_pipeline()`, 
+# which aborts the run when not finding data, or run 
+# `establish_folder.(sheet_matrix_builder)`
 """
     copy_relevant_tifs_to_folder((source_folder, destination_folder)
     copy_relevant_tifs_to_folder(source_folder, smb::SheetMatrixBuilder)
@@ -29,13 +33,13 @@ function copy_relevant_tifs_to_folder(source_folder, destination_folder)
     # Candidate by candidate is checked for geographical match, then copied.
     destination_files = String[]
     for cafna in cs
-        s = bbox(GeoArrays.read(cafna))
-        if is_source_relevant(d, s, cafna)
+        if is_source_relevant(d, cafna)
             dfna = file_name_at_dest(cafna, destination_folder)
             cp(cafna, dfna)
             push!(destination_files, dfna)
         else
-            @debug "Ignored $cafna\n\t because it does not overlap the geographical region $min_x $min_y $max_x $max_y"
+            bbs = closed_box_string(d)
+            @debug "Ignored copying $(splitdir(cafna)[end]) because it does not overlap the geographical region $bbs"
         end
     end
     destination_files
@@ -60,8 +64,8 @@ end
 """
     candidate_tif_names(source_folder, destination_folder))
 
-Candidates for copying based on file names, and what already exists anywhere
-in destination folder hierarchy.
+Candidates for copying based on file names, excepting file names that already exists on
+any level of the destination folder hierarchy.
 """
 function candidate_tif_names(source_folder, destination_folder)
     source_fo = abspath(source_folder)
@@ -81,3 +85,13 @@ function candidate_tif_names(source_folder, destination_folder)
         file_name_at_dest(cand, dest_fo) ∉ fnas_avoid
     end
 end
+
+
+
+
+
+
+
+
+
+

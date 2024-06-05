@@ -1,4 +1,5 @@
 using Test
+
 olddir = pwd()
 cd(mktempdir())
 @testset "Read value from init file" begin
@@ -20,7 +21,7 @@ end
     include("t_water.jl")
 end
 @testset "Test user utilties" begin
-    include("t_user_utilties.jl")
+    include("t_user_geoarray_utilties.jl")
 end
 @testset "Test BitmapMaps pipeline" begin
     include("t_pipeline.jl")

@@ -14,7 +14,7 @@ end
 
 function consolidate_data_in_folder_to_geoarray(fofo)
     if isfile(joinpath(fofo, CONSOLIDATED_FNAM))
-        @debug "$out_file_name in $fofo already exists. Exiting `consolidate_data_in_folder_to_geoarray`."
+        @debug "$CONSOLIDATED_FNAM in $fofo already exists. Exiting `consolidate_data_in_folder_to_geoarray`."
         return true
     end
     # The folder fofo's name contains the geometry request made at høydedata.no or similar!
@@ -31,7 +31,7 @@ function consolidate_data_in_folder_to_geoarray(fofo)
     end
     g_dest = let
         A = zeros(Float32, w, h, 1)
-        f = GeoArrays.AffineMap([1.0 0.0; 0.0 -1.0], 1.0 .* [min_x, max_y])
+        f = GeoArrays.AffineMap([1.0 0.0; 0.0 -1.0], 1.0 .* [min_x - 1, max_y + 1])
         GeoArray(A, f) 
     end
     copy_sources_into_destination!(g_dest, fnas_source)
@@ -40,6 +40,10 @@ function consolidate_data_in_folder_to_geoarray(fofo)
     #    nor = max(0.0, pix) / 1500
     #    PNGFiles.Gray(nor)
     #end)
+    if sum(g_dest.A) == 0
+        @info "No relevant data to consolidate. Exiting."
+        return false
+    end
     # Write to consolidated file
     GeoArrays.write(joinpath(fofo, CONSOLIDATED_FNAM), g_dest)
     return true
@@ -64,9 +68,10 @@ The first method first checks if there is any overlap. If there is not, this met
 The crs field is ignored, unlike `GeoArrays.sample_values!`.
 """
 function sample_values_larger_than_limit!(g_dest::GeoArray, fna_source::String)
-    g_source = GeoArrays.read(fna_source)
-    if is_source_relevant(g_dest, g_source, fna_source)
-        sample_values_larger_than_limit!(g_dest, g_source)
+    if is_source_relevant(g_dest, fna_source)
+        sample_values_larger_than_limit!(g_dest, readclose(fna_source))
+    else
+        throw("TODO test elsewhere, drop it here.")
     end
     g_dest
 end
@@ -96,15 +101,22 @@ function sample_values_larger_than_limit!(g_dest::GeoArray, g_source::GeoArray)
     g_dest
 end
 
-function is_source_relevant(g_dest::T, g_source::T, fna_source::String) where T <: GeoArray
-    is_source_relevant(bbox(g_dest), bbox(g_source), fna_source)
+function is_source_relevant(g_dest::GeoArray, fna_source)
+    # Destination bounding box is determined including zero-valued cells.
+    bb_dest = bbox(g_dest) 
+    # Source bounding box neglects zero-padded (empty) cells.
+    is_source_relevant(bb_dest, nonzero_raster_rect(fna_source))
 end
-function is_source_relevant(d::T, s::T, fna_source) where T <: @NamedTuple{min_x::Float64, min_y::Float64, max_x::Float64, max_y::Float64}
-    if !bbox_overlap(d, s)
-        @debug "\t$(splitdir(fna_source)[end]) does not overlap $d"
-        return false
-    else
-        return true
-    end
+function is_source_relevant(bb_dest::T, fna_source::String) where T <: @NamedTuple{min_x::Float64, min_y::Float64, max_x::Float64, max_y::Float64}
+    # Source bounding box neglects zero-padded (empty) cells.
+    is_source_relevant(bb_dest, nonzero_raster_rect(fna_source))
 end
-
+function is_source_relevant(bb_dest::T, bb_source) where T <: @NamedTuple{min_x::Float64, min_y::Float64, max_x::Float64, max_y::Float64}
+    min_x = Float64(bb_source.min_x)
+    min_y = Float64(bb_source.min_y)
+    max_x = Float64(bb_source.max_x) # We don't need to assume that bb_source.max_x was rounded down because we made it.
+    max_y = Float64(bb_source.max_y)
+    bbs = (;min_x, min_y, max_x, max_y)
+    # Any overlap makes the source relevant
+    bbox_overlap(bb_dest, bbs)
+end

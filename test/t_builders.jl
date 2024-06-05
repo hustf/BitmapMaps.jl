@@ -2,7 +2,7 @@ using Test
 using BitmapMaps
 using BitmapMaps: SheetMatrixBuilder, row_col_of_sheet
 
-smb = SheetMatrixBuilder(3, 4, 1, 2, (43999, 6909048), 1, "nopath")
+smb = SheetMatrixBuilder(3, 4, 1, 2, (43999, 6909048), 1, 191, "nopath")
 @test length(smb) == 6
 
 (item, state) = iterate(smb) # 1, 2
@@ -14,54 +14,53 @@ smb = SheetMatrixBuilder(3, 4, 1, 2, (43999, 6909048), 1, "nopath")
 next = iterate(smb, state)
 @test isnothing(next)
 
-# SheetMatrixBuilder corresponds to resource/matrix_sheet_pix_utm.svg
+# Corresponds to resource/matrix_sheet_cell_utm.svg
+bm_cell_width, bm_cell_height, sheet_cell_width, sheet_cell_height, sw_corner, cell_to_utm_factor = (9, 8, 3, 4, (44000, 6909047), 2)
 
-bm_pix_width, bm_pix_height, sheet_pix_width, sheet_pix_height, sw_corner, pix_to_utm_factor = (9, 8, 3, 4, (43999, 6909048), 2)
-
-@test_throws ArgumentError SheetMatrixBuilder(bm_pix_width + 1, bm_pix_height, sheet_pix_width, sheet_pix_height, sw_corner, pix_to_utm_factor, "test")
-@test_throws ArgumentError SheetMatrixBuilder(bm_pix_width, bm_pix_height + 1, sheet_pix_width, sheet_pix_height, sw_corner, pix_to_utm_factor, "test")
-@test_throws ArgumentError SheetMatrixBuilder(bm_pix_width, bm_pix_height    , bm_pix_width * 2, sheet_pix_height, sw_corner, pix_to_utm_factor, "test")
-@test_throws ArgumentError SheetMatrixBuilder(bm_pix_width, bm_pix_height, sheet_pix_width, bm_pix_height * 2, sw_corner, pix_to_utm_factor, "test")
-smb = SheetMatrixBuilder(bm_pix_width, bm_pix_height, sheet_pix_width, sheet_pix_height, sw_corner, pix_to_utm_factor, "test")
+@test_throws ArgumentError SheetMatrixBuilder(bm_cell_width + 1, bm_cell_height, sheet_cell_width, sheet_cell_height, sw_corner, cell_to_utm_factor, 191, "test")
+@test_throws ArgumentError SheetMatrixBuilder(bm_cell_width, bm_cell_height + 1, sheet_cell_width, sheet_cell_height, sw_corner, cell_to_utm_factor, 191, "test")
+@test_throws ArgumentError SheetMatrixBuilder(bm_cell_width, bm_cell_height    , bm_cell_width * 2, sheet_cell_height, sw_corner, cell_to_utm_factor, 191, "test")
+@test_throws ArgumentError SheetMatrixBuilder(bm_cell_width, bm_cell_height, sheet_cell_width, bm_cell_height * 2, sw_corner, cell_to_utm_factor, 191,"test")
+smb = SheetMatrixBuilder(bm_cell_width, bm_cell_height, sheet_cell_width, sheet_cell_height, sw_corner, cell_to_utm_factor, 191, "test")
 @test length(smb) == 6
 (item, state) = iterate(smb) # 1, 2
 @test item.sheet_number == 1
-pix_iter = item.pix_iter
-@test length(pix_iter) == 12
-@test pix_iter[1,1] == pix_iter[1]
-@test pix_iter[2,1] == pix_iter[2]
-@test pix_iter[3,1] == pix_iter[3]
+cell_iter = item.cell_iter
+@test length(cell_iter) == 12
+@test cell_iter[1,1] == cell_iter[1]
+@test cell_iter[2,1] == cell_iter[2]
+@test cell_iter[3,1] == cell_iter[3]
 f_I_to_utm = item.f_I_to_utm
-@test_throws BoundsError f_I_to_utm(pix_iter[0, 1])
-@test f_I_to_utm(pix_iter[1, 1]) .- sw_corner == (0, 8)
-@test f_I_to_utm(pix_iter[2, 1]) .- sw_corner == (0, 6)
-@test f_I_to_utm(pix_iter[3, 1]) .- sw_corner == (0, 4)
-@test f_I_to_utm(pix_iter[4, 1]) .- sw_corner == (0, 2)
-@test_throws BoundsError f_I_to_utm(pix_iter[5, 1])
-@test_throws BoundsError f_I_to_utm(pix_iter[4, 0])
-@test f_I_to_utm(pix_iter[4, 1]) .- sw_corner == (0, 2)
-@test f_I_to_utm(pix_iter[4, 2]) .- sw_corner == (2, 2)
-@test f_I_to_utm(pix_iter[4, 3]) .- sw_corner == (4, 2)
-@test_throws BoundsError f_I_to_utm(pix_iter[4, 4])
+@test_throws BoundsError f_I_to_utm(cell_iter[0, 1])
+@test f_I_to_utm(cell_iter[1, 1]) .- sw_corner == (0, 8)
+@test f_I_to_utm(cell_iter[2, 1]) .- sw_corner == (0, 6)
+@test f_I_to_utm(cell_iter[3, 1]) .- sw_corner == (0, 4)
+@test f_I_to_utm(cell_iter[4, 1]) .- sw_corner == (0, 2)
+@test_throws BoundsError f_I_to_utm(cell_iter[5, 1])
+@test_throws BoundsError f_I_to_utm(cell_iter[4, 0])
+@test f_I_to_utm(cell_iter[4, 1]) .- sw_corner == (0, 2)
+@test f_I_to_utm(cell_iter[4, 2]) .- sw_corner == (2, 2)
+@test f_I_to_utm(cell_iter[4, 3]) .- sw_corner == (4, 2)
+@test_throws BoundsError f_I_to_utm(cell_iter[4, 4])
 
 @test state.sheet_number == 2
-pix_iter = state.pix_iter
-@test length(pix_iter) == 12
-@test pix_iter[1,1] == pix_iter[1]
-@test pix_iter[2,1] == pix_iter[2]
-@test pix_iter[3,1] == pix_iter[3]
+cell_iter = state.cell_iter
+@test length(cell_iter) == 12
+@test cell_iter[1,1] == cell_iter[1]
+@test cell_iter[2,1] == cell_iter[2]
+@test cell_iter[3,1] == cell_iter[3]
 f_I_to_utm = state.f_I_to_utm
-@test_throws BoundsError f_I_to_utm(pix_iter[0, 1])
-@test f_I_to_utm(pix_iter[1, 1]) .- sw_corner == (0, 2 + 6 + 8)
-@test f_I_to_utm(pix_iter[2, 1]) .- sw_corner == (0, 2 + 4 + 8)
-@test f_I_to_utm(pix_iter[3, 1]) .- sw_corner == (0, 2 + 2 + 8)
-@test f_I_to_utm(pix_iter[4, 1]) .- sw_corner == (0, 2 + 0 + 8)
-@test_throws BoundsError f_I_to_utm(pix_iter[5, 1])
-@test_throws BoundsError f_I_to_utm(pix_iter[4, 0])
-@test f_I_to_utm(pix_iter[4, 1]) .- sw_corner == (0, 2  + 8)
-@test f_I_to_utm(pix_iter[4, 2]) .- sw_corner == (2, 2 + 8)
-@test f_I_to_utm(pix_iter[4, 3]) .- sw_corner == (4, 2 + 8)
-@test_throws BoundsError f_I_to_utm(pix_iter[4, 4])
+@test_throws BoundsError f_I_to_utm(cell_iter[0, 1])
+@test f_I_to_utm(cell_iter[1, 1]) .- sw_corner == (0, 2 + 6 + 8)
+@test f_I_to_utm(cell_iter[2, 1]) .- sw_corner == (0, 2 + 4 + 8)
+@test f_I_to_utm(cell_iter[3, 1]) .- sw_corner == (0, 2 + 2 + 8)
+@test f_I_to_utm(cell_iter[4, 1]) .- sw_corner == (0, 2 + 0 + 8)
+@test_throws BoundsError f_I_to_utm(cell_iter[5, 1])
+@test_throws BoundsError f_I_to_utm(cell_iter[4, 0])
+@test f_I_to_utm(cell_iter[4, 1]) .- sw_corner == (0, 2  + 8)
+@test f_I_to_utm(cell_iter[4, 2]) .- sw_corner == (2, 2 + 8)
+@test f_I_to_utm(cell_iter[4, 3]) .- sw_corner == (4, 2 + 8)
+@test_throws BoundsError f_I_to_utm(cell_iter[4, 4])
 
 
 for (i, sb) in enumerate(smb)

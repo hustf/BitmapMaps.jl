@@ -30,7 +30,7 @@ function _prepare_init_file_configuration(io)
     entry("Printer consistent capability", "Stated density limit, dots per inch", "600"; comm = ":pdensmax_dpi As advertised by Brother")
     entry("Printing pixel density", "Selected density, dots per inch", "300"; comm = ":pdens_dpi Based on assumed viewing distance > 20 cm")
     entry("Number of printable sheets", "(rows columns)", "(3 4)"; comm = ":nrc")
-    entry("Pixel to utm factor", "Pixel distance between elevation sampling points", "3"; comm = ":pix_to_utm_factor One pixel / point distance equals 3 metres easting or northing")
+    entry("Cell to utm factor", "Utm unit distance between elevation sampling points", "3"; comm = ":cell_to_utm_factor How many 'utm metres' does a cell side represent?")
     entry("File folder", "Top folders path under homedir()", "bitmapmaps/default"; comm = ":pth Will be created under homedir()")
     # To file..
     println(io, ini)
@@ -49,7 +49,7 @@ function get_config_value(sect::String, key::String; nothing_if_not_found = fals
     if sect ∉ keys(sections(ini))
         msg = """$sect not a section in $fnam.
         The existing are: $(keys(sections(ini))).
-        If you delete the .ini file above, a new template will be generated.
+        If you `BitmapMaps.delete_init_file()`, a new template will be generated when needed.
         """
         throw(ArgumentError(msg))
     end
