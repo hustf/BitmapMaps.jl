@@ -6,15 +6,16 @@ function _prepare_init_file_configuration(io)
         # You can modify and save the values here. To start over from 'factory settings':
         # Delete this file. A new file will be created next time values stored in the ini file is accessed.
         #
-        # This defines the UTM borders of your map, and it's mapping to sheets of paper.
-        # Sheets of paper will be numbered from North-West (1, 1) to South-East (n, m), 
-        # and a folder structure will be established if necessary.
+        # This defines the UTM borders of your map, and its division into sheets of paper.
+        # Sheets of paper will be numbered from South-West (index [1, 1] or [1]) to North-East (index [end, end] or [end]), 
+        # and a folder structure will be established.
         #
-        # Utm coordinates (easting, northing) increase to the east (x) and north (y). A boundary box is
-        # defined by its corners: (minimum_easting minimum_northing)-(maximum_easting maximum_northing)
+        # Utm coordinates (easting, northing) increase to the East (x) and North (y). 
+        # A boundary box is defined by two of its external corners: 
+        #     (minimum_easting minimum_northing)-(maximum_easting maximum_northing)
         # A simple way to get EU89, UTM-zone 33 coordinates is through norgeskart.no.
-        # We also project geography on the UTM 33 grid. In 'norgeskart.no' that and other 
-        # grids can be displayed through hamburger > fastmerker > utm-rutenett.
+        # We project geography on the UTM 33 grid. In 'norgeskart.no' that and other 
+        # grids can be displayed through hamburger button > fastmerker > utm-rutenett.
         #
         """
     println(io, msg)
@@ -23,15 +24,15 @@ function _prepare_init_file_configuration(io)
     # Shorthand
     entry(section, key, val; comm = "") = set_section_key_string_comment(ini, section, key, val, comm)
     # Entries in arbitrary order from file. Will be ordered by section.
-    entry("Geographical position", "Southwest corner (easting northing)", "(4873 6909048)"; comm = ":southwest_corner")
-    # Printed and measured 'resource/printer_test_gutter' with 'fill page' scaling settings
-    entry("Printer consistent capability", "Printable width mm", "191"; comm = ":pwi Measured 193, 2 mm for random vari.")
-    entry("Printer consistent capability", "Printable height mm", "275"; comm = ":phe Measured 277, 2 mm for random vari.")
-    entry("Printer consistent capability", "Stated density limit, dots per inch", "600"; comm = ":pdensmax_dpi As advertised by Brother")
-    entry("Printing pixel density", "Selected density, dots per inch", "300"; comm = ":pdens_dpi Based on assumed viewing distance > 20 cm")
+    entry("Geographical position", "Southwest corner (utm easting northing)", "(4873 6909048)"; comm = ":southwest_corner")
+    entry("Printer consistent capability", "Printable width mm", "191"; comm = ":sheet_width_mm\r\n  #    Measured 193 mm. Allowing 2 mm  random variation.")
+    entry("Printer consistent capability", "Printable height mm", "275"; comm = ":sheet_height_mm\r\n  #    Measured 277 mm. Allowing 2 mm for random variation.")
+    entry("Printer consistent capability", "Stated density limit, dots per inch", "600"; comm = ":density_limit_pt_inch⁻¹\r\n  #    As advertised by Brother")
+    entry("Output density (of 'cells' / 'dots' / 'points' or 'pixels')", "Output density, number of cells per meter", "11811"; 
+        comm = ":density_pt_m⁻¹\r\n  #    For reference, 300  / inch = 300 / (0.0254 m) = 11811 m⁻¹ \r\n  #    Use lower values to slightly 'zoom in', otherwise use 'cell_to_utm_factor'.")
     entry("Number of printable sheets", "(rows columns)", "(3 4)"; comm = ":nrc")
-    entry("Cell to utm factor", "Utm unit distance between elevation sampling points", "3"; comm = ":cell_to_utm_factor How many 'utm metres' does a cell side represent?")
-    entry("File folder", "Top folders path under homedir()", "bitmapmaps/default"; comm = ":pth Will be created under homedir()")
+    entry("Cell to utm factor", "Utm unit distance between elevation sampling points", "3"; comm = ":cell_to_utm_factor\r\n  #    How many 'utm metres' does a 'cell' / 'dot' / 'point' or 'pixel' side represent?")
+    entry("File folder", "Top folders path under homedir()", "bitmapmaps/default"; comm = ":pth \r\n  #    Folder hierarchy will be created under homedir().\r\n  #    For copying in files, see 'copy_relevant_tifs_to_folder'")
     # To file..
     println(io, ini)
 end

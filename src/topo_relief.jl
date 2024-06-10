@@ -1,12 +1,12 @@
 # This renders a topographic relief map.
 
 #=
-sheet_cell_width = floor(pwi * pdens_dpi / 25.4)
-sheet_cell_width = floor(pwi * pdens_dpi / 25.4)
-density_pt_m⁻¹ = pdens_dpi / 0.0254
-0.0254 * density_pt_m⁻¹ = pdens_dpi
-sheet_cell_width = floor(pwi * density_pt_m⁻¹ / 1000)
-sheet_cell_width = floor(pwi * density_pt_m⁻¹ / 1000)
+sheet_width_cell = floor(sheet_width_mm * density_pt_m⁻¹ / 25.4)
+sheet_width_cell = floor(sheet_width_mm * density_pt_m⁻¹ / 25.4)
+density_pt_m⁻¹ = density_pt_m⁻¹ / 0.0254
+0.0254 * density_pt_m⁻¹ = density_pt_m⁻¹
+sheet_width_cell = floor(sheet_width_mm * density_pt_m⁻¹ / 1000)
+sheet_width_cell = floor(sheet_width_mm * density_pt_m⁻¹ / 1000)
 =#
 
 """
@@ -24,6 +24,7 @@ function topo_relief(fofo, cell_iter, sheet_width_mm)
         @debug "$CONSOLIDATED_FNAM in $fofo does not exist. Exiting `topo_relief`."
         return false
     end
+    # TODO take the value as an argument instead.
     density_pt_m⁻¹ = Int(round(1000 * size(cell_iter)[2] / sheet_width_mm))
     _topo_relief(fofo, cell_iter, density_pt_m⁻¹)
 end
@@ -39,7 +40,7 @@ function _topo_relief(fofo, cell_iter, density_pt_m⁻¹)
     @assert size(za) == size(rgbimg)
     mi, ma = extrema(za)
     mi = 541
-    @show mi ma
+    #@show mi ma
 
     for I in cell_iter
         @assert za[I] >= 0
@@ -56,18 +57,18 @@ function _topo_relief(fofo, cell_iter, density_pt_m⁻¹)
     true
 end
 
-function possible_integer_densities(sheet_cell_width, pwi)
+function possible_integer_densities(sheet_width_cell, sheet_width_mm)
     throw("dead")
     # Initialize an array to hold possible values of density_pt_m⁻¹
     densities = Int[]
 
-    # Calculate the minimum and maximum integer values for density_pt_m⁻¹ that could produce the given sheet_cell_width
-    min_density = ceil(sheet_cell_width * 1000 / pwi)
-    max_density = floor((sheet_cell_width + 1) * 1000 / pwi) - 1
+    # Calculate the minimum and maximum integer values for density_pt_m⁻¹ that could produce the given sheet_width_cell
+    min_density = ceil(sheet_width_cell * 1000 / sheet_width_mm)
+    max_density = floor((sheet_width_cell + 1) * 1000 / sheet_width_mm) - 1
 
     # Loop through the possible range and collect valid densities
     for density in min_density:max_density
-        if floor(pwi * density / 1000) == sheet_cell_width
+        if floor(sheet_width_mm * density / 1000) == sheet_width_cell
             push!(densities, density)
         end
     end

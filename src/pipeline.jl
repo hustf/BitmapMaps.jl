@@ -10,15 +10,15 @@ is recommended.
 
 `complete_sheets_first`    The default 'true' means one sheet is fully processed, then the next sheet.
                          'false' means that each operation is finished for all sheets before the next operation. 
-`bm_cell_width`, etc           Keyword names (like `bm_cell_width`) are included in the default .ini file, with explanation.
+`bm_width_cell`, etc           Keyword names (like `bm_width_cell`) are included in the default .ini file, with explanation.
 
 # Example
 ```
 julia> run_bitmapmap_pipeline(;nrc = (2, 2));
-Bitmapmap configuration based on .ini file  SheetMatrixBuilder(     4510, # bm_cell_width
-                        6496, # bm_cell_height
-                        2255, # sheet_cell_width
-                        3248, # sheet_cell_height
+Bitmapmap configuration based on .ini file  SheetMatrixBuilder(     4510, # bm_width_cell
+                        6496, # bm_height_cell
+                        2255, # sheet_width_cell
+                        3248, # sheet_height_cell
                            2, # nrows
                            2, # ncols
              (4873, 6909048), # southwest_corner
@@ -58,23 +58,43 @@ function run_bitmapmap_pipeline(smb::SheetMatrixBuilder; kwds...)
 end
 
 
+"""
+    function define_builder(; kwds...)
 
+Make a grid for individual printed pages. Each page is associated with an utm coordinate bounding box.
+
+Parameters from .ini file will be overridden by key words.
+"""
 function define_builder(; kwds...)
-    # - Make a grid for individual printed pages. Each page is associated with an utm coordinate bounding box.
-    pwi = get_kw_or_config_value(:pwi ,"Printer consistent capability", "Printable width mm", Int; kwds...)
-    phe = get_kw_or_config_value(:phe ,"Printer consistent capability", "Printable height mm", Int; kwds...)
-    pdensmax_dpi = get_kw_or_config_value(:pdensmax_dpi ,"Printer consistent capability", "Stated density limit, dots per inch", Int; kwds...)
-    pdens_dpi = get_kw_or_config_value(:pdens_dpi ,"Printing pixel density", "Selected density, dots per inch", Int; kwds...)
-    southwest_corner = get_kw_or_config_value(:southwest_corner ,"Geographical position", "Southwest corner (easting northing)", Tuple{Int, Int}; kwds...)
-    nrc = get_kw_or_config_value(:nrc ,"Number of printable sheets", "(rows columns)", Tuple{Int, Int}; kwds...)
+    # Parameters from .ini file, overridden by key words.
+    southwest_corner = get_kw_or_config_value(:southwest_corner ,"Geographical position", "Southwest corner (utm easting northing)", Tuple{Int, Int}; kwds...)
     cell_to_utm_factor = get_kw_or_config_value(:cell_to_utm_factor, "Cell to utm factor", "Utm unit distance between elevation sampling points", Int; kwds...)
-    @assert pdens_dpi < pdensmax_dpi
+    sheet_width_mm = get_kw_or_config_value(:sheet_width_mm ,"Printer consistent capability", "Printable width mm", Int; kwds...)
+    sheet_height_mm = get_kw_or_config_value(:sheet_height_mm ,"Printer consistent capability", "Printable height mm", Int; kwds...)
+    density_pt_m⁻¹ = get_kw_or_config_value(:density_pt_m⁻¹ ,"Output density (of 'cells' / 'dots' / 'points' or 'pixels')", "Output density, number of cells per meter", Int; kwds...)
     pth = get_kw_or_config_value(:pth, "File folder", "Top folders path under homedir()", String; kwds...)
+    # This value is for checking if density_pt_m⁻¹ is higher than is printable
+    density_limit_pt_inch⁻¹ = get_kw_or_config_value(:density_limit_pt_inch⁻¹ ,"Printer consistent capability", "Stated density limit, dots per inch", Int; kwds...)
+    # Some value checks
+    @assert density_pt_m⁻¹ <= density_limit_pt_inch⁻¹ / 0.0254 "Printing density can't be higher than the printer capacity"
     if isnothing(match(r"(b|B)itmap(M|m)aps", pth))
         throw(ArgumentError("Any BmParition path must match regex r\"(b|B)itmap(M|m)aps\". Current path is $pth"))
     end
-    smb = SheetMatrixBuilder(pwi, phe, pdens_dpi, nrc, southwest_corner, cell_to_utm_factor, pth)
+    # Either nrc (number of rows and columns) or sheet_indices can be specified.
+    # If nrc is specifies, this overrules.
+    if (:sheet_indices ∉ keys(kwds)) || (:sheet_indices ∈ keys(kwds) && :nrc ∈ keys(kwds))
+        nrc = get_kw_or_config_value(:nrc ,"Number of printable sheets", "(rows columns)", Tuple{Int, Int}; kwds...)
+        smb = SheetMatrixBuilder(southwest_corner, nrc, cell_to_utm_factor, sheet_width_mm, sheet_height_mm, density_pt_m⁻¹, pth)
+    elseif :sheet_indices ∈ keys(kwds) && :nrc ∉ keys(kwds)
+        sheet_indices = kwds[:sheet_indices]
+        smb = SheetMatrixBuilder(southwest_corner, sheet_indices, cell_to_utm_factor, sheet_width_mm, sheet_height_mm, density_pt_m⁻¹, pth)
+    else
+        throw("Surprise! Why?")
+    end
+    # Often, the user will be interested in inspecting
+    # derived properties rather than the basic ones.
     show_augmented(smb)
+    # Nice to know.
     if geo_area(smb) >= 16e6 
         @info "Since geographical area per sheet is  > 16km², 'høydedata.no' will not provide a single elevation data file per sheet. The pipieline will make a consolidated single file."
     end

@@ -1,9 +1,9 @@
 using Test
 using BitmapMaps
-# SheetBuilder corresponds to resource/matrix_sheet_cell_utm.svg
-bm_cell_width, bm_cell_height, sheet_cell_width, sheet_cell_height, sw_corner, cell_to_utm_factor = (9, 8, 3, 4, (44000, 6909047), 2)
-smb = SheetMatrixBuilder(bm_cell_width, bm_cell_height, sheet_cell_width, sheet_cell_height, sw_corner, cell_to_utm_factor, 191, "BitmapMaps/test")
-
+# Corresponds to resource/matrix_sheet_cell_utm.svg
+sw_corner, nrc, cell_to_utm_factor = (44000, 6909047), (2,3), 2
+sheet_width_mm, sheet_height_mm, density_pt_m⁻¹, pth = 3, 4, 1000, "nopath"
+smb = SheetMatrixBuilder(sw_corner, nrc, cell_to_utm_factor, sheet_width_mm, sheet_height_mm, density_pt_m⁻¹, pth)
 
 # Copy .tif files into homedir() / BitmapMaps / test.
 for (p, zfi) in zip([smb[1,1], smb[2,2]], ["../resource/eksport_796345_20240420.zip", "../resource/eksport_796340_20240420.zip"])

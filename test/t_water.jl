@@ -46,9 +46,9 @@ cp(fna, joinpath(tmpdir_water, BitmapMaps.CONSOLIDATED_FNAM))
 sb = let
     sheet_lower_left_utm = (18294, 6937562)
     pixel_origin_ref_to_bitmapmap = (0, 0)
-    sheet_cell_width = 18449 -18294
-    sheet_cell_height = 6937717 - 6937562
-    cell_iter = CartesianIndices((1:sheet_cell_height, 1:sheet_cell_width))
+    sheet_width_cell = 18449 -18294
+    sheet_height_cell = 6937717 - 6937562
+    cell_iter = CartesianIndices((1:sheet_height_cell, 1:sheet_width_cell))
     pthsh = tmpdir_water
     sheet_number = 1
     cell_size = 1

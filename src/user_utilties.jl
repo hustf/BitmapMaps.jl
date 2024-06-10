@@ -88,10 +88,39 @@ end
 
 
 
+"""
+    bbox_external_overlap(
+        bbox_a::NamedTuple{(:min_x, :min_y, :max_x, :max_y)},
+        bbox_b::NamedTuple{(:min_x, :min_y, :max_x, :max_y)})
+        ---> Bool
 
+This assumes the boundary boxes are 'external', i.e. enclosing cells that are part of it.
 
-
-
-
-
+Returns false for adjacent bboxes, like e.g.
+```
+julia> BitmapMaps.bbox_external_overlap(
+    (min_x = 44001, min_y = 47, max_x = 44006, max_y = 55), 
+    (min_x = 44006, min_y = 47, max_x = 44012, max_y = 55))
+false
+````    
+"""
+function bbox_external_overlap(
+    a::NamedTuple{(:min_x, :min_y, :max_x, :max_y)},
+    b::NamedTuple{(:min_x, :min_y, :max_x, :max_y)})
+    # Check if external bboxes are valid
+    if (a.min_x > a.max_x) || (a.min_y > a.max_y)
+        throw(ArgumentError("Invalid a (min > max) $a"))
+    end
+    if (b.min_x > b.max_x) || (b.min_y > b.max_y)
+        throw(ArgumentError(("Invalid b (min > max) $b")))
+    end
+    # Check if bboxes do not overlap
+    if (a.max_x <= b.min_x) ||
+       (a.max_y <= b.min_y) ||
+       (a.min_x >= b.max_x) ||
+       (a.min_y >= b.max_y)
+        return false
+    end
+    true
+end
 

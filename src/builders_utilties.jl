@@ -4,7 +4,17 @@
 # - sb::SheetBuilder
 # - p - duck typed, can be a GeoArray or a SheetBuilder.
 #
-# A few methods are extended for GeoArray in `geoarray_utilties`                 
+# A few methods are extended for GeoArray in `geoarray_utilties`
+
+nrows(smb::SheetMatrixBuilder) = first(size(smb.sheet_indices))
+ncols(smb::SheetMatrixBuilder) = last(size(smb.sheet_indices))
+sheet_width_cell(smb::SheetMatrixBuilder) = Int(floor(smb.sheet_width_mm * smb.density_pt_m⁻¹ / 1000))
+sheet_height_cell(smb::SheetMatrixBuilder) = Int(floor(smb.sheet_height_mm * smb.density_pt_m⁻¹ / 1000))
+bm_width_cell(smb::SheetMatrixBuilder) = ncols(smb) * sheet_width_cell(smb)
+bm_height_cell(smb::SheetMatrixBuilder) = nrows(smb) * sheet_height_cell(smb)
+
+
+
 """
     southwest_corner(smb::SheetMatrixBuilder)
     northeast_corner(smb::SheetMatrixBuilder)
@@ -31,11 +41,11 @@ are indentical for the northwest corner of a sheet.
 """
 southwest_corner(smb::SheetMatrixBuilder) = smb.southwest_corner
 "ref. southwest_corner"
-northeast_corner(smb::SheetMatrixBuilder) = southwest_corner(smb) .+ smb.cell_to_utm_factor .* (smb.bm_cell_width, smb.bm_cell_height)
+northeast_corner(smb::SheetMatrixBuilder) = southwest_corner(smb) .+ smb.cell_to_utm_factor .* (bm_width_cell(smb), bm_height_cell(smb))
 "ref. southwest_corner"
-northwest_corner(smb::SheetMatrixBuilder) = southwest_corner(smb) .+ smb.cell_to_utm_factor .* (0, smb.bm_cell_height)
+northwest_corner(smb::SheetMatrixBuilder) = southwest_corner(smb) .+ smb.cell_to_utm_factor .* (0, bm_height_cell(smb))
 "ref. southwest_corner"
-southeast_corner(smb::SheetMatrixBuilder) = southwest_corner(smb) .+ smb.cell_to_utm_factor .* (smb.bm_cell_width, 0)
+southeast_corner(smb::SheetMatrixBuilder) = southwest_corner(smb) .+ smb.cell_to_utm_factor .* (bm_width_cell(smb), 0)
 "ref. southwest_corner"
 northwest_corner(sb::SheetBuilder) = sb.f_I_to_utm(CartesianIndex(1, 1))
 "ref. southwest_corner"
@@ -88,8 +98,8 @@ Also see `geo_grid_centre_single`.
 """
 geo_centre(p) = (southwest_external_corner(p) .+ northeast_external_corner(p)) ./ 2
 
-# TODO: Restrict this method, don't accept builders.
-nonzero_raster_string(p) = replace("$(southwest_external_corner(p))-$(northeast_external_corner(p))", "," => "")
+# Consider: Very poor function name, this one. For builders, 'nonzero' is without meaning.
+bbox_external_string(p) = replace("$(southwest_external_corner(p))-$(northeast_external_corner(p))", "," => "")
 
 function geo_area(p)
     s, w = southwest_external_corner(p)
@@ -100,6 +110,7 @@ end
 
 """
     closed_polygon_string(smb::SheetMatrixBuilder)
+    closed_polygon_string(sb::SheetBuilder)
     closed_polygon_string(p)
 
 Well known text (for pasting elsewhere).
@@ -139,7 +150,7 @@ end
 
 
 """
-   # polygon_string(fna::String)
+    polygon_string(fna::String)
     polygon_string(p)
     polygon_string(smb::SheetMatrixBuilder)
 
@@ -148,18 +159,18 @@ Paste output in e.g. https://nvdb-vegdata.github.io/nvdb-visrute/STM.
 polygon_string(p) = "POLYGON ($(closed_polygon_string(p)))"
 polygon_string(fna::String) = "POLYGON ($(nonzero_raster_closed_polygon_string(fna)))"
 function show_augmented(smb::SheetMatrixBuilder)
-    printstyled("Bitmapmap configuration based on .ini file  ", color = :green, bold=:true)
+    printstyled("Bitmapmap configuration based on .ini file and keywords ", color = :green, bold=:true)
     show(stdout, MIME("text/plain"), smb)
-    show_augmented_properties(smb)
+    show_derived_properties(smb)
 end
 
-function show_augmented_properties(p)
+function show_derived_properties(p)
     printstyled("\tAugmented properties (all as (easting, northing)): \n", color = :green)
     println("\t  ", rpad("Geo centre = ",        35), geo_centre(p))
     println("\t  ", rpad("Grid centre single = ", 35), geo_grid_centre_single(p))
     println("\t  ", rpad("Northeast external corner = ",     35), northeast_external_corner(p))
     println("\t  ", rpad("Northeast internal corner = ",     35), northeast_internal_corner(p), " - most northeastern sample point")
-    println("\t  ", rpad("Bounding Box (BB) SE-NW = ", 35), nonzero_raster_string(p))
+    println("\t  ", rpad("Bounding Box (BB) SE-NW = ", 35), bbox_external_string(p))
     if p isa SheetMatrixBuilder
         println("\t  ", rpad("Geographical area [km²] = ", 35), Int(round(geo_area(p) / 1e6)), "         Per sheet: ", round(geo_area(first(p)) / 1e6, digits = 1), "  km²   Single file export limit: 16 km²")
         printstyled("\tBBs of sheets as Well Known Text ", color = :green)
@@ -171,8 +182,19 @@ function show_augmented_properties(p)
     println("\t  ", polygon_string(p))
 end
 
+
 function get_fields_namedtuple(smb::SheetMatrixBuilder)
     field_names = fieldnames(SheetMatrixBuilder)
     values = getfield.(Ref(smb), field_names)
     NamedTuple{field_names}(values)
+end
+
+# Suggests a smaller value for sheet_width_mm, for feedback messages.
+function _find_max_y1(x, y)
+    for y1 in (y-1):-1:1
+        if (x * 1000) % y1 == 0
+            return y1
+        end
+    end
+    return nothing  # No such y1 found
 end

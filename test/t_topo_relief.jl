@@ -44,10 +44,10 @@ fna = first(tif_full_filenames_buried_in_folder(tmpdir_topo_relief))
 # More preparation
 ##################
 
-smb = SheetMatrixBuilder(   155, # bm_cell_width
-                            155, # bm_cell_height
-                             155, # sheet_cell_width
-                             155, # sheet_cell_height
+smb = SheetMatrixBuilder(   155, # bm_width_cell
+                            155, # bm_height_cell
+                             155, # sheet_width_cell
+                             155, # sheet_height_cell
                                1, # nrows
                                1, # ncols
                 (18294, 6937562), # southwest_corner
@@ -56,7 +56,7 @@ smb = SheetMatrixBuilder(   155, # bm_cell_width
                              189, # sheet_width_mm
                              pth) # pth
 
-@test size(smb[1].cell_iter) == ( smb.sheet_cell_height, smb.sheet_cell_width)
+@test size(smb[1].cell_iter) == ( sheet_height_cell(smb), sheet_width_cell(smb))
 
 # Establish test folder hierarchy
 @test BitmapMaps.establish_folder.(smb) == [true]
@@ -101,10 +101,10 @@ sb.cell_iter
 
 
 SheetMatrixBuilder(;
-        bm_cell_width                     = 1592,
-        bm_cell_height                    = 1150,
-        sheet_cell_width                  = 796,
-        sheet_cell_height                 = 1150,
+        bm_width_cell                     = 1592,
+        bm_height_cell                    = 1150,
+        sheet_width_cell                  = 796,
+        sheet_height_cell                 = 1150,
         nrows                            = 1,
         ncols                            = 2,
         southwest_corner                 = (43200, 6909000),
@@ -191,13 +191,13 @@ pth = "BitmapMaps\\test3"
 nrc = (1, 2)
 cell_to_utm_factor = 1
 data_cell_width = 44800 - 43200
-sheet_cell_width = Int(round(data_cell_width / 2)) 
+sheet_width_cell = Int(round(data_cell_width / 2)) 
 pwi_max_inch = 191 / 25.4 # mm / (mm / inch) - sheet width in inches
-pdens_dpi = Int(ceil(sheet_cell_width / pwi_max_inch ))  # Pixels per inch so as to fit roughly sheet_cell_width pixels or more on a sheet
-# Reduce the printable width a little from the maximum, so as to fit close to sheet_cell_width pixels
-pwi_inch = sheet_cell_width / pdens_dpi # cells / (cells / inch)
-pwi =  Int(floor(pwi_inch * 25.4))  # mm = inch  * (mm/ inch)
-phe = Int(ceil((275 / 191) * pwi))
+density_pt_m⁻¹ = Int(ceil(sheet_width_cell / pwi_max_inch ))  # Pixels per inch so as to fit roughly sheet_width_cell pixels or more on a sheet
+# Reduce the printable width a little from the maximum, so as to fit close to sheet_width_cell pixels
+pwi_inch = sheet_width_cell / density_pt_m⁻¹ # cells / (cells / inch)
+sheet_width_mm =  Int(floor(pwi_inch * 25.4))  # mm = inch  * (mm/ inch)
+sheet_height_mm = Int(ceil((275 / 191) * sheet_width_mm))
 complete_sheets_first = false
 # Let the pipeline establish the folder structure first:
 smb = @test_logs(
@@ -205,14 +205,14 @@ smb = @test_logs(
     (:info, r"Could not make consolidated"),
     (:warn, r"Could not finish consolidate_elevation_data"),
     run_bitmapmap_pipeline(;nrc, cell_to_utm_factor, pth, southwest_corner = (43200, 6909000), 
-    pdens_dpi, pwi, phe, complete_sheets_first)
+    density_pt_m⁻¹, sheet_width_mm, sheet_height_mm, complete_sheets_first)
     )
 
 
 
-@test abs(smb.sheet_cell_width - sheet_cell_width) <= 4 # Good enough, fits inside data
-@test smb.nrows == 1
-@test smb.ncols == 2
+@test abs(sheet_width_cell(smb) - sheet_width_cell) <= 4 # Good enough, fits inside data
+@test nrows(smb) == 1
+@test BitmapMaps.ncols(smb) == 2
 @test ispath(full_folder_path(smb[1,1]))
 @test ispath(full_folder_path(smb[1,2]))
 
@@ -223,7 +223,7 @@ fnas = copy_relevant_tifs_to_folder(tmpdir_pipeline, smb)
 
 # Run the pipeline again, this time proceeding further
 smb = run_bitmapmap_pipeline(;nrc, cell_to_utm_factor, pth, southwest_corner = (43200, 6909000), 
-    pdens_dpi, pwi, phe)
+    density_pt_m⁻¹, sheet_width_mm, sheet_height_mm)
 @test ispath(joinpath(full_folder_path(smb[1,1]), BitmapMaps.CONSOLIDATED_FNAM))
 @test ispath(joinpath(full_folder_path(smb[1,2]), BitmapMaps.CONSOLIDATED_FNAM))
 

@@ -1,7 +1,3 @@
-# TODO consider this roundoff limits our control of the sheet size:
-# sheet_cell_width = floor(pwi * pdens_dpi / 25.4)
-# Maybe don't use pwi [mm] and pdens_dpi [inch⁻¹] as integer inputs.
-# Better would be to allow floating point dpi or density in terms of meters.
 module BitmapMaps
 # Extend methods for builders
 import Base: iterate, length, getindex, size, axes
@@ -55,10 +51,10 @@ export northwest_corner
 export southeast_corner, southeast_external_corner, southeast_internal_corner
 export southwest_corner, southwest_external_corner, southwest_internal_corner
 
-export geo_grid_centre_single, geo_centre, nonzero_raster_string, polygon_string, show_augmented
+export geo_grid_centre_single, geo_centre, bbox_external_string, polygon_string, show_augmented
 export geo_area, nonzero_raster_closed_polygon_string, raster_polygon_string, nonzero_raster_rect
 export copy_relevant_tifs_to_folder, tif_full_filenames_buried_in_folder, unzip_tif
-export show_augmented_properties, readclose
+export show_derived_properties, readclose
 
 const CONSOLIDATED_FNAM = "Consolidated.tif"
 const TOPORELIEF_FNAM = "Toporelief.png"

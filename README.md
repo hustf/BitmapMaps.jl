@@ -35,12 +35,9 @@ Steps in the pipeline:
 6) Identify water surfaces (`water_overlay`).
 7) Make topographic reliefs (`topo_relief`) from a hardcoded hypsometric colour pallette.
 8) Make elevation contours (`contour_lines_overlay`)
-9) Make vector graphics and text covering the full map area. You may use RouteMap.jl for this step.
-10) Make composite bitmaps: 
-    - topographic reliefs 
-    - water surfaces
-    - elevation countours 
-    - vector graphics and text
+9) Add UTM grid (`grid_overlay`)
+10) Make vector graphics and text covering the full map area. You may use RouteMap.jl for this step.
+11) Composite bitmap and vector graphics 
 
 # Example
 ```
@@ -55,13 +52,11 @@ A first map has been made with scripting, ad hoc calculations and A4 sheets. We'
 
 Code is being adapted from environment 'geoarrays', package 'RouteMap.jl' ' / example/ split ' and environment 'tutorial_images' / 'image segmentation.jl'.
 
-We implemented and tested up to step 6 here, and have a skeleton for steps 7-8.
+We implemented and tested up to step 6 here, and have a skeleton for steps 7-8. Inline docs need updating.
 
-In the current commit, we struggled with finding good function names related to bounding boxes and (cropped extents). We still aren't satisfied. Does the extent
-of a file include zero-padded regions? We have sort-of landed on using different, longer, function names for .tif files, loaded geoarrays, and builders.
+We struggled with function names related to bounding boxes and (cropped extents). See [`Bounding box functions`](#Bounding box functions). 
 
-Also currently, the type 'SheetMatrixBuilder' is over-determined. Using inches as a unit and then demanding integer values leads to some inconsistency. We'll get rid of that 
-by changing the type - in the next revision?
+The pipeline can now reuse SheetMatrixBuilder and modify it gradually using keywords.
 
 Some of the changes from scripting workflow:
 
@@ -72,3 +67,35 @@ Some of the changes from scripting workflow:
 - Introduce the SheetMatrixBuilder (iterator for printable sheets) and SheetBuilder (iterator for pixels in a sheet). Change sheet numbering to start in SW corner. See figure:
 
 <img src="resource/matrix_sheet_cell_utm.svg" alt = "resource/matrix_sheet_cell_utm.svg" style="display: inline-block; margin: 0 auto; max-width: 640px">
+
+
+
+# Bounding box functions
+
+Why so complicated?
+   - In this package, UTM coordinates are integers (because that resolution is available for free for all of Norway, and because we use folder names corresponding to external boundary boxes). GeoArrays.jl uses floating point numbers.
+   - A sheet in a map book is naturally defined by its boundary. Such a boundary does not change with cell resolution or data density.
+   - Two adjacent map sheets shares a boundary (x_max1 == x_min2), but do not overlap. In `GeoArrays.bbox_overlap`, two such boxes do overlap, because x_max1 refers a cell and not it's right edge.
+   - Downloaded elevation files may be zero-padded. We are mostly interested in the non-zero geographical region.
+   - Rasters aren't simply matrices. Word definitions and conventions come from various professions.
+   - When working with online map tools, we like to paste Well-Known-Text polygons.
+
+Bounding boxes have meaning for:
+   - GeoArrays (this type is defined by `GeoArrays.jl`)
+   - file names referring GeoArrays
+   - SheetMatrixBuilders (this package's main type)
+   - SheetBuilders (this package's main type)
+
+If you're inspecting your own job definitions, you may only need `show_augmented(smb)`!
+
+However, internally we ended up with this awkward collection of functions so far. For reference:
+
+```
+bbox_external_string
+closed_polygon_string
+closed_box_string
+polygon_string
+nonzero_raster_rect
+nonzero_raster_closed_polygon_string
+bbox_external_overlap(a, b)
+```

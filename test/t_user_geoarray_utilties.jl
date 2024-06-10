@@ -5,7 +5,6 @@ using BitmapMaps
 # user_utilties.jl
 ##################
 
-olddir = pwd()
 tempdir = mktempdir()
 cd(tempdir)
 source_folder = "s"
@@ -49,7 +48,7 @@ dfona = "5 6 43300 6909000 44000 6909200"
 mkpath(dfona)
 @test length(BitmapMaps.candidate_tif_names(source_folder, dfona)) == 2
 copy_relevant_tifs_to_folder(joinpath(tempdir, source_folder), dfona)
-@test length(BitmapMaps.candidate_tif_names(source_folder, dfona)) == 1 # One of the .tif were copied.
+@test length(BitmapMaps.candidate_tif_names(source_folder, dfona)) == 2
 
 # Methods     
 #    copy_relevant_tifs_to_folder(source_folder, smb::SheetMatrixBuilder)

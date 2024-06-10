@@ -68,12 +68,7 @@ The first method first checks if there is any overlap. If there is not, this met
 The crs field is ignored, unlike `GeoArrays.sample_values!`.
 """
 function sample_values_larger_than_limit!(g_dest::GeoArray, fna_source::String)
-    if is_source_relevant(g_dest, fna_source)
-        sample_values_larger_than_limit!(g_dest, readclose(fna_source))
-    else
-        throw("TODO test elsewhere, drop it here.")
-    end
-    g_dest
+    sample_values_larger_than_limit!(g_dest, readclose(fna_source))
 end
 
 function sample_values_larger_than_limit!(g_dest::GeoArray, g_source::GeoArray)
@@ -101,22 +96,21 @@ function sample_values_larger_than_limit!(g_dest::GeoArray, g_source::GeoArray)
     g_dest
 end
 
-function is_source_relevant(g_dest::GeoArray, fna_source)
+function is_source_relevant(g_dest::GeoArray, fna_source::String)
     # Destination bounding box is determined including zero-valued cells.
-    bb_dest = bbox(g_dest) 
-    # Source bounding box neglects zero-padded (empty) cells.
-    is_source_relevant(bb_dest, nonzero_raster_rect(fna_source))
+    bb_dest = bbox(g_dest)
+    min_x = Int(bb_dest.min_x)
+    min_y = Int(bb_dest.min_y)
+    max_x = Int(bb_dest.max_x)
+    max_y = Int(bb_dest.max_y)
+    bbd = (;min_x, min_y, max_x, max_y)
+    # Do boxes overlap (adjacent is not overlap)?
+    is_source_relevant(bbd, fna_source)
 end
-function is_source_relevant(bb_dest::T, fna_source::String) where T <: @NamedTuple{min_x::Float64, min_y::Float64, max_x::Float64, max_y::Float64}
+
+function is_source_relevant(bb_dest, fna_source::String)
     # Source bounding box neglects zero-padded (empty) cells.
-    is_source_relevant(bb_dest, nonzero_raster_rect(fna_source))
-end
-function is_source_relevant(bb_dest::T, bb_source) where T <: @NamedTuple{min_x::Float64, min_y::Float64, max_x::Float64, max_y::Float64}
-    min_x = Float64(bb_source.min_x)
-    min_y = Float64(bb_source.min_y)
-    max_x = Float64(bb_source.max_x) # We don't need to assume that bb_source.max_x was rounded down because we made it.
-    max_y = Float64(bb_source.max_y)
-    bbs = (;min_x, min_y, max_x, max_y)
-    # Any overlap makes the source relevant
-    bbox_overlap(bb_dest, bbs)
+    bb_source = nonzero_raster_rect(fna_source)
+    # Do boxes overlap (adjacent is not overlap)?
+    bbox_external_overlap(bb_dest, bb_source)
 end

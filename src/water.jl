@@ -44,7 +44,7 @@ function save_lakes_overlay_png(lm_bool, elevations, ice_elevation, folder)
     water_color = RGBA{N0f8}(0.521, 0.633, 0.764, 1.0) 
     ice_color = RGBA{N0f8}(0.8, 0.8, 0.8, 1.0)
     transparent = RGBA{N0f8}(0.0, 0.0, 0.0, 0.0)
-    # We won't ever print this, so specify a standard 300 dpi, disregarding user specs
+    # We won't ever print this. The value won't be used. So we specify a standard 300 dpi, disregarding user specs
     # for the bitmapmap
     density_pt_m⁻¹ = 11811
     # Create the colourful, transparent image
