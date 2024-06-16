@@ -1,5 +1,6 @@
 # Elevations map into three hypsometric colour pallettes.
-# 
+# The pallettes are hard-coded so you must like them.
+
 """
     generate_directional_pallette_func()
     ---> generic function (elevation, direction_no::Int64) ---> RGB

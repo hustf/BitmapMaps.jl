@@ -20,9 +20,10 @@ end
 # Extract and inspect.
 unzip_tif(tmpdir_water) 
 fna = first(tif_full_filenames_buried_in_folder(tmpdir_water))
-@test polygon_string(fna) ==  "POLYGON ((18295 6937562, 18450 6937562, 18450 6937716, 18295 6937716, 18295 6937562))"
+# The file is zero padded with 1 m on the south border
+@test polygon_string(fna) == "POLYGON ((18294 6937562, 18449 6937562, 18449 6937717, 18294 6937717, 18294 6937562),\n                   (18294 6937563, 18449 6937563, 18449 6937717, 18294 6937717, 18294 6937563))"
 
-# This file is not 'consolidated', it is zero-valued on the eastern edge. But the point here is 
+# This file is not 'consolidated', it is zero-valued on the southern edge. But the point here is 
 # not to test the pipeline, so we test on the level inside `water_overlay` first.
 elevations = let 
     z = readclose(fna)
@@ -31,7 +32,7 @@ end
 @test maximum(elevations) == 553.9368f0
 @test eltype(elevations) == Float32
 
-@test sum(iszero.(elevations)) == 155 # Eastern edge zero
+@test sum(iszero.(elevations)) == 155 # Southern edge zero
 lm_bool = BitmapMaps.is_water_surface(elevations, 1)
 @test sum(lm_bool) == 5205 # This lake's identified surface are is 5205m²
 img = BitmapMaps.save_lakes_overlay_png(lm_bool, elevations, 1000, tmpdir_water)
@@ -40,7 +41,6 @@ img = BitmapMaps.save_lakes_overlay_png(lm_bool, elevations, 1000, tmpdir_water)
 rm(joinpath(tmpdir_water, BitmapMaps.WATER_FNAM))
 
 # Copy the elevation file to the filename expected by the pipeline interface.
-# (we would move the file, but unfortunately it is not closed by the C library we use) 
 cp(fna, joinpath(tmpdir_water, BitmapMaps.CONSOLIDATED_FNAM))
 # A sheet builder fitting the data exactly
 sb = let
@@ -51,9 +51,10 @@ sb = let
     cell_iter = CartesianIndices((1:sheet_height_cell, 1:sheet_width_cell))
     pthsh = tmpdir_water
     sheet_number = 1
-    cell_size = 1
+    cell2utm = 1
     sheet_width_mm = 191
-    SheetBuilder(sheet_lower_left_utm, cell_size, pixel_origin_ref_to_bitmapmap, cell_iter, sheet_width_mm, pthsh, sheet_number)
+    density_pt_m⁻¹ = Int(ceil(sheet_width_cell  / sheet_width_mm))
+    SheetBuilder(pixel_origin_ref_to_bitmapmap, cell_iter, sheet_lower_left_utm, cell2utm, sheet_number, density_pt_m⁻¹, pthsh)
 end
 # Pass this sheet builder to the interface, see if that makes us another WATER_FNAM file...
 BitmapMaps.water_overlay(sb)

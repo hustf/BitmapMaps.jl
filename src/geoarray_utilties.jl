@@ -1,20 +1,53 @@
 """
-    readclose(fnam)
+    readclose(fna)
 
 A barrier for a possible issue with GeoArrays. Keyword arguments not included.
  Because calling `read` sometimes leaves a file 'open', runs in a separate thread.
 """
-function readclose(fnam)::GeoArray # Type annotation for the compiler, just like `read` 
-    file_task = Threads.@spawn GeoArrays.read(fnam)
+function readclose(fna)::GeoArray # Type annotation for the compiler, just like `read` 
+    file_task = Threads.@spawn GeoArrays.read(fna)
     contents = fetch(file_task)
     GC.gc()            # Clean up resources explicitly after the operation
     contents
 end
 
+# Docstring in builders_utilties
+closed_polygon_string(fnas::Vector{String}) = join(closed_polygon_string.(readclose.(fnas)), ",\n" * repeat(' ', 19))
+closed_polygon_string(fna::String) = closed_polygon_string(readclose(fna))
+function closed_polygon_string(g::GeoArray)
+    bbo = bbox(g)
+    bbi = nonzero_raster_rect(g)
+    so = "$(closed_box_string(bbo))"
+    si = "$(closed_box_string(bbi))"
+    if so == si
+        si
+    else
+        so * ",\n" * repeat(' ', 19) * si
+    end
+end
+
+
+# Docstring in builders_utilties
+function bbox_external_string(fna::String)
+    g = readclose(fna)
+    min_x, min_y = southwest_external_corner(g)
+    max_x, max_y = northeast_external_corner(g)
+    bbox_external_string((;min_x, min_y, max_x, max_y))
+end
+
+# Docstring in builders_utilties
+cell_to_utm_factor(fna::String) = cell_to_utm_factor(readclose(fna))
+function cell_to_utm_factor(g::GeoArray)
+    g.f((1, 0))[1] - g.f((0, 0))[1]
+end
+
 
 
 """
-    nonzero_raster_rect(fna::String)::@NamedTuple{min_x::Int64, min_y::Int64, max_x::Int64, max_y::Int64}
+    nonzero_raster_rect(fna::String)
+    nonzero_raster_rect(g::GeoArray)
+
+    ---> @NamedTuple{min_x::Int64, min_y::Int64, max_x::Int64, max_y::Int64}
 
 This returns the geographical external boundaries of the cells containing data other than zero.
 
@@ -100,13 +133,16 @@ function unpadded_indices(g::GeoArray)
 end
 
 "ref. southwest_corner"
-northwest_corner(g::GeoArray) = g.f((1, 1))
+northwest_corner(g::GeoArray) = g.f((0, 0))
+
 function northwest_corner(g::GeoArray, Irng) 
-    g.f(Tuple(Irng[1]))
+    g.f(Tuple(Irng[1]) .-(1,1))
 end
+
 "ref. southwest_corner"
-southeast_internal_corner(g::GeoArray) = g.f(size(g)[1:2])
-southeast_internal_corner(g::GeoArray, Irng) = g.f(Tuple(Irng[end]))
+southeast_internal_corner(g::GeoArray) = g.f(size(g)[1:2] .-(1,1))
+southeast_internal_corner(g::GeoArray, Irng) = g.f(Tuple(Irng[end]) .-(1,1))
+
 "ref. southwest_corner"
-southeast_external_corner(g::GeoArray) = 2 .* southeast_internal_corner(g) .- g.f(size(g)[1:2] .-(1,1))
-southeast_external_corner(g::GeoArray, Irng) = 2 .* southeast_internal_corner(g, Irng) .- g.f(Tuple(Irng[end]) .- (1, 1))
+southeast_external_corner(g::GeoArray) = g.f(size(g)[1:2])
+southeast_external_corner(g::GeoArray, Irng) = g.f(Tuple(Irng[end]))

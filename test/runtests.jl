@@ -8,6 +8,9 @@ end
 @testset "Set and inspect png physical print info chunk" begin
     include("t_png_phys.jl")
 end
+@testset "Hypsometric pallette" begin
+    include("t_pallette.jl")
+end
 @testset "Test builders" begin
     include("t_builders.jl")
 end

@@ -10,7 +10,7 @@ using BitmapMaps
 # Preparation (much the same as in `test_pipeline`)
 ###################################################
 
-pth = "BitmapMaps\\test4"
+pth = "BitmapMaps\\test_topo"
 # cleanup 
 if ispath(joinpath(homedir(), pth))
     sleep(1) # prevent resource busy error....
@@ -44,8 +44,8 @@ fna = first(tif_full_filenames_buried_in_folder(tmpdir_topo_relief))
 # More preparation
 ##################
 
-smb = SheetMatrixBuilder(   155, # bm_width_cell
-                            155, # bm_height_cell
+smb = SheetMatrixBuilder(   155, # width_cell
+                            155, # height_cell
                              155, # sheet_width_cell
                              155, # sheet_height_cell
                                1, # nrows
@@ -101,8 +101,8 @@ sb.cell_iter
 
 
 SheetMatrixBuilder(;
-        bm_width_cell                     = 1592,
-        bm_height_cell                    = 1150,
+        width_cell                     = 1592,
+        height_cell                    = 1150,
         sheet_width_cell                  = 796,
         sheet_height_cell                 = 1150,
         nrows                            = 1,
@@ -110,7 +110,7 @@ SheetMatrixBuilder(;
         southwest_corner                 = (43200, 6909000),
         sheet_indices                    = CartesianIndices((1:1, 1:2)),
         cell_to_utm_factor                = 1,
-        pth                              = "BitmapMaps\test3")
+        pth                              = "BitmapMaps\test_topo3")
 
 SheetMatrixBuilder(
         1592,
@@ -122,7 +122,7 @@ SheetMatrixBuilder(
         (43200, 6909000),
         CartesianIndices((1:1, 1:2)),
          1,
-        "BitmapMaps\test3")
+        "BitmapMaps\test_topo3")
 
 
 
@@ -136,7 +136,7 @@ SheetMatrixBuilder(
 
 
 # cleanup
-for fo in ["test1", "test2", "test3"]
+for fo in ["test1", "test_topo2", "test_topo3"]
     if ispath(joinpath(homedir(), "BitmapMaps", fo))
         sleep(1) # prevent resource busy error....
         rm(joinpath(homedir(), "BitmapMaps", fo), recursive = true)
@@ -159,9 +159,9 @@ end
     (:info, r"Could not make consolidated"),
     (:warn, r"Could not finish consolidate_elevation_data"),
     #match_mode = :any,
-    run_bitmapmap_pipeline(;nrc = (1, 1), cell_to_utm_factor = 1, pth = "BitmapMaps\\test2"))
+    run_bitmapmap_pipeline(;nrc = (1, 1), cell_to_utm_factor = 1, pth = "BitmapMaps\\test_topo2"))
 
-@test ispath(joinpath(homedir(), "BitmapMaps", "test2"))
+@test ispath(joinpath(homedir(), "BitmapMaps", "test_topo2"))
 
 
 
@@ -187,7 +187,7 @@ fnas = tif_full_filenames_buried_in_folder(tmpdir_pipeline)
 
 # Calculate widths, densities and so forth to make a bitmapmap which uses the entire width of the data we have here and fills two A4 sheets
 # Since we're dealing with integers, it's a bit of an iteration to get it right
-pth = "BitmapMaps\\test3"
+pth = "BitmapMaps\\test_topo3"
 nrc = (1, 2)
 cell_to_utm_factor = 1
 data_cell_width = 44800 - 43200
@@ -230,7 +230,6 @@ smb = run_bitmapmap_pipeline(;nrc, cell_to_utm_factor, pth, southwest_corner = (
 
 # cleanup 
 if ispath(joinpath(homedir(), pth))
-    sleep(1) # prevent resource busy error....
     rm(joinpath(homedir(), pth), recursive = true)
 end
 

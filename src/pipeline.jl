@@ -10,33 +10,40 @@ is recommended.
 
 `complete_sheets_first`    The default 'true' means one sheet is fully processed, then the next sheet.
                          'false' means that each operation is finished for all sheets before the next operation. 
-`bm_width_cell`, etc           Keyword names (like `bm_width_cell`) are included in the default .ini file, with explanation.
+`width_cell`, etc           Keyword names (like `width_cell`) are included in the default .ini file, with explanation.
 
 # Example
 ```
 julia> run_bitmapmap_pipeline(;nrc = (2, 2));
-Bitmapmap configuration based on .ini file  SheetMatrixBuilder(     4510, # bm_width_cell
-                        6496, # bm_height_cell
-                        2255, # sheet_width_cell
-                        3248, # sheet_height_cell
-                           2, # nrows
-                           2, # ncols
-             (4873, 6909048), # southwest_corner
-CartesianIndices((1:2, 1:2)), # sheet_indices
-                           3, # cell_to_utm_factor
-        "bitmapmaps/default") # pth
-        Augmented properties (all as (easting, northing)):
-          Geo centre =                       (11638.0, 6.918792e6)
-          Grid centre single =               (11638, 6918793)
-          Northeast external corner =        (18403, 6928536)
-          Northeast internal corner =        (18400, 6928536) - most northeastern sample point
-          Bounding Box (BB) SE-NW =          (4873 6909048)-(18403 6928536)
-          Geographical area [km²] =          264         Per sheet: 65.9  km²   Single file export limit: 16 km²
+Bitmapmap builder based on .ini file and keywords
+SheetMatrixBuilder((4873, 6909048), # southwest_corner
+      CartesianIndices((1:2, 1:2)), # sheet_indices
+                                 3, # cell_to_utm_factor
+                               191, # sheet_width_mm
+                               275, # sheet_height_mm
+                             11811, # density_pt_m⁻¹
+              "bitmapmaps/default") # pth
+        Derived properties (all as (easting, northing)):
+          Bounding Box (BB) SE-NW            = (4873 6909048)-(18403 6928536)
+          Northeast internal corner          = (18400, 6928536) - most northeastern sample point
+          Geo centre                         = (11638.0, 6.918792e6)
+          Grid centre single                 = (11638, 6918793)
+        Derived properties:
+          Geographical area [km²]            = 264
+                    Per sheet = 65.92 km²   (Single file export limit: 16 km²)
+          Adj. paper (width, height) [mm]    = (381.8, 550.0)
+                    Per sheet [mm] (width, height) = (190.9, 275.0)
+          Map scale                          = 1 : 35433 = 1 : (cell_to_utm_factor * density_pt_m⁻¹)
         BBs of sheets as Well Known Text (paste in e.g. https://nvdb-vegdata.github.io/nvdb-visrute/STM ):
           POLYGON ((4873 6909048, 11638 6909048, 11638 6918792, 4873 6918792, 4873 6909048),
-                (4873 6918792, 11638 6918792, 11638 6928536, 4873 6928536, 4873 6918792),
-                (11638 6909048, 18403 6909048, 18403 6918792, 11638 6918792, 11638 6909048),
-                (11638 6918792, 18403 6918792, 18403 6928536, 11638 6928536, 11638 6918792))
+                   (4873 6918792, 11638 6918792, 11638 6928536, 4873 6928536, 4873 6918792),
+                   (11638 6909048, 18403 6909048, 18403 6918792, 11638 6918792, 11638 6909048),
+                   (11638 6918792, 18403 6918792, 18403 6928536, 11638 6928536, 11638 6918792))
+[ Info: Since geographical area per sheet is  > 16km², 'høydedata.no' will not provide a single elevation data file per sheet. The pipeline will make a consolidated single file.
+[ Info: No relevant data to consolidate. Exiting.
+[ Info: Could not make consolidated .tif for sheet  with folder path bitmapmaps/default\1 1  4873 6909048  11638 6918792. Download and unzip .tif files? Exiting.
+┌ Warning: Could not finish consolidate_elevation_data(SheetBuilder((0, 3248), (1:3248, 1:2255), f(I) -> utm, 111811, "bitmapmaps/default\\1 1  4873 6909048  11638 6918792",  )
+│ ) with success. Exiting.
 ```
 """
 function run_bitmapmap_pipeline(; complete_sheets_first = true, kwds...)
@@ -48,12 +55,12 @@ function run_bitmapmap_pipeline(; complete_sheets_first = true, kwds...)
     smb
 end
 function run_bitmapmap_pipeline(smb::SheetMatrixBuilder; kwds...)
-    # Extract current fields as a NamedTuple.
+    # Deconstruct SheetMatrixBuilder to keywords.
     current_fields = get_fields_namedtuple(smb)
     # Combine current fields with new keyword arguments.
     # New keyword arguments would overrule.
     combined_kwds = merge(current_fields, kwds)
-    # Call the original define_builder with the combined keyword arguments.
+    # Run pipeline with the combined keyword arguments.
     run_bitmapmap_pipeline(; combined_kwds...)
 end
 
@@ -96,7 +103,7 @@ function define_builder(; kwds...)
     show_augmented(smb)
     # Nice to know.
     if geo_area(smb) >= 16e6 
-        @info "Since geographical area per sheet is  > 16km², 'høydedata.no' will not provide a single elevation data file per sheet. The pipieline will make a consolidated single file."
+        @info "Since geographical area per sheet is  > 16km², 'høydedata.no' will not provide a single elevation data file per sheet. The pipeline will make a consolidated single file."
     end
     smb
 end

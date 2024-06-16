@@ -18,17 +18,17 @@ next = iterate(smb, state)
 
 # The alternative constructor
 # Corresponds to resource/matrix_sheet_cell_utm.svg
-sw_corner, nrc, cell_to_utm_factor = (44000, 6909047), (2,3), 2
+sw_corner, nrc, cell2utm = (44000, 6909047), (2,3), 2
 sheet_width_mm, sheet_height_mm, density_pt_m⁻¹, pth = 3, 4, 1000, "nopath"
 
-@test_throws MethodError SheetMatrixBuilder(sw_corner .* 1.0, nrc, cell_to_utm_factor, sheet_width_mm, sheet_height_mm, density_pt_m⁻¹, pth)
-@test_throws MethodError SheetMatrixBuilder(sw_corner, nrc .* 1.0, cell_to_utm_factor, sheet_width_mm, sheet_height_mm, density_pt_m⁻¹, pth)
-@test_throws "cell_to_utm_factor" SheetMatrixBuilder(sw_corner, nrc, cell_to_utm_factor - 2, sheet_width_mm, sheet_height_mm, density_pt_m⁻¹, pth)
-@test_throws "sheet_width_mm" SheetMatrixBuilder(sw_corner, nrc, cell_to_utm_factor, -sheet_width_mm, sheet_height_mm, density_pt_m⁻¹, pth)
-@test_throws "sheet_height_mm" SheetMatrixBuilder(sw_corner, nrc, cell_to_utm_factor, sheet_width_mm, -sheet_height_mm, density_pt_m⁻¹, pth)
-@test_throws "density_pt_m⁻¹" SheetMatrixBuilder(sw_corner, nrc, cell_to_utm_factor, sheet_width_mm, sheet_height_mm, -density_pt_m⁻¹, pth)
-@test_throws "pth" SheetMatrixBuilder(sw_corner, nrc, cell_to_utm_factor, sheet_width_mm, sheet_height_mm, density_pt_m⁻¹, "")
-smb = SheetMatrixBuilder(sw_corner, nrc, cell_to_utm_factor, sheet_width_mm, sheet_height_mm, density_pt_m⁻¹, pth)
+@test_throws MethodError SheetMatrixBuilder(sw_corner .* 1.0, nrc, cell2utm, sheet_width_mm, sheet_height_mm, density_pt_m⁻¹, pth)
+@test_throws MethodError SheetMatrixBuilder(sw_corner, nrc .* 1.0, cell2utm, sheet_width_mm, sheet_height_mm, density_pt_m⁻¹, pth)
+@test_throws "cell_to_utm_factor" SheetMatrixBuilder(sw_corner, nrc, cell2utm - 2, sheet_width_mm, sheet_height_mm, density_pt_m⁻¹, pth)
+@test_throws "sheet_width_mm" SheetMatrixBuilder(sw_corner, nrc, cell2utm, -sheet_width_mm, sheet_height_mm, density_pt_m⁻¹, pth)
+@test_throws "sheet_height_mm" SheetMatrixBuilder(sw_corner, nrc, cell2utm, sheet_width_mm, -sheet_height_mm, density_pt_m⁻¹, pth)
+@test_throws "density_pt_m⁻¹" SheetMatrixBuilder(sw_corner, nrc, cell2utm, sheet_width_mm, sheet_height_mm, -density_pt_m⁻¹, pth)
+@test_throws "pth" SheetMatrixBuilder(sw_corner, nrc, cell2utm, sheet_width_mm, sheet_height_mm, density_pt_m⁻¹, "")
+smb = SheetMatrixBuilder(sw_corner, nrc, cell2utm, sheet_width_mm, sheet_height_mm, density_pt_m⁻¹, pth)
 
 @test length(smb) == 6
 (item, state) = iterate(smb) # 1, 2

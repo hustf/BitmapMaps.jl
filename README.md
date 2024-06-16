@@ -48,23 +48,24 @@ run_bitmapmap_pipeline()
 ```
 # Current state
 
-A first map has been made with scripting, ad hoc calculations and A4 sheets. We're streamlining the production of maps.
-
+We're streamlining the production and collecting code, after an intial batch of maps with scripting, ad hoc calculations and various local packages. 
 Code is being adapted from environment 'geoarrays', package 'RouteMap.jl' ' / example/ split ' and environment 'tutorial_images' / 'image segmentation.jl'.
 
-We implemented and tested up to step 6 here, and have a skeleton for steps 7-8. Inline docs need updating.
+We implemented and tested up to step 6 here, and have a skeleton for steps 7-8. 
 
-We struggled with function names related to bounding boxes and (cropped extents). See [`Bounding box functions`](#Bounding box functions). 
+We have a common and well-checked interface for inspection: `show_derived_properties` works consistently for builder types, (multiple) file names and GeoArrays.
 
-The pipeline can now reuse SheetMatrixBuilder and modify it gradually using keywords.
+The pipeline can now reuse `SheetMatrixBuilder` and modify it by steps, using keywords.
 
 Some of the changes from scripting workflow:
 
-- Establish BitmapMaps.ini, tune default printer data (the scripted / manual workflow map was missing 1 mm due to 'random' variations during printing).
-- Found a reliable way to print with actual scale. Use png's pHYs chunk, then print with an application that respects the settings. E.g. `Gimp`, `MS Paint`, and `IrFanview`.
-- Identifying water surface is now done with a more advanced algorithm. Manual corrections will hopefully be less of a requirement.
-- The colour palette is FixedPointNumbers.Normed{UInt8, 8}, not Float64 - based
-- Introduce the SheetMatrixBuilder (iterator for printable sheets) and SheetBuilder (iterator for pixels in a sheet). Change sheet numbering to start in SW corner. See figure:
+- Configurations stored in BitmapMaps.ini.
+- Printing metadata is made and stored in .png files. Settings are respected by e.g. `Gimp`, `MS Paint`, and `IrFanview`.
+- Identifying water surface is done with a new algorithm. Manual corrections will hopefully be less of a requirement.
+- The colour palette is FixedPointNumbers.Normed{UInt8, 8}, not Float64 - based.
+- Step 5, 'consolidation' stores an inspectable .tif file.
+- The SheetMatrixBuilder and SheetBuilder types are more flexible than storing specifications in folder names. 
+- Change sheet numbering to start in SW corner. See figure:
 
 <img src="resource/matrix_sheet_cell_utm.svg" alt = "resource/matrix_sheet_cell_utm.svg" style="display: inline-block; margin: 0 auto; max-width: 640px">
 
@@ -72,30 +73,21 @@ Some of the changes from scripting workflow:
 
 # Bounding box functions
 
-Why so complicated?
-   - In this package, UTM coordinates are integers (because that resolution is available for free for all of Norway, and because we use folder names corresponding to external boundary boxes). GeoArrays.jl uses floating point numbers.
-   - A sheet in a map book is naturally defined by its boundary. Such a boundary does not change with cell resolution or data density.
-   - Two adjacent map sheets shares a boundary (x_max1 == x_min2), but do not overlap. In `GeoArrays.bbox_overlap`, two such boxes do overlap, because x_max1 refers a cell and not it's right edge.
-   - Downloaded elevation files may be zero-padded. We are mostly interested in the non-zero geographical region.
-   - Rasters aren't simply matrices. Word definitions and conventions come from various professions.
-   - When working with online map tools, we like to paste Well-Known-Text polygons.
-
 Bounding boxes have meaning for:
    - GeoArrays (this type is defined by `GeoArrays.jl`)
    - file names referring GeoArrays
    - SheetMatrixBuilders (this package's main type)
    - SheetBuilders (this package's main type)
 
-If you're inspecting your own job definitions, you may only need `show_augmented(smb)`!
+If you're inspecting your own job definitions, you may only need `show_augmented(smb)`.
 
-However, internally we ended up with this awkward collection of functions so far. For reference:
+`show_derived_properties` shows the interesting properties for file names and other types.
+You may find `polygon_string` or `bbox_external_string` more useful for optimizing placement.
 
-```
-bbox_external_string
-closed_polygon_string
-closed_box_string
-polygon_string
-nonzero_raster_rect
-nonzero_raster_closed_polygon_string
-bbox_external_overlap(a, b)
-```
+Why not just use `GeoArrays.bbox` and `GeoArrays.bbox_overlap`?
+   - Two adjacent map sheets shares a boundary (x_max1 == x_min2), but do not overlap. In `GeoArrays.bbox_overlap`, two such boxes do overlap, because x_max1 refers a cell and not it's right edge.
+   - In this package, UTM coordinates are integers (because that resolution is liberally licensed for all of Norway, and because we use folder names corresponding to external boundary boxes). GeoArrays.jl uses floating point numbers.
+   - A sheet in a map book is naturally defined by its boundary. Such a boundary does not change with cell resolution or data density.
+   - Downloaded elevation files may be zero-padded. We are mostly interested in the non-zero geographical region.
+   - Rasters aren't simply matrices. Word definitions and conventions come from various professions.
+   - When working with online map tools, we like to paste Well-Known-Text polygons.

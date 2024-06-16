@@ -45,10 +45,10 @@ end
 Instead of passing long argument lists, we store configuration in a text file.
 """
 function get_config_value(sect::String, key::String; nothing_if_not_found = false)
-    fnam = _get_ini_fnam()
-    ini = read(Inifile(), fnam)
+    fna = _get_ini_fnam()
+    ini = read(Inifile(), fna)
     if sect ∉ keys(sections(ini))
-        msg = """$sect not a section in $fnam.
+        msg = """$sect not a section in $fna.
         The existing are: $(keys(sections(ini))).
         If you `BitmapMaps.delete_init_file()`, a new template will be generated when needed.
         """
@@ -60,7 +60,7 @@ function get_config_value(sect::String, key::String; nothing_if_not_found = fals
         s = get(ini, sect, key,  "")
         if s == ""
             throw(ArgumentError("""
-                $key not a key with value in section $sect of file $fnam.
+                $key not a key with value in section $sect of file $fna.
 
                 Example:
                 [user]                          # section

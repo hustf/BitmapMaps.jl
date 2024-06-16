@@ -14,11 +14,12 @@
     }
         ---> nothing
 
-Set the pHYs chunk values to `pt_m⁻¹` for both vertical and horizontal, unlike 'PNGFiles.save'.
+For exact printing size control, saves a .png and sets the more advanced printing related metadata.
 This is used for printing with e.g. IrfanView, but is ignored by the default win64 printing
 via default apps.
+It sets the pHYs chunk values to `pt_m⁻¹` for both vertical and horizontal, unlike 'PNGFiles.save'.
 
-    300 dpi == 300 dots per inch == 300 dots inch⁻¹ == 300 * / (0.0254 m) == 11811 dots per meter
+    300 dpi == 300 dots per inch == 300 dots inch⁻¹ == 300 * / (0.0254 m) == 11811 dots·m⁻¹
 
 If the A4 printable width is 0.191 m and the number of pixels or dots in the image is 640:
 

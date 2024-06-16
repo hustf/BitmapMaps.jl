@@ -5,8 +5,8 @@ using BitmapMaps
 # user_utilties.jl
 ##################
 
-tempdir = mktempdir()
-cd(tempdir)
+tempdir_utils = mktempdir()
+cd(tempdir_utils)
 source_folder = "s"
 mkpath(source_folder)
 mkpath("$source_folder/a")
@@ -26,7 +26,7 @@ mkpath(dfona)
 @test length(BitmapMaps.candidate_tif_names(source_folder, dfona)) == 2
 
 # These "text file tif"s didn't have the right format, though:
-@test_throws Exception copy_relevant_tifs_to_folder(joinpath(tempdir, source_folder), dfona)
+@test_throws TaskFailedException copy_relevant_tifs_to_folder(joinpath(tempdir_utils, source_folder), dfona)
 
 # Remove the fake tifs
 rm("$source_folder/a/1.tif")
@@ -40,37 +40,32 @@ cp(zipfi, fzip)
 unzip_tif(pth)
 @test length(BitmapMaps.candidate_tif_names(source_folder, dfona)) == 2
 # But these .tif files cover another area than defined by our folder name
-copy_relevant_tifs_to_folder(joinpath(tempdir, source_folder), dfona)
+copy_relevant_tifs_to_folder(joinpath(tempdir_utils, source_folder), dfona)
 @test length(BitmapMaps.candidate_tif_names(source_folder, dfona)) == 2
 
 # This folder name overlaps one of the tif files.
 dfona = "5 6 43300 6909000 44000 6909200"
 mkpath(dfona)
 @test length(BitmapMaps.candidate_tif_names(source_folder, dfona)) == 2
-copy_relevant_tifs_to_folder(joinpath(tempdir, source_folder), dfona)
-@test length(BitmapMaps.candidate_tif_names(source_folder, dfona)) == 2
-
-# Methods     
-#    copy_relevant_tifs_to_folder(source_folder, smb::SheetMatrixBuilder)
-#    copy_relevant_tifs_to_folder(source_folder, sb::SheetBuilder)
-# are tested in 't_pipeline.jl'
+copy_relevant_tifs_to_folder(joinpath(tempdir_utils, source_folder), dfona)
+@test length(BitmapMaps.candidate_tif_names(source_folder, dfona)) == 1
 
 ######################
 # geoarray_utilties.jl
 ######################
 
 fnas = tif_full_filenames_buried_in_folder(pth)
-@test nonzero_raster_closed_polygon_string(fnas[1]) == "(44000 6909047, 44001 6909047, 44001 6909055, 44000 6909055, 44000 6909047)"
-@test nonzero_raster_closed_polygon_string(fnas[2]) == "(44001 6909047, 44006 6909047, 44006 6909055, 44001 6909055, 44001 6909047)" 
-# Lower level tests
-fna = fnas[2]
-g = readclose(fna)
-z = g.A[:,:,1]
-Irng = BitmapMaps.CartesianIndices(BitmapMaps.unpadded_indices(z))
-@test sum(Float64.(z[Irng])) == sum(Float64.(z))
+@test nonzero_raster_closed_polygon_string(fnas[1]) == "(43999 6909048, 44000 6909048, 44000 6909056, 43999 6909056, 43999 6909048)"
+@test nonzero_raster_closed_polygon_string(fnas[2]) == "(44000 6909048, 44005 6909048, 44005 6909056, 44000 6909056, 44000 6909048)"
+# Lower level 
+let
+    fna = fnas[2]
+    g = readclose(fna)
+    z = g.A[:,:,1]
+    Irng = BitmapMaps.CartesianIndices(BitmapMaps.unpadded_indices(z))
+    @test sum(Float64.(z[Irng])) == sum(Float64.(z))
+end
 
-
-
-cd(olddir)
+@isdefined(olddir) && cd(olddir)
 
 
