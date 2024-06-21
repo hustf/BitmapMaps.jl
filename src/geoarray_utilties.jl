@@ -4,7 +4,7 @@
 A barrier for a possible issue with GeoArrays. Keyword arguments not included.
  Because calling `read` sometimes leaves a file 'open', runs in a separate thread.
 """
-function readclose(fna)::GeoArray # Type annotation for the compiler, just like `read` 
+function readclose(fna)::GeoArray # Type annotation for the compiler, just like `read`
     file_task = Threads.@spawn GeoArrays.read(fna)
     contents = fetch(file_task)
     GC.gc()            # Clean up resources explicitly after the operation
@@ -61,12 +61,16 @@ end
 function nonzero_raster_rect(g::GeoArray)::@NamedTuple{min_x::Int64, min_y::Int64, max_x::Int64, max_y::Int64}
     # Downloaded .tifs are often zero padded.
     # Indices of outer cells that contain non-zero data.
+    itup = unpadded_indices(g.A[:,:,1])
+    if itup == (nothing, nothing)
+        return (; min_x = 0, min_y =  0, max_x = 0, max_y = 0)
+    end
     Irng = CartesianIndices(unpadded_indices(g.A[:,:,1]))
     x4, y4 = northwest_corner(g, Irng)
     x2, y2 = southeast_external_corner(g, Irng)
-    x3, y3 = x2, y4 # NE     
+    x3, y3 = x2, y4 # NE
     x1, y1 = x4, y2 # SW
-    # External' corner, or North-West corner of the NW cell. 
+    # External' corner, or North-West corner of the NW cell.
     max_x, max_y = x2, y4
     min_x, min_y = x4, y2
     # return NamedTuple
@@ -100,7 +104,7 @@ julia> M = [
 
 julia> Irng = BitmapMaps.unpadded_indices(M)
     CartesianIndices((2:3, 2:2))
-    
+
 julia> M[Irng]
     2×1 Matrix{Int64}:
      1
@@ -135,7 +139,7 @@ end
 "ref. southwest_corner"
 northwest_corner(g::GeoArray) = g.f((0, 0))
 
-function northwest_corner(g::GeoArray, Irng) 
+function northwest_corner(g::GeoArray, Irng)
     g.f(Tuple(Irng[1]) .-(1,1))
 end
 

@@ -9,7 +9,7 @@ for fo in ["test_pipeline1", "test_pipeline2", "test_pipeline3"]
     end
 end
 
-# First some impossible jobs to finish. 
+# First some impossible jobs to finish.
 @test_logs(
     (:info, r"Since geographical area per sheet is  > 16km²"),
     (:info, r"No .tif files"),
@@ -31,11 +31,11 @@ end
 
 
 # Work with the limited data in /resource
-# Unzip the files to a temporary folder, where the folder name does not provide relevant info. 
+# Unzip the files to a temporary folder, where the folder name does not provide relevant info.
 tmpdir_pipeline = mktempdir()
 let
-    for zfi in ["../resource/eksport_796345_20240420.zip", 
-            "../resource/eksport_796340_20240420.zip", 
+    for zfi in ["../resource/eksport_796345_20240420.zip",
+            "../resource/eksport_796340_20240420.zip",
             "../resource/eksport_826662_20240610.zip"]
         zipfi = joinpath(@__DIR__, zfi)
         dest = joinpath(tmpdir_pipeline, splitdir(zipfi)[2])
@@ -45,7 +45,7 @@ let
     end
 end
 # A zip file now exists in tmpdir_pipeline, as if downloaded by user.
-# Extract and inspect. 
+# Extract and inspect.
 withenv("JULIA_DEBUG" => "BitmapMaps") do
     @test_logs(
         (:debug, r"Name and path similarity, made unique file namme."),
@@ -67,20 +67,20 @@ fnas = tif_full_filenames_buried_in_folder(tmpdir_pipeline)
                    (44005 6909056, 44011 6909056, 44011 6909064, 44005 6909064, 44005 6909056))"
 
 
-@test nonzero_raster_rect.(fnas) == [(min_x = 43999, min_y = 6909048, max_x = 44000, max_y = 6909056), 
-    (min_x = 44000, min_y = 6909048, max_x = 44005, max_y = 6909056), 
-    (min_x = 44006, min_y = 6909047, max_x = 44012, max_y = 6909055), 
+@test nonzero_raster_rect.(fnas) == [(min_x = 43999, min_y = 6909048, max_x = 44000, max_y = 6909056),
+    (min_x = 44000, min_y = 6909048, max_x = 44005, max_y = 6909056),
+    (min_x = 44006, min_y = 6909047, max_x = 44012, max_y = 6909055),
     (min_x = 44005, min_y = 6909056, max_x = 44011, max_y = 6909064)]
-# Calculate widths, densities and so forth to make a bitmapmap which uses the entire width of the data we have here and 
+# Calculate widths, densities and so forth to make a bitmapmap which uses the entire width of the data we have here and
 # fills two A4 sheets.
 pth = "BitmapMaps\\test_pipeline3"
 nrc = (1, 2)
 cell2utm = 1
 southwest_c = (44000, 6909047)
 data_cell_width = 44012 - southwest_c[1]
-sheet_width_cell = Int(round(data_cell_width / 2)) 
-sheet_width_mm = 191 
-density_pt_m⁻¹ = Int(ceil(1000 *sheet_width_cell / sheet_width_mm )) 
+sheet_width_cell = Int(round(data_cell_width / 2))
+sheet_width_mm = 191
+density_pt_m⁻¹ = Int(ceil(1000 *sheet_width_cell / sheet_width_mm ))
 # Let the pipeline establish the folder structure first. Data files are missing, so will fail gracefully.
 smb = @test_logs(
     (:info, r"No .tif files"),
@@ -88,7 +88,7 @@ smb = @test_logs(
     (:warn, r"Could not finish consolidate_elevation_data"),
     run_bitmapmap_pipeline(;nrc, cell_to_utm_factor = cell2utm, pth, southwest_corner = southwest_c, density_pt_m⁻¹, sheet_width_mm,
        complete_sheets_first = false))
-@test BitmapMaps.sheet_width_cell(smb) == sheet_width_cell 
+@test BitmapMaps.sheet_width_cell(smb) == sheet_width_cell
 @test BitmapMaps.nrows(smb) == 1
 @test BitmapMaps.ncols(smb) == 2
 @test ispath(full_folder_path(smb[1,1]))

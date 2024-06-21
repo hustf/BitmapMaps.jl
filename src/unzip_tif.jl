@@ -86,7 +86,7 @@ function is_files_equal(fn1, fn2) # grammar check name
     end
     hash1 == hash2
 end
-"""   
+"""
     tif_full_filenames_buried_in_folder(pth)
 
 Excludes .tif files direcltly under 'metadata' folders

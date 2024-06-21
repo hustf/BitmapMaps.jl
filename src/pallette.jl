@@ -29,12 +29,12 @@ RGB{N0f8}(0.494,0.494,0.431)
 """
 function generate_directional_pallette_func()
     elevation_limits = [
-        1,   # Sea 
+        1,   # Sea
         2,   # Foreshore
         3,   # Rocks by sea
-        5,   # Early spring grass 
-        50,  # Early spring grass 
-        280, # Leaf forest without leaves 
+        5,   # Early spring grass
+        50,  # Early spring grass
+        280, # Leaf forest without leaves
         400, # Part snow part rocks
         500] # Snow
     easter_map_sunny_colors = RGB{N0f8}.([
@@ -56,7 +56,7 @@ function generate_directional_pallette_func()
         RGB{Float64}(0.30292319717824423,0.3673755209368712,0.5245856821866882)
         RGB{Float64}(0.47018902285535163,0.5784619137094618,0.6880473522836665)])
     # Side light is a mix, mostly shadow tints.
-    # But snowy terrain looses detail from side light. By setting snowy terrain side colour 
+    # But snowy terrain looses detail from side light. By setting snowy terrain side colour
     # to black, snowy areas do not get any side light.
     easter_map_side_colors = 0.75 .* easter_map_shadow_colors .+ 0.25 * easter_map_sunny_colors
     easter_map_side_colors[8] = RGB{N0f8}(0.0,0.0,0.0)
@@ -64,21 +64,13 @@ function generate_directional_pallette_func()
     easter_500 = make_map_500(easter_map_sunny_colors, elevation_limits)
     easter_shadow_500 = make_map_500(easter_map_shadow_colors, elevation_limits)
     easter_side_500 = make_map_500(easter_map_side_colors,   elevation_limits)
-    # The generated func captures those pallettes
-    (elevation, direction_no::Int64) -> begin
-        @assert 1 <= direction_no <= 4
-        i⁺ = Int(max(1, round(elevation)))
-        i = min(500, i⁺)
-        @assert 1 <= i <= 500
-        if direction_no == 1
-            getindex(easter_500, i)
-        elseif direction_no == 2 || direction_no == 4
-            getindex(easter_side_500, i)
-        elseif direction_no == 3
-            getindex(easter_shadow_500, i)
-        end
+    palette_matrix = hcat(easter_500, easter_side_500, easter_shadow_500, easter_side_500)
+    return (elevation::Float32, direction_no::Int64) -> begin
+        i = clamp(round(Int64, elevation), 1, 500)
+        c = palette_matrix[i, direction_no]
+        return c
     end
-end 
+end
 
 
 """
@@ -88,8 +80,7 @@ For hypsometric tints, locally adapted.
 """
 function make_map_500(colors, upper_limits)
     @assert length(colors) == length(upper_limits)
-    map_500 = RGB{N0f8}[]  
-    for z_above = 1:500
+    function color(z_above)
         i = findlast(<=(z_above), upper_limits)
         if i < length(upper_limits)
             z1 = upper_limits[i]
@@ -100,9 +91,9 @@ function make_map_500(colors, upper_limits)
         else
             c = colors[end]
         end
-        push!(map_500, c)
+        RGB{N0f8}(c)
     end
-    map_500
+    RGB{N0f8}[color(z_above) for z_above in 1:500]
 end
 
 """
@@ -119,5 +110,5 @@ function linterp(y1, y2, x1, x2, x3)
 end
 function linterp(y1, y2, normx)
     @assert 0 <= normx <= 1
-    y1 * (1 - normx) + y2 * normx 
+    y1 * (1 - normx) + y2 * normx
 end

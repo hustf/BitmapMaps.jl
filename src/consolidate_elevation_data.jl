@@ -37,7 +37,7 @@ function consolidate_data_in_folder_to_geoarray(fofo)
     g_dest = let
         A = zeros(Float32, w, h, 1)
         f = GeoArrays.AffineMap([1.0 0.0; 0.0 -1.0], 1.0 .* [min_x, max_y])
-        GeoArray(A, f) 
+        GeoArray(A, f)
     end
     copy_sources_into_destination!(g_dest, fnas_source)
     if sum(g_dest.A) == 0
@@ -82,7 +82,7 @@ function sample_values_larger_than_limit!(g_dest::GeoArray, g_source::GeoArray)
             # Loop over bands
             for z in 1:zo
                 # Some source files has value zero where data is really missing.
-                # Also, close to zero elevation, there is much noise from waves and 
+                # Also, close to zero elevation, there is much noise from waves and
                 # also from elevation recalibration. This heuristic gets rid of most.
                 if g_source[i, j, z] > 0.7
                     g_dest[io, jo, z] = g_source[i, j, z]

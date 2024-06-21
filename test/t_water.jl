@@ -1,7 +1,7 @@
 # The algorithm and parameter values were optimized for a data set around 62.14111170231884N, 5.572971578864545E.
-# Further refinements are hardcoded in this package. 
+# Further refinements are hardcoded in this package.
 #
-# Work with the limited data in /resource. This area contains one tiny lake, hard to identify due 
+# Work with the limited data in /resource. This area contains one tiny lake, hard to identify due
 # to noise, but without some typical artefacts. A small corner of 'Holmevatnet' / Gurskøy is included,
 # but the area is below the limit set for detection.
 
@@ -18,14 +18,14 @@ end
 
 # A zip file now exists in tmpdir_water, as if downloaded by user.
 # Extract and inspect.
-unzip_tif(tmpdir_water) 
+unzip_tif(tmpdir_water)
 fna = first(tif_full_filenames_buried_in_folder(tmpdir_water))
 # The file is zero padded with 1 m on the south border
 @test polygon_string(fna) == "POLYGON ((18294 6937562, 18449 6937562, 18449 6937717, 18294 6937717, 18294 6937562),\n                   (18294 6937563, 18449 6937563, 18449 6937717, 18294 6937717, 18294 6937563))"
 
-# This file is not 'consolidated', it is zero-valued on the southern edge. But the point here is 
+# This file is not 'consolidated', it is zero-valued on the southern edge. But the point here is
 # not to test the pipeline, so we test on the level inside `water_overlay` first.
-elevations = let 
+elevations = let
     z = readclose(fna)
     transpose(z.A[:, :, 1])
 end

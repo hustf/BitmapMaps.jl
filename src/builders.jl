@@ -46,7 +46,7 @@ SheetBuilder(;pixel_origin_ref_to_bitmapmap = (2255, 3248),
                              pthsh = "bitmapmaps/default\\2 2  11638 6918792  18403 6928536")
 
 julia> show_derived_properties(smb[2, 2]) # Let's see more human-readable details.
-        
+
         Derived properties (all as (easting, northing)):
           Bounding Box (BB) SE-NW            = (11638 6918792)-(18403 6928536)
           Northeast internal corner          = (18400, 6928536) - most northeastern sample point

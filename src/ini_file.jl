@@ -7,14 +7,14 @@ function _prepare_init_file_configuration(io)
         # Delete this file. A new file will be created next time values stored in the ini file is accessed.
         #
         # This defines the UTM borders of your map, and its division into sheets of paper.
-        # Sheets of paper will be numbered from South-West (index [1, 1] or [1]) to North-East (index [end, end] or [end]), 
+        # Sheets of paper will be numbered from South-West (index [1, 1] or [1]) to North-East (index [end, end] or [end]),
         # and a folder structure will be established.
         #
-        # Utm coordinates (easting, northing) increase to the East (x) and North (y). 
-        # A boundary box is defined by two of its external corners: 
+        # Utm coordinates (easting, northing) increase to the East (x) and North (y).
+        # A boundary box is defined by two of its external corners:
         #     (minimum_easting minimum_northing)-(maximum_easting maximum_northing)
         # A simple way to get EU89, UTM-zone 33 coordinates is through norgeskart.no.
-        # We project geography on the UTM 33 grid. In 'norgeskart.no' that and other 
+        # We project geography on the UTM 33 grid. In 'norgeskart.no' that and other
         # grids can be displayed through hamburger button > fastmerker > utm-rutenett.
         #
         """
@@ -28,7 +28,7 @@ function _prepare_init_file_configuration(io)
     entry("Printer consistent capability", "Printable width mm", "191"; comm = ":sheet_width_mm\r\n  #    Measured 193 mm. Allowing 2 mm  random variation.")
     entry("Printer consistent capability", "Printable height mm", "275"; comm = ":sheet_height_mm\r\n  #    Measured 277 mm. Allowing 2 mm for random variation.")
     entry("Printer consistent capability", "Stated density limit, dots per inch", "600"; comm = ":density_limit_pt_inch⁻¹\r\n  #    As advertised by Brother")
-    entry("Output density (of 'cells' / 'dots' / 'points' or 'pixels')", "Output density, number of cells per meter", "11811"; 
+    entry("Output density (of 'cells' / 'dots' / 'points' or 'pixels')", "Output density, number of cells per meter", "11811";
         comm = ":density_pt_m⁻¹\r\n  #    For reference, 300  / inch = 300 / (0.0254 m) = 11811 m⁻¹ \r\n  #    Use lower values to slightly 'zoom in', otherwise use 'cell_to_utm_factor'.")
     entry("Number of printable sheets", "(rows columns)", "(3 4)"; comm = ":nrc")
     entry("Cell to utm factor", "Utm unit distance between elevation sampling points", "3"; comm = ":cell_to_utm_factor\r\n  #    How many 'utm metres' does a 'cell' / 'dot' / 'point' or 'pixel' side represent?")

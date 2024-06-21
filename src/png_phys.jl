@@ -41,22 +41,19 @@ function save_png_with_phys(ffna::String,
     @assert Z_NO_COMPRESSION <= compression_level <= Z_BEST_COMPRESSION
     @assert 2 <= ndims(image) <= 3
     @assert size(image, 3) <= 4
-
     fp = ccall(:fopen, Ptr{Cvoid}, (Cstring, Cstring), ffna, "wb")
     fp == C_NULL && error("Could not open $(ffna) for writing")
-
     png_ptr = create_write_struct()
-    @debug "save_png_with_phys:" ffna png_ptr density_pt_m⁻¹
+    # We're saving intermediate files without respecting density_pt_m⁻¹.
+    # This would be confusing to the user. Hence, we're dropping the debug log of it.
+    #@debug "save_png_with_phys:" ffna png_ptr density_pt_m⁻¹
     info_ptr = create_info_struct(png_ptr)
     png_init_io(png_ptr, fp)
-
     # Set the pHYs chunk here, unlike 'PNGFiles.save'
     res_x = png_uint_32(density_pt_m⁻¹)
     res_y = png_uint_32(density_pt_m⁻¹)
     unit_type = Cint(1)
-    
     png_set_pHYs(png_ptr, info_ptr, res_x, res_y, unit_type)
-    
     # Continue as with normal save
     _save(png_ptr, info_ptr, image,
         compression_level=compression_level,
@@ -73,10 +70,10 @@ end
     get_pHYs_chunk_res_x_y_unit(ffna; silent = false)
     ---> res_x::Int, res_y, unit_type
 
+For inspection / checking.
+
 unit_type == 1 signifies res_x and res_y are given in units
 pixels per printed meter.
-
-For inspection / checking
 """
 function get_pHYs_chunk_res_x_y_unit(ffna; silent = false)
     fp = open_png(ffna) # pointer
@@ -136,5 +133,5 @@ function get_pHYs_chunk_res_x_y_unit(ffna; silent = false)
     end
     png_destroy_read_struct(Ref{Ptr{Cvoid}}(png_ptr), Ref{Ptr{Cvoid}}(info_ptr), C_NULL)
     close_png(fp)
-    res_x[], res_y[], unit_type[] 
+    res_x[], res_y[], unit_type[]
 end

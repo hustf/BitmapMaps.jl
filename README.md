@@ -17,13 +17,16 @@ The example includes default elevation contours every 100 m with a fatter curve 
 
 # How does it do it?
 
-Rendering the finished bitmaps is not expected to run in one go. As a minimum, a folder hierarchy is established at the first go, user moves in data, and bitmaps are rendered after the second call.
+Rendering the finished bitmaps is not expected to run in one step. As a minimum:
+- Step 1: `run_bitmapmap_pipeline()` => A folder hierarchy is established.
+- Step 2: User moves in elevation data. This may help: `copy_relevant_tifs_to_folder(source_folder, destination_folder)
+- Step 3: `run_bitmapmap_pipeline()` => User inspects rendered images.
 
-Intermediate step results are saved in a folder structure defined in an .ini file. The .ini file is generated automatically, but can be updated by user.
+An .ini file is generated with default argument values. User updates arguments in the file (recommended) or by passing keywords to the pipeline.
 
-If an intermediate file is deleted, the corresponding step is triggered to rerun.
+If an intermediate file is deleted, the corresponding step is triggered to rerun - if an output file exists, the corresponing and the previous steps are skipped.
 
-Steps in the pipeline:
+Steps in the pipeline, in sequece:
 
 1) Define a `SheetMatrixBuilder` based on `home/BitmapMaps.ini`. Keywords overrule file values. Repl feedback for a preview of the bitmap's geographical extent and division into sheets (`define_builder`).
 2) Establish folder hierarchy for storing intermediate data (`establish_folder`).
@@ -51,7 +54,7 @@ run_bitmapmap_pipeline()
 We're streamlining the production and collecting code, after an intial batch of maps with scripting, ad hoc calculations and various local packages. 
 Code is being adapted from environment 'geoarrays', package 'RouteMap.jl' ' / example/ split ' and environment 'tutorial_images' / 'image segmentation.jl'.
 
-We implemented and tested up to step 6 here, and have a skeleton for steps 7-8. 
+We implemented and tested up to step 7 here, and have a skeleton for steps 8. 
 
 We have a common and well-checked interface for inspection: `show_derived_properties` works consistently for builder types, (multiple) file names and GeoArrays.
 
@@ -63,6 +66,7 @@ Some of the changes from scripting workflow:
 - Printing metadata is made and stored in .png files. Settings are respected by e.g. `Gimp`, `MS Paint`, and `IrFanview`.
 - Identifying water surface is done with a new algorithm. Manual corrections will hopefully be less of a requirement.
 - The colour palette is FixedPointNumbers.Normed{UInt8, 8}, not Float64 - based.
+- Topographic relief is rendered cell by cell using `ImageFiltering.mapwindow`. Renders independently from output map resolution.
 - Step 5, 'consolidation' stores an inspectable .tif file.
 - The SheetMatrixBuilder and SheetBuilder types are more flexible than storing specifications in folder names. 
 - Change sheet numbering to start in SW corner. See figure:

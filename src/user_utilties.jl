@@ -2,9 +2,9 @@
 #
 # However, if data already exists locally for another bitmapmap, these functions
 # can help with local file management.
-# 
-# To build the folder structure first, you can either `run_bitmapmap_pipeline()`, 
-# which aborts the run when not finding data, or run 
+#
+# To build the folder structure first, you can either `run_bitmapmap_pipeline()`,
+# which aborts the run when not finding data, or run
 # `establish_folder.(sheet_matrix_builder)`
 """
     copy_relevant_tifs_to_folder((source_folder, destination_folder)
@@ -30,10 +30,13 @@ function copy_relevant_tifs_to_folder(source_folder, destination_folder)
     # Candidates from file names only, no geographical info. If the same file name occurs twice in the source folder hierarchy,
     # only one will be copied.
     cs = candidate_tif_names(source_folder, destination_folder)
+    @info "Found $(length(cs)) candidates for copying. Set ENV[\"JULIA_DEBUG\"] = \"BitmapMaps\" for detailed output."
     # Candidate by candidate is checked for geographical match, then copied.
     destination_files = String[]
     for cafna in cs
+        printstyled(stdout, repeat(' ', 8), cafna , "\n"; color = :light_black)
         if is_source_relevant(d, cafna)
+            @debug "Found relevant file $cafna"
             dfna = file_name_at_dest(cafna, destination_folder)
             cp(cafna, dfna)
             push!(destination_files, dfna)
@@ -99,10 +102,10 @@ This assumes the boundary boxes are 'external', i.e. enclosing cells that are pa
 Returns false for adjacent bboxes, like e.g.
 ```
 julia> BitmapMaps.bbox_external_overlap(
-    (min_x = 44001, min_y = 47, max_x = 44006, max_y = 55), 
+    (min_x = 44001, min_y = 47, max_x = 44006, max_y = 55),
     (min_x = 44006, min_y = 47, max_x = 44012, max_y = 55))
 false
-````    
+````
 """
 function bbox_external_overlap(
     a::NamedTuple{(:min_x, :min_y, :max_x, :max_y)},

@@ -3,13 +3,13 @@
     ---> SheetMatrixBuilder
 
 The job is defined in file BitmapMaps.ini, in user's home directory.
-You can overrule parameters with keywords, but changing the .ini file 
+You can overrule parameters with keywords, but changing the .ini file
 is recommended.
 
 # Arguments
 
 `complete_sheets_first`    The default 'true' means one sheet is fully processed, then the next sheet.
-                         'false' means that each operation is finished for all sheets before the next operation. 
+                         'false' means that each operation is finished for all sheets before the next operation.
 `width_cell`, etc           Keyword names (like `width_cell`) are included in the default .ini file, with explanation.
 
 # Example
@@ -83,7 +83,7 @@ function define_builder(; kwds...)
     # This value is for checking if density_pt_m⁻¹ is higher than is printable
     density_limit_pt_inch⁻¹ = get_kw_or_config_value(:density_limit_pt_inch⁻¹ ,"Printer consistent capability", "Stated density limit, dots per inch", Int; kwds...)
     # Some value checks
-    @assert density_pt_m⁻¹ <= density_limit_pt_inch⁻¹ / 0.0254 "Printing density can't be higher than the printer capacity"
+    @assert density_pt_m⁻¹ <= density_limit_pt_inch⁻¹ / 0.0254 "Printing density exceeds capability, $(Int(round(density_limit_pt_inch⁻¹ / 0.0254)))m⁻¹."
     if isnothing(match(r"(b|B)itmap(M|m)aps", pth))
         throw(ArgumentError("Any BmParition path must match regex r\"(b|B)itmap(M|m)aps\". Current path is $pth"))
     end
@@ -102,7 +102,7 @@ function define_builder(; kwds...)
     # derived properties rather than the basic ones.
     show_augmented(smb)
     # Nice to know.
-    if geo_area(smb) >= 16e6 
+    if geo_area(smb) >= 16e6
         @info "Since geographical area per sheet is  > 16km², 'høydedata.no' will not provide a single elevation data file per sheet. The pipeline will make a consolidated single file."
     end
     smb
@@ -111,7 +111,6 @@ end
 
 function process_job(smb, complete_sheets_first)
     #= TODO: Good func names for:
-    Make topographic reliefs
     Make vector graphics and text covering the full map area. You may use RouteMap.jl for this step.
     Make composite bitmaps
     =#

@@ -22,20 +22,26 @@ using PNGFiles: PNG_COLOR_TYPE_GRAY, png_destroy_read_struct, close_png
 using PNGFiles: PNG_INFO_pHYs, png_get_pHYs
 # For sheet builders
 import LuxorLayout
-using LuxorLayout: Point # Maybe no need
+using LuxorLayout: Point # Maybe no need, but we won't discard compatibility easily.
 import Base: show
 # ZipFile and comparing file hashes:
 import ZipFile
 import SHA
 using SHA: sha256
-# GeoArray
+# GeoArray, hypsometric colors
 import GeoArrays
-using GeoArrays: GeoArray, bbox, bbox_overlap, Vertex, coords, indices, crop, SVector
+using GeoArrays: GeoArray, bbox, bbox_overlap, Vertex, coords, indices, crop
 # Feedback
 import Dates
-# Calculating gradients
+# Calculating gradients, topo map
 import ImageFiltering
-using ImageFiltering: imgradients, KernelFactors
+using ImageFiltering: imgradients, KernelFactors, mapwindow
+# Inspect arrays...
+import ImageCore
+using ImageCore: scaleminmax
+# Pick color from lightness
+import Colors
+import ColorTypes
 # Identify water
 import ImageSegmentation
 using ImageSegmentation: felzenszwalb, labels_map, segment_pixel_count, segment_mean

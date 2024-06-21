@@ -33,7 +33,7 @@ for (p, zfi) in zip([smb[1,1], smb[2,2]], ["../resource/eksport_796345_20240420.
     else
         fn = joinpath(full_folder_path(p), "dom1", "data", "dom1-33-1-428-189-63.tif") # Same file name as fn2, not same content.
         @test isfile(fn)
-        @test polygon_string(fn) == "POLYGON ((44000 6909000, 44800 6909000, 44800 6909600, 44000 6909600, 44000 6909000),\n                   (44005 6909056, 44011 6909056, 44011 6909064, 44005 6909064, 44005 6909056))" 
+        @test polygon_string(fn) == "POLYGON ((44000 6909000, 44800 6909000, 44800 6909600, 44000 6909600, 44000 6909000),\n                   (44005 6909056, 44011 6909056, 44011 6909064, 44005 6909064, 44005 6909056))"
     end
 end
 
@@ -48,7 +48,7 @@ end
     g = let
         A = zeros(Float32, w, h, 1)
         f = BitmapMaps.GeoArrays.AffineMap([1.0 0.0; 0.0 -1.0], 1.0 .* [min_x, max_y])
-        BitmapMaps.GeoArray(A, f) 
+        BitmapMaps.GeoArray(A, f)
     end
     fill!(g.A, Float32(1))
     @test polygon_string(g) == polygon_string(smb[2, 2])
@@ -110,7 +110,7 @@ for (p, zfi) in zip([smb[1,1], smb[2,2]], ["../resource/eksport_796345_20240420.
     else
         fn = joinpath(full_folder_path(p), "dom1", "data", "dom1-33-1-428-189-63.tif") # Same file name as fn2, not same content.
         @test isfile(fn)
-        @test polygon_string(fn) == "POLYGON ((44000 6909000, 44800 6909000, 44800 6909600, 44000 6909600, 44000 6909000),\n                   (44005 6909056, 44011 6909056, 44011 6909064, 44005 6909064, 44005 6909056))" 
+        @test polygon_string(fn) == "POLYGON ((44000 6909000, 44800 6909000, 44800 6909600, 44000 6909600, 44000 6909000),\n                   (44005 6909056, 44011 6909056, 44011 6909064, 44005 6909064, 44005 6909056))"
     end
 end
 
@@ -126,7 +126,7 @@ for p in [smb[2,2], smb[1,1] ]
     g = readclose(fnam_out)
     # Not empty
     @test sum(g.A[:, :, 1]) > 0
-    # We have full elevation data 
+    # We have full elevation data
     @test sum(iszero.(g)) == 0
     @test polygon_string(g) == polygon_string(p)
 end

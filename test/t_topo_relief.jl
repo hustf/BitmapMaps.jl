@@ -1,7 +1,7 @@
 # The algorithm and parameter values is optimized for in environments/tutorial_images/image_segmentation.jl
 # Since these parameter values are well optimized, we use those hardcoded here.
 #
-# Work with the limited data in /resource. 
+# Work with the limited data in /resource.
 
 using Test
 using BitmapMaps
@@ -11,14 +11,14 @@ using BitmapMaps
 ###################################################
 
 pth = "BitmapMaps\\test_topo"
-# cleanup 
+# cleanup
 if ispath(joinpath(homedir(), pth))
     sleep(1) # prevent resource busy error....
     rm(joinpath(homedir(), pth), recursive = true)
 end
 
 # Work with limited data from /resource
-# Unzip the files to a temporary folder, where the folder name does not provide relevant info. 
+# Unzip the files to a temporary folder, where the folder name does not provide relevant info.
 tmpdir_topo_relief = mktempdir()
 
 let
@@ -33,7 +33,7 @@ end
 
 
 # A zip file now exists in tmpdir_topo_relief, as if downloaded by user.
-# Extract and inspect. 
+# Extract and inspect.
 unzip_tif(tmpdir_topo_relief)
 fna = first(tif_full_filenames_buried_in_folder(tmpdir_topo_relief))
 
@@ -68,7 +68,7 @@ fnas = copy_relevant_tifs_to_folder(tmpdir_topo_relief, smb)
 for sb in smb
     fna = joinpath(full_folder_path(sb), BitmapMaps.CONSOLIDATED_FNAM)
     # Get elevation matrix
-    za = let 
+    za = let
         z = readclose(fna)
         transpose(z.A[:, :, 1])
     end
@@ -143,7 +143,7 @@ for fo in ["test1", "test_topo2", "test_topo3"]
     end
 end
 
-# First some impossible jobs to finish. 
+# First some impossible jobs to finish.
 @test_logs(
     (:info, r"Since geographical area per sheet is  > 16km²"),
     (:info, r"No .tif files"),
@@ -167,7 +167,7 @@ end
 
 
 # Work with the limited data in /resource
-# Unzip the files to a temporary folder, where the folder name does not provide relevant info. 
+# Unzip the files to a temporary folder, where the folder name does not provide relevant info.
 tmpdir_pipeline = mktempdir()
 let
     for zfi in ["../resource/eksport_796345_20240420.zip", "../resource/eksport_796340_20240420.zip"]
@@ -180,7 +180,7 @@ let
     end
 end
 # A zip file now exists in tmpdir_pipeline, as if downloaded by user.
-# Extract and inspect. 
+# Extract and inspect.
 unzip_tif(tmpdir_pipeline)
 fnas = tif_full_filenames_buried_in_folder(tmpdir_pipeline)
 @test nonzero_raster_closed_polygon_string.(fnas)== ["POLYGON ((43200 6909000, 44000 6909000, 44000 6909600, 43200 6909600, 43200 6909000))", "POLYGON ((44000 6909000, 44800 6909000, 44800 6909600, 44000 6909600, 44000 6909000))"]
@@ -191,7 +191,7 @@ pth = "BitmapMaps\\test_topo3"
 nrc = (1, 2)
 cell_to_utm_factor = 1
 data_cell_width = 44800 - 43200
-sheet_width_cell = Int(round(data_cell_width / 2)) 
+sheet_width_cell = Int(round(data_cell_width / 2))
 pwi_max_inch = 191 / 25.4 # mm / (mm / inch) - sheet width in inches
 density_pt_m⁻¹ = Int(ceil(sheet_width_cell / pwi_max_inch ))  # Pixels per inch so as to fit roughly sheet_width_cell pixels or more on a sheet
 # Reduce the printable width a little from the maximum, so as to fit close to sheet_width_cell pixels
@@ -204,7 +204,7 @@ smb = @test_logs(
     (:info, r"No .tif files"),
     (:info, r"Could not make consolidated"),
     (:warn, r"Could not finish consolidate_elevation_data"),
-    run_bitmapmap_pipeline(;nrc, cell_to_utm_factor, pth, southwest_corner = (43200, 6909000), 
+    run_bitmapmap_pipeline(;nrc, cell_to_utm_factor, pth, southwest_corner = (43200, 6909000),
     density_pt_m⁻¹, sheet_width_mm, sheet_height_mm, complete_sheets_first)
     )
 
@@ -222,13 +222,13 @@ fnas = copy_relevant_tifs_to_folder(tmpdir_pipeline, smb)
 @test length(fnas) == 3
 
 # Run the pipeline again, this time proceeding further
-smb = run_bitmapmap_pipeline(;nrc, cell_to_utm_factor, pth, southwest_corner = (43200, 6909000), 
+smb = run_bitmapmap_pipeline(;nrc, cell_to_utm_factor, pth, southwest_corner = (43200, 6909000),
     density_pt_m⁻¹, sheet_width_mm, sheet_height_mm)
 @test ispath(joinpath(full_folder_path(smb[1,1]), BitmapMaps.CONSOLIDATED_FNAM))
 @test ispath(joinpath(full_folder_path(smb[1,2]), BitmapMaps.CONSOLIDATED_FNAM))
 
 
-# cleanup 
+# cleanup
 if ispath(joinpath(homedir(), pth))
     rm(joinpath(homedir(), pth), recursive = true)
 end

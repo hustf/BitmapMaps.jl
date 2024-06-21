@@ -20,7 +20,7 @@ end
 open("$source_folder/b/$(BitmapMaps.CONSOLIDATED_FNAM)", "w") do io # This file name is reserved, won't be copied.
     println(io, "A tif text file")
 end
-# Dest 
+# Dest
 dfona = "2 3 100 1000 200 2000"
 mkpath(dfona)
 @test length(BitmapMaps.candidate_tif_names(source_folder, dfona)) == 2
@@ -57,7 +57,7 @@ copy_relevant_tifs_to_folder(joinpath(tempdir_utils, source_folder), dfona)
 fnas = tif_full_filenames_buried_in_folder(pth)
 @test nonzero_raster_closed_polygon_string(fnas[1]) == "(43999 6909048, 44000 6909048, 44000 6909056, 43999 6909056, 43999 6909048)"
 @test nonzero_raster_closed_polygon_string(fnas[2]) == "(44000 6909048, 44005 6909048, 44005 6909056, 44000 6909056, 44000 6909048)"
-# Lower level 
+# Lower level
 let
     fna = fnas[2]
     g = readclose(fna)

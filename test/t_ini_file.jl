@@ -3,7 +3,7 @@ using BitmapMaps
 using BitmapMaps: get_kw_or_config_value
 @test BitmapMaps.get_config_value("Printer consistent capability", "Printable width mm", Int) isa Int
 @test BitmapMaps.get_config_value("Printer consistent capability", "Printable width mm", Int) > 0
-@test BitmapMaps.get_config_value("Output density (of 'cells' / 'dots' / 'points' or 'pixels')", 
+@test BitmapMaps.get_config_value("Output density (of 'cells' / 'dots' / 'points' or 'pixels')",
     "Output density, number of cells per meter", Int) isa Int
 @test get_kw_or_config_value(:sheet_width_mm ,"Printer consistent capability", "Printable width mm", Int) isa Int
 @test get_kw_or_config_value(:sheet_height_mm ,"Printer consistent capability", "Printable height mm", Int) isa Int

@@ -17,7 +17,7 @@ function water_overlay(fofo, cell_size)
         return true
     end
     ffna = joinpath(fofo, CONSOLIDATED_FNAM)
-    elevations = let 
+    elevations = let
         z = readclose(ffna)
         transpose(z.A[:, :, 1])
     end
@@ -34,6 +34,7 @@ function is_water_surface(elevations, horizontal_distance)
     k = 3.8
     lake_steepness_max = 0.075
     # data
+    @debug "Calculating steepness"
     steep_matrix = steepness_decirad_capped(elevations, horizontal_distance)
     # Boolean result matrix
     lake_matrix(steep_matrix, k, lake_steepness_max, lake_pixels_min)
@@ -41,7 +42,7 @@ end
 
 function save_lakes_overlay_png(lm_bool, elevations, ice_elevation, folder)
     # Hardcoded lake colors
-    water_color = RGBA{N0f8}(0.521, 0.633, 0.764, 1.0) 
+    water_color = RGBA{N0f8}(0.521, 0.633, 0.764, 1.0)
     ice_color = RGBA{N0f8}(0.8, 0.8, 0.8, 1.0)
     transparent = RGBA{N0f8}(0.0, 0.0, 0.0, 0.0)
     # We won't ever print this. The value won't be used. So we specify a standard 300 dpi, disregarding user specs
@@ -69,7 +70,7 @@ end
     steepness_decirad_capped(elevations, horizontal_distance; cap_deg = 1.5)
     ---> Matrix{Float64}
 
-`elevations` is a matrix in the same unit as scalar `horizontal_distance`. 
+`elevations` is a matrix in the same unit as scalar `horizontal_distance`.
 
 Returns local stepness, a matrix of scalars in values of decirad:
 
@@ -84,32 +85,37 @@ function steepness_decirad_capped(elevations, horizontal_distance; cap_deg =  1.
     g1, g2 = imgradients(z_norm, KernelFactors.prewitt)
     # We limit inclination to 86 degree, as a compromise. Many above that value are artifacts.
     map(zip(g1, g2)) do (gr1, gr2)
-        min(10 * atan(hypot(gr1, gr2)), cap_deg * 10 * π / 180) 
+        min(10 * atan(hypot(gr1, gr2)), cap_deg * 10 * π / 180)
     end
 end
 
 
 function lake_matrix(steep_matrix, k, lake_steepness_max, lake_pixels_min)
     # Divide the steepness matrix into segments, based on proximity and steepness difference.
-    # Note that we don't have or use a minimum cell count argument here. will apply a size check later. 
+    # Note that we don't have or use a minimum cell count argument here. will apply a size check later.
+    @debug "First steepness segmentation."
     steep_segments = felzenszwalb(steep_matrix, k)
     is_flat(i) = segment_mean(steep_segments, i) < lake_steepness_max
     is_large(i) = segment_pixel_count(steep_segments, i) >= lake_pixels_min
     # Create a black-and-white image, where we discard small and too steep segments.
     # We do not create a bool matrix, because we want to re-segment the result afterwards.
+    @debug "Grouping segments."
     islake_matrix = map(labels_map(steep_segments)) do i # i is a label, representing a set of pixels.
         Gray{N0f8}(is_large(i) && is_flat(i))
     end
-    # A common artifact is lines across a lake, possibly from power lines. 
+    # A common artifact is lines across a lake, possibly from power lines.
     # Let's grow the lakes, then shrink, with 8-connectivity to add
     # lake shores.
+    @debug "Dilate -> erode lakes."
     dilate!(islake_matrix, copy(islake_matrix))
     erode!(islake_matrix, copy(islake_matrix))
     # We are confident that positives are true positives. Still, we have lots of fake negatives
-    # inside of the lake regions. They would appear as islands that are really just noise, waves, 
+    # inside of the lake regions. They would appear as islands that are really just noise, waves,
     # or recalibration. Most of them coindicentally fall below lake_pixels_min:
+    @debug "Second segmentation."
     cleanup_segments = felzenszwalb(islake_matrix, k, lake_pixels_min)
     # Create a black-and-white image, where any segments with any trace of a lake is a lake.
+    @debug "Cleaning fake islands."
     map(labels_map(cleanup_segments)) do i
         islake = segment_mean(cleanup_segments, i) > 0.0f0
         Gray{Bool}(islake)

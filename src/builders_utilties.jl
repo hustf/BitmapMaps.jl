@@ -1,5 +1,5 @@
 # Utilty functions
-# Argument names 
+# Argument names
 # - smb::SheetMatrixBuilder
 # - sb::SheetBuilder
 # - p - duck typed, can be a GeoArray or a SheetBuilder.
@@ -30,7 +30,7 @@ map_scale_denominator(sb::SheetBuilder) = sb.density_pt_m⁻¹ * cell_to_utm_fac
 
 Adjusted width per sheet is smaller than or equal to `sheet_width_mm` due to an integer number of cells.
 """
-width_adjusted_mm(smb::SheetMatrixBuilder) = ncols(smb) * width_adjusted_mm(first(smb)) 
+width_adjusted_mm(smb::SheetMatrixBuilder) = ncols(smb) * width_adjusted_mm(first(smb))
 width_adjusted_mm(sb::SheetBuilder) = 1000 * width_cell(sb) / sb.density_pt_m⁻¹
 
 """
@@ -46,8 +46,8 @@ height_adjusted_mm(sb::SheetBuilder) = 1000 * height_cell(sb) / sb.density_pt_m�
 """
     southwest_corner(smb::SheetMatrixBuilder)
     northeast_corner(smb::SheetMatrixBuilder)
-    northwest_corner(smb::SheetMatrixBuilder) 
-    southeast_corner(smb::SheetMatrixBuilder) 
+    northwest_corner(smb::SheetMatrixBuilder)
+    southeast_corner(smb::SheetMatrixBuilder)
     northwest_corner(p::SheetBuilder)
     southeast_internal_corner(p::SheetBuilder)
     southeast_external_corner(p::SheetBuilder)
@@ -60,7 +60,7 @@ height_adjusted_mm(sb::SheetBuilder) = 1000 * height_cell(sb) / sb.density_pt_m�
 An entire SheetMatrixBuilder is divided into sheets. Every SheetMatrixBuilder method refers to 'external' borders.
 A SheetBuilder is a subset of a SheetMatrixBuilder. It shares corners with neighbouring sheets.
 Each sheet is divided into cells (i.e. pixels), and each cell is represented by a single geographical position or sampling point.
-    
+
 'external' refers to outside dimensions of the sheet or BitMap, which are larger than 'internal'.
 'internal' refers to the last sampling point within or on the border of 'external' borders.
 
@@ -204,7 +204,7 @@ function closed_polygon_string(smb::SheetMatrixBuilder)
     end
     s
 end
-function closed_polygon_string(sb::SheetBuilder) 
+function closed_polygon_string(sb::SheetBuilder)
     min_x, min_y = southwest_external_corner(sb)
     max_x, max_y = northeast_external_corner(sb)
     closed_box_string((;min_x, min_y, max_x, max_y))
@@ -374,7 +374,7 @@ function show_derived_properties(p)
             printstyled(tb1, "External boundary box as Well Known Text ", color = :green)
         end
     end
-    printstyled("(paste in e.g. https://nvdb-vegdata.github.io/nvdb-visrute/STM ):\n", color = :light_black)
+    printstyled("(paste in wktmap.com or nvdb-vegdata.github.io/nvdb-visrute/STM ):\n", color = :light_black)
     println(tb2, ps)
 end
 
