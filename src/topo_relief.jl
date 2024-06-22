@@ -30,7 +30,7 @@ function _topo_relief(fofo, cell_iter, cell2utm, density_pt_m⁻¹)
     @debug "Render topo relief"
     relief = mapwindow(fr, za, (3, 3), indices = source_indices)
     display(transpose(relief))
-    ffna = joinpath(fofo, BitmapMaps.TOPORELIEF_FNAM)
+    ffna = joinpath(fofo, TOPORELIEF_FNAM)
     @debug "Saving $ffna"
     save_png_with_phys(ffna, transpose(relief), density_pt_m⁻¹)
     true
@@ -41,9 +41,9 @@ function generate_render_func(f_hypso)
     # It returns an RGB{N0f8}.
     (M::Matrix) -> @inbounds begin
         @assert size(M) == (3, 3)
-        deriv_south_north = (M[2] - M[8]) / 2
-        deriv_east_west = (M[6] - M[4]) / 2
-        z = M[2, 2]
+        _, w, _, n, z, s, _, e, _ = M
+        deriv_south_north = (n - s) / 2
+        deriv_east_west = (w - e) / 2
         # Surface normal unit vectors, to the upper side.
         mag = sqrt(1 + deriv_south_north^2 + deriv_east_west^2)
         n_sn = -deriv_south_north / mag
@@ -70,7 +70,7 @@ function reflected_color(direction_no, z, n_sn, n_ew, n_up, f_hypso)
     az_deg = azimuth_deg[direction_no]
     el_deg = elevation_deg[direction_no]
     lambert_reflection = lambert_shade(n_sn, n_ew, n_up, az_deg * π / 180, el_deg * π / 180)
-    reflection = convert(N0f8, lambert_reflection^expon)
+    reflection = convert(N0f8, min(1.0f0, lambert_reflection^expon))
     f_hypso(z, direction_no) * reflection
 end
 function shade_exponent(z)

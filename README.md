@@ -54,7 +54,7 @@ run_bitmapmap_pipeline()
 We're streamlining the production and collecting code, after an intial batch of maps with scripting, ad hoc calculations and various local packages. 
 Code is being adapted from environment 'geoarrays', package 'RouteMap.jl' ' / example/ split ' and environment 'tutorial_images' / 'image segmentation.jl'.
 
-We implemented and tested up to step 7 here, and have a skeleton for steps 8. 
+We implemented and tested up to step 8 here, and have a skeleton for step 11. 
 
 We have a common and well-checked interface for inspection: `show_derived_properties` works consistently for builder types, (multiple) file names and GeoArrays.
 

@@ -81,4 +81,5 @@ include("consolidate_elevation_data.jl")
 include("user_utilties.jl")
 include("water.jl")
 include("contour.jl")
+include("layers.jl")
 end

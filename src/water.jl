@@ -45,9 +45,7 @@ function save_lakes_overlay_png(lm_bool, elevations, ice_elevation, folder)
     water_color = RGBA{N0f8}(0.521, 0.633, 0.764, 1.0)
     ice_color = RGBA{N0f8}(0.8, 0.8, 0.8, 1.0)
     transparent = RGBA{N0f8}(0.0, 0.0, 0.0, 0.0)
-    # We won't ever print this. The value won't be used. So we specify a standard 300 dpi, disregarding user specs
-    # for the bitmapmap
-    density_pt_m⁻¹ = 11811
+
     # Create the colourful, transparent image
     img = map(zip(lm_bool, elevations)) do (is_lake, elevation)
         if is_lake == Gray{Bool}(true)
@@ -60,8 +58,11 @@ function save_lakes_overlay_png(lm_bool, elevations, ice_elevation, folder)
             transparent
         end
     end
-    # And save it
-    save_png_with_phys(joinpath(folder, BitmapMaps.WATER_FNAM), img, density_pt_m⁻¹)
+    # We won't ever print this. The value won't be used. So we specify a standard 300 dpi, disregarding user specs
+    # for the bitmapmap
+    density_pt_m⁻¹ = 11811
+    @debug "Saving $ffna"
+    save_png_with_phys(joinpath(folder, WATER_FNAM), img, density_pt_m⁻¹)
     # Feedback for testing purposes
     img
 end
