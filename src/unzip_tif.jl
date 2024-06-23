@@ -1,4 +1,5 @@
-
+# Step in pipeline. 
+# Downloaded elevation data is usually zipped.
 """
     unzip_tif(sb::SheetBuilder)
     unzip_tif(fofo)

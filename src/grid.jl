@@ -1,4 +1,5 @@
-# Creates utm grid lines overlay
+# Step in pipeline.
+# Creates utm grid lines overlay.
 # # Output is an image file per sheet, for manual touch-up.
 
 """
@@ -8,6 +9,10 @@
 """
 grid_overlay(sb::SheetBuilder) = grid_overlay(full_folder_path(sb), sb.cell_iter, cell_to_utm_factor(sb), sb.f_I_to_utm)
 function grid_overlay(fofo, cell_iter, cell2utm, f_I_to_utm)
+    if isfile(joinpath(fofo, COMPOSITE_FNAM))
+        @debug "$COMPOSITE_FNAM in $fofo already exists. Exiting `grid_overlay`."
+        return true
+    end
     if isfile(joinpath(fofo, GRID_FNAM))
         @debug "$GRID_FNAM in $fofo already exists. Exiting `grid_overlay`."
         return true

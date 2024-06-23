@@ -1,3 +1,7 @@
+# Step in pipeline.
+# Identifying water surfaces is a time consuming operation.
+# Results look good, but may benefit from manual touch-up of the output file.
+# This might probably be speed up a good deal.
 """
     water_overlay(sb::SheetBuilder)
     water_overlay(fofo)
@@ -12,6 +16,14 @@ function water_overlay(sb::SheetBuilder)
     water_overlay(full_folder_path(sb), cell_size)
 end
 function water_overlay(fofo, cell_size)
+    if isfile(joinpath(fofo, COMPOSITE_FNAM))
+        @debug "$COMPOSITE_FNAM in $fofo already exists. Exiting `water_overlay`."
+        return true
+    end
+    if ! isfile(joinpath(fofo, CONSOLIDATED_FNAM))
+        @debug "$CONSOLIDATED_FNAM in $fofo does not exist. Exiting `water_overlay`."
+        return false
+    end
     if isfile(joinpath(fofo, WATER_FNAM))
         @debug "$WATER_FNAM in $fofo already exists. Exiting `water_overlay`."
         return true

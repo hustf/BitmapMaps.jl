@@ -1,3 +1,4 @@
+# This pipeline is the most central part of the package.
 """
     run_bitmapmap_pipeline(; complete_sheets_first = true, kwds...)
     ---> SheetMatrixBuilder
@@ -115,7 +116,7 @@ function process_job(smb, complete_sheets_first)
     Make vector graphics and text covering the full map area. You may use RouteMap.jl for this step.
     Threading..
     =#
-    operations_order = [establish_folder, unzip_tif, consolidate_elevation_data, water_overlay, topo_relief, contour_lines_overlay, grid_overlay, join_layers]
+    operations_order = [establish_folder, unzip_tif, consolidate_elevation_data, water_overlay, topo_relief, contour_lines_overlay, grid_overlay, ridge_overlay, join_layers]
     # Consider sharing an in-memory z-map and gradient map between operations.... No need to redo it.
     if complete_sheets_first
         for sb in smb # Might do this in parallel? Though a lot will be wating for file i/o...

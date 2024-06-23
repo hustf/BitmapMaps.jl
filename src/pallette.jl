@@ -1,3 +1,4 @@
+# Used by topo_relief, a step in pipeline.
 # Elevations map into three hypsometric colour pallettes.
 # The pallettes are hard-coded so you must like them.
 

@@ -1,4 +1,3 @@
-
 function _prepare_init_file_configuration(io)
     # Add a comment at top (IniFile.jl has no functions for comments)
     msg = """

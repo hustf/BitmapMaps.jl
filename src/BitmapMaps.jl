@@ -35,7 +35,7 @@ using GeoArrays: GeoArray, bbox, bbox_overlap, Vertex, coords, indices, crop
 import Dates
 # Calculating gradients, topo map
 import ImageFiltering
-using ImageFiltering: imgradients, KernelFactors, mapwindow
+using ImageFiltering: imgradients, KernelFactors, mapwindow, Kernel, imfilter
 # Inspect arrays...
 import ImageCore
 using ImageCore: scaleminmax
@@ -70,6 +70,7 @@ const TOPORELIEF_FNAM = "Toporelief.png"
 const WATER_FNAM = "Water.png"
 const CONTOUR_FNAM = "Contour.png"
 const GRID_FNAM = "Grid.png"
+const RIDGE_FNAM = "Ridge.png"
 const COMPOSITE_FNAM = "Composite.png"
 
 include("ini_file.jl")
@@ -87,5 +88,6 @@ include("user_utilties.jl")
 include("water.jl")
 include("contour.jl")
 include("grid.jl")
+include("ridges.jl")
 include("layers.jl")
 end

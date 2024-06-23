@@ -1,3 +1,4 @@
+# Step in pipeline.
 # Merges foreground layers onto background using the α / opacity channel.
 # Output is an image file per sheet.
 
@@ -24,7 +25,8 @@ function join_layers(fofo, cell_iter, density_pt_m⁻¹)
 end
 function _join_layers(fofo, cell_iter)
     # Note, an in-place version would be faster.
-    comp = composite_image(joinpath(fofo, TOPORELIEF_FNAM), joinpath(fofo, WATER_FNAM))
+    comp = composite_image(joinpath(fofo, TOPORELIEF_FNAM), joinpath(fofo, RIDGE_FNAM))
+    comp = composite_image(comp, joinpath(fofo, WATER_FNAM))
     comp = composite_image(comp, joinpath(fofo, CONTOUR_FNAM))
     comp = composite_image(comp, joinpath(fofo, GRID_FNAM))
     display(comp)

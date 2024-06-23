@@ -1,3 +1,4 @@
+# Step in pipeline.
 # Creates elevation contour lines overlay from elevation data.
 # # Output is an image file per sheet, for manual touch-up.
 
@@ -8,6 +9,10 @@
 """
 contour_lines_overlay(sb::SheetBuilder) = contour_lines_overlay(full_folder_path(sb), sb.cell_iter, cell_to_utm_factor(sb))
 function contour_lines_overlay(fofo, cell_iter, cell2utm)
+    if isfile(joinpath(fofo, COMPOSITE_FNAM))
+        @debug "$COMPOSITE_FNAM in $fofo already exists. Exiting `contour_lines_overlay`."
+        return true
+    end
     if isfile(joinpath(fofo, CONTOUR_FNAM))
         @debug "$CONTOUR_FNAM in $fofo already exists. Exiting `contour_lines_overlay`."
         return true

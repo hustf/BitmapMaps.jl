@@ -1,3 +1,4 @@
+# Step in pipeline.
 # This renders a topographic relief map.
 
 """
@@ -9,6 +10,10 @@ function topo_relief(sb::SheetBuilder)
     topo_relief(full_folder_path(sb), sb.cell_iter, cell_to_utm_factor(sb), sb.density_pt_m⁻¹)
 end
 function topo_relief(fofo, cell_iter, cell2utm, density_pt_m⁻¹)
+    if isfile(joinpath(fofo, COMPOSITE_FNAM))
+        @debug "$COMPOSITE_FNAM in $fofo already exists. Exiting `topo_relief`."
+        return true
+    end
     if isfile(joinpath(fofo, TOPORELIEF_FNAM))
         @debug "$TOPORELIEF_FNAM in $fofo already exists. Exiting `topo_relief`."
         return true

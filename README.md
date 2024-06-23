@@ -32,15 +32,16 @@ Steps in the pipeline, in sequece:
 2) Establish folder hierarchy for storing intermediate data (`establish_folder`).
 3) User action if missing: 
   - Make requests for public data at høydedata.no (requires email). Download to each sheet's folder.
-  - Or, if data exists locally: (`copy_relevant_tifs_to_folder`)
-4) Unzip elevation data (`unzip_tif`)
+  - Or, if data exists locally: `copy_relevant_tifs_to_folder`
+4) Unzip elevation data (`unzip_tif`).
 5) Consolidate elevation data (`consolidate_elevation_data`).
 6) Identify water surfaces (`water_overlay`).
 7) Make topographic reliefs (`topo_relief`) from a hardcoded hypsometric colour pallette.
-8) Make elevation contours (`contour_lines_overlay`)
-9) Add UTM grid (`grid_overlay`)
-10) Make vector graphics and text covering the full map area. You may use RouteMap.jl for this step.
-11) Composite bitmap and vector graphics (`join_layers`)
+8) Make elevation contours (`contour_lines_overlay`).
+9) Add UTM grid (`grid_overlay`).
+10) Mark dieders and ridges (`ridge_overlay`).
+11) Make vector graphics and text covering the full map area. You may use RouteMap.jl for this step.
+12) Composite bitmap and vector graphics (`join_layers`).
 
 # Example
 ```
@@ -51,7 +52,8 @@ run_bitmapmap_pipeline()
 ```
 # Current state
 
-Code has been adapted from environments 'geoarrays' and 'tutorial_images, as well as package 'RouteMap.jl'. Step 10 is currently missing. `GeoArrays.jl` has breaking changes in  version 0.9 (we currently pin to 0.8.5). Cairo / Pango has long-standing font issues on Windows, we currently pin the version. We could use Inkscape, but it seems to be affected as well.
+Code has been adapted from environments 'geoarrays' and 'tutorial_images, as well as package 'RouteMap.jl'. Step 11 is currently missing.
+Step 10 needs some tweaking and is temporary. `GeoArrays.jl` has breaking changes in  version 0.9 (we currently pin to 0.8.5). Cairo / Pango has long-standing font issues on Windows, we currently pin the version. We could use Inkscape, but it seems to be affected as well.
 
 Some of the changes from scripting workflow:
 
@@ -70,13 +72,11 @@ Some of the changes from scripting workflow:
 
 # Wishlist (after version 0.1)
 
-- Side-by-side overview
+- Side-by-side overview of all sheets
 - Show correct grid for the area, e.g. UTM32.
 - Contour lines for 20 m elevation step.
 - Mark maxima, use primary top measurement.
 - Check against irrelevant keywords.
-- Ridge lines, divergence, curl.
-
 
 # Bounding box functions
 
