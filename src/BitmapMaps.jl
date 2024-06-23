@@ -47,6 +47,9 @@ import ImageSegmentation
 using ImageSegmentation: felzenszwalb, labels_map, segment_pixel_count, segment_mean
 import ImageMorphology
 using ImageMorphology: erode!, dilate!
+# Overlays to composite
+import ColorBlendModes
+using ColorBlendModes: CompositeDestinationOver
 # Exports
 export save_png_with_phys
 export run_bitmapmap_pipeline
@@ -66,6 +69,8 @@ const CONSOLIDATED_FNAM = "Consolidated.tif"
 const TOPORELIEF_FNAM = "Toporelief.png"
 const WATER_FNAM = "Water.png"
 const CONTOUR_FNAM = "Contour.png"
+const GRID_FNAM = "Grid.png"
+const COMPOSITE_FNAM = "Composite.png"
 
 include("ini_file.jl")
 include("png_phys.jl")
@@ -81,5 +86,6 @@ include("consolidate_elevation_data.jl")
 include("user_utilties.jl")
 include("water.jl")
 include("contour.jl")
+include("grid.jl")
 include("layers.jl")
 end

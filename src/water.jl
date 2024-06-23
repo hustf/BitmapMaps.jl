@@ -27,26 +27,12 @@ function water_overlay(fofo, cell_size)
     true
 end
 
-function is_water_surface(elevations, horizontal_distance)
-    # Hardcoded parmeters for identifying lake regions from steepness using Felzenszwalb regions
-    lake_area_min = 900 # m²
-    lake_pixels_min = Int(round(lake_area_min / horizontal_distance^2))
-    k = 3.8
-    lake_steepness_max = 0.075
-    # data
-    @debug "Calculating steepness"
-    steep_matrix = steepness_decirad_capped(elevations, horizontal_distance)
-    # Boolean result matrix
-    lake_matrix(steep_matrix, k, lake_steepness_max, lake_pixels_min)
-end
-
 function save_lakes_overlay_png(lm_bool, elevations, ice_elevation, folder)
     # Hardcoded lake colors
     water_color = RGBA{N0f8}(0.521, 0.633, 0.764, 1.0)
     ice_color = RGBA{N0f8}(0.8, 0.8, 0.8, 1.0)
     transparent = RGBA{N0f8}(0.0, 0.0, 0.0, 0.0)
-
-    # Create the colourful, transparent image
+    # Create the colourful, transparent image (in full resolution, disregarding cell_to_utm_factor)
     img = map(zip(lm_bool, elevations)) do (is_lake, elevation)
         if is_lake == Gray{Bool}(true)
             if elevation > ice_elevation
@@ -61,11 +47,27 @@ function save_lakes_overlay_png(lm_bool, elevations, ice_elevation, folder)
     # We won't ever print this. The value won't be used. So we specify a standard 300 dpi, disregarding user specs
     # for the bitmapmap
     density_pt_m⁻¹ = 11811
+    ffna = joinpath(folder, WATER_FNAM)
     @debug "Saving $ffna"
-    save_png_with_phys(joinpath(folder, WATER_FNAM), img, density_pt_m⁻¹)
+    save_png_with_phys(ffna, img, density_pt_m⁻¹)
     # Feedback for testing purposes
     img
 end
+
+
+function is_water_surface(elevations, horizontal_distance)
+    # Hardcoded parmeters for identifying lake regions from steepness using Felzenszwalb regions
+    lake_area_min = 900 # m²
+    lake_pixels_min = Int(round(lake_area_min / horizontal_distance^2))
+    k = 3.8
+    lake_steepness_max = 0.075
+    # data
+    @debug "Calculating steepness"
+    steep_matrix = steepness_decirad_capped(elevations, horizontal_distance)
+    # Boolean result matrix
+    lake_matrix(steep_matrix, k, lake_steepness_max, lake_pixels_min)
+end
+
 
 """
     steepness_decirad_capped(elevations, horizontal_distance; cap_deg = 1.5)

@@ -12,7 +12,14 @@ function contour_lines_overlay(fofo, cell_iter, cell2utm)
         @debug "$CONTOUR_FNAM in $fofo already exists. Exiting `contour_lines_overlay`."
         return true
     end
-    _elev_contour(fofo, cell_iter, cell2utm)
+    res = _elev_contour(fofo, cell_iter, cell2utm)
+    ffna = joinpath(fofo, CONTOUR_FNAM)
+    # We won't ever print this. The value won't be used. So we specify a standard 300 dpi, disregarding user specs
+    # for the bitmapmap
+    density_pt_m⁻¹ = 11811
+    @debug "Saving $ffna"
+    save_png_with_phys(ffna, res, density_pt_m⁻¹)
+    true
 end
 function _elev_contour(fofo, cell_iter, cell2utm)
     # Read elevation
@@ -27,13 +34,7 @@ function _elev_contour(fofo, cell_iter, cell2utm)
     @debug "Render elevation contour lines"
     contour = mapwindow(fc, za, (9, 9), indices = source_indices)
     display(transpose(contour))
-    ffna = joinpath(fofo, CONTOUR_FNAM)
-    # We won't ever print this. The value won't be used. So we specify a standard 300 dpi, disregarding user specs
-    # for the bitmapmap
-    density_pt_m⁻¹ = 11811
-    @debug "Saving $ffna"
-    save_png_with_phys(ffna, transpose(contour), density_pt_m⁻¹)
-    true
+    transpose(contour)
 end
 
 function generate_elev_contour_func(linecol, transpcol; width_1000 = 8, width_100 = 4)

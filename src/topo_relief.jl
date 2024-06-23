@@ -17,7 +17,11 @@ function topo_relief(fofo, cell_iter, cell2utm, density_pt_m⁻¹)
         @debug "$CONSOLIDATED_FNAM in $fofo does not exist. Exiting `topo_relief`."
         return false
     end
-    _topo_relief(fofo, cell_iter, cell2utm, density_pt_m⁻¹)
+    res = _topo_relief(fofo, cell_iter, cell2utm, density_pt_m⁻¹)
+    ffna = joinpath(fofo, TOPORELIEF_FNAM)
+    @debug "Saving $ffna"
+    save_png_with_phys(ffna, res, density_pt_m⁻¹)
+    true
 end
 function _topo_relief(fofo, cell_iter, cell2utm, density_pt_m⁻¹)
     fr = generate_render_func(generate_directional_pallette_func())
@@ -30,10 +34,7 @@ function _topo_relief(fofo, cell_iter, cell2utm, density_pt_m⁻¹)
     @debug "Render topo relief"
     relief = mapwindow(fr, za, (3, 3), indices = source_indices)
     display(transpose(relief))
-    ffna = joinpath(fofo, TOPORELIEF_FNAM)
-    @debug "Saving $ffna"
-    save_png_with_phys(ffna, transpose(relief), density_pt_m⁻¹)
-    true
+    transpose(relief)
 end
 
 function generate_render_func(f_hypso)

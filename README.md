@@ -40,7 +40,7 @@ Steps in the pipeline, in sequece:
 8) Make elevation contours (`contour_lines_overlay`)
 9) Add UTM grid (`grid_overlay`)
 10) Make vector graphics and text covering the full map area. You may use RouteMap.jl for this step.
-11) Composite bitmap and vector graphics 
+11) Composite bitmap and vector graphics (`join_layers`)
 
 # Example
 ```
@@ -51,28 +51,31 @@ run_bitmapmap_pipeline()
 ```
 # Current state
 
-We're streamlining the production and collecting code, after an intial batch of maps with scripting, ad hoc calculations and various local packages. 
-Code is being adapted from environment 'geoarrays', package 'RouteMap.jl' ' / example/ split ' and environment 'tutorial_images' / 'image segmentation.jl'.
-
-We implemented and tested up to step 8 here, and have a skeleton for step 11. 
-
-We have a common and well-checked interface for inspection: `show_derived_properties` works consistently for builder types, (multiple) file names and GeoArrays.
-
-The pipeline can now reuse `SheetMatrixBuilder` and modify it by steps, using keywords.
+Code has been adapted from environments 'geoarrays' and 'tutorial_images, as well as package 'RouteMap.jl'. Step 10 is currently missing. `GeoArrays.jl` has breaking changes in  version 0.9 (we currently pin to 0.8.5). Cairo / Pango has long-standing font issues on Windows, we currently pin the version. We could use Inkscape, but it seems to be affected as well.
 
 Some of the changes from scripting workflow:
 
 - Configurations stored in BitmapMaps.ini.
 - Printing metadata is made and stored in .png files. Settings are respected by e.g. `Gimp`, `MS Paint`, and `IrFanview`.
-- Identifying water surface is done with a new algorithm. Manual corrections will hopefully be less of a requirement.
+- Water surfaces are found with a new algorithm. Manual corrections will hopefully be less of a requirement.
 - The colour palette is FixedPointNumbers.Normed{UInt8, 8}, not Float64 - based.
 - Topographic relief is rendered cell by cell using `ImageFiltering.mapwindow`. Renders independently from output map resolution.
 - Step 5, 'consolidation' stores an inspectable .tif file.
 - The SheetMatrixBuilder and SheetBuilder types are more flexible than storing specifications in folder names. 
+- The pipeline can reuse `SheetMatrixBuilder` and modify it by steps, using keywords.
 - Change sheet numbering to start in SW corner. See figure:
 
 <img src="resource/matrix_sheet_cell_utm.svg" alt = "resource/matrix_sheet_cell_utm.svg" style="display: inline-block; margin: 0 auto; max-width: 640px">
 
+
+# Wishlist (after version 0.1)
+
+- Side-by-side overview
+- Show correct grid for the area, e.g. UTM32.
+- Contour lines for 20 m elevation step.
+- Mark maxima, use primary top measurement.
+- Check against irrelevant keywords.
+- Ridge lines, divergence, curl.
 
 
 # Bounding box functions
