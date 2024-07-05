@@ -32,6 +32,9 @@ function _prepare_init_file_configuration(io)
     entry("Number of printable sheets", "(rows columns)", "(3 4)"; comm = ":nrc")
     entry("Cell to utm factor", "Utm unit distance between elevation sampling points", "3"; comm = ":cell_to_utm_factor\r\n  #    How many 'utm metres' does a 'cell' / 'dot' / 'point' or 'pixel' side represent?")
     entry("File folder", "Top folders path under homedir()", "bitmapmaps/default"; comm = ":pth \r\n  #    Folder hierarchy will be created under homedir().\r\n  #    For copying in files, see 'copy_relevant_tifs_to_folder'")
+    entry("Line thicknesses", "Elevation contour 20m", "1  "; comm = "No keyword. \r\n  #  Values: 0, 1, 3, 5...")
+    entry("Line thicknesses", "Elevation contour 100m", "3 "; comm = "No keyword. \r\n  #  Values: 0, 1, 3, 5...")
+    entry("Line thicknesses", "Elevation contour 1000m", "5"; comm = "No keyword. \r\n  #  Values: 0, 1, 3, 5...")
     # To file..
     println(io, ini)
 end

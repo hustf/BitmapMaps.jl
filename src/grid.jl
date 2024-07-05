@@ -34,7 +34,7 @@ function _grid_utm(fofo, cell_iter, cell2utm, f_I_to_utm)
     @debug "Render grid lines"
     fg = generate_grid_utm_func(linecol, transpcol, f_I_to_utm)
     grid = map(fg, cell_iter)
-    display(grid)
+    #display(grid)
     grid
 end
 

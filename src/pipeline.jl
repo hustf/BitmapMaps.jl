@@ -24,7 +24,7 @@ SheetMatrixBuilder((4873, 6909048), # southwest_corner
                                275, # sheet_height_mm
                              11811, # density_pt_m⁻¹
               "bitmapmaps/default") # pth
-        Derived properties (all as (easting, northing)):
+        [easting, northing] derived properties:
           Bounding Box (BB) SE-NW            = (4873 6909048)-(18403 6928536)
           Northeast internal corner          = (18400, 6928536) - most northeastern sample point
           Geo centre                         = (11638.0, 6.918792e6)
@@ -52,6 +52,9 @@ function run_bitmapmap_pipeline(; complete_sheets_first = true, kwds...)
     ok_res = process_job(smb, complete_sheets_first)
     if ok_res
         printstyled("Finished job in folder $(joinpath(homedir(), smb.pth))\n", color = :yellow)
+        for sb in smb
+            printstyled(repeat(' ', 56), sb.pthsh[length(smb.pth) + 1:end], "\n", color = :yellow)
+        end
     end
     smb
 end

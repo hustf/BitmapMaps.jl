@@ -24,6 +24,7 @@ It sets the pHYs chunk values to `pt_m⁻¹` for both vertical and horizontal, u
 If the A4 printable width is 0.191 m and the number of pixels or dots in the image is 640:
 
     pt_m⁻¹ == Int(round(640 / 0.191)) == 3351
+# TODO: make density a keyword with default 11811.
 """
 function save_png_with_phys(ffna::String,
         image::S,

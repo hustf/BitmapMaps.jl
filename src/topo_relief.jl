@@ -38,7 +38,7 @@ function _topo_relief(fofo, cell_iter, cell2utm, density_pt_m⁻¹)
     source_indices = (1:cell2utm:(nx * cell2utm), 1:cell2utm:(ny * cell2utm))
     @debug "Render topo relief"
     relief = mapwindow(fr, za, (3, 3), indices = source_indices)
-    display(transpose(relief))
+    #display(transpose(relief))
     transpose(relief)
 end
 

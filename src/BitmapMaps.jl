@@ -9,7 +9,7 @@ import ImageShow
 using FileIO: load
 # For adding physical print widths to png files in png_phys.jl
 import PNGFiles
-using PNGFiles: N0f8, RGBA, RGB, AbstractGray, AbstractRGB, Gray
+using PNGFiles: N0f8
 using PNGFiles: _save, png_init_io, close_png, png_uint_32
 using PNGFiles: Z_BEST_SPEED, Z_RLE, PNG_FILTER_PAETH, Z_DEFAULT_STRATEGY
 using PNGFiles: Z_FIXED, Z_NO_COMPRESSION, Z_BEST_COMPRESSION
@@ -35,21 +35,26 @@ using GeoArrays: GeoArray, bbox, bbox_overlap, Vertex, coords, indices, crop
 import Dates
 # Calculating gradients, topo map
 import ImageFiltering
-using ImageFiltering: imgradients, KernelFactors, mapwindow, Kernel, imfilter
+using ImageFiltering: imgradients, KernelFactors, mapwindow, mapwindow!, Kernel, imfilter, centered
 # Inspect arrays...
 import ImageCore
 using ImageCore: scaleminmax
 # Pick color from lightness
 import Colors
 import ColorTypes
+using ColorTypes: RGBA, RGB, AbstractGray, AbstractRGB, Gray, red, green, blue # Todo clean
 # Identify water
 import ImageSegmentation
 using ImageSegmentation: felzenszwalb, labels_map, segment_pixel_count, segment_mean
 import ImageMorphology
-using ImageMorphology: erode!, dilate!
+using ImageMorphology: erode!, dilate!, dilate, GuoAlgo, thinning, strel_diamond
+# Elevation contours
+using ColorTypes: GrayA, gray, alpha
+using ImageCore: channelview
+using ImageFiltering: FIRTiled, Fill
 # Overlays to composite
 import ColorBlendModes
-using ColorBlendModes: CompositeDestinationOver
+using ColorBlendModes: CompositeDestinationOver, BlendLighten
 # Exports
 export save_png_with_phys
 export run_bitmapmap_pipeline
@@ -75,6 +80,7 @@ const COMPOSITE_FNAM = "Composite.png"
 
 include("ini_file.jl")
 include("png_phys.jl")
+include("filter.jl")
 include("pallette.jl")
 include("builders.jl")
 include("builders_utilties.jl")
@@ -90,4 +96,5 @@ include("contour.jl")
 include("grid.jl")
 include("ridges.jl")
 include("layers.jl")
+
 end

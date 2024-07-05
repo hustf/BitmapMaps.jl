@@ -43,15 +43,15 @@ function _ridge(fofo, cell_iter, cell2utm, density_pt_m⁻¹)
     transpcol = RGBA{N0f8}(0, 0, 1, 0)
     ridge = map(source_indices) do I 
         x = divergence[I]
-        if  x > 0.1
+        if  x > 1 #0.1
             dieder
-        elseif x < -0.05
+        elseif x < -1 # -0.05
             corner
         else
             transpcol
         end
     end
     # TODO: Remove small regions of dieders and ridges.
-    display(transpose(ridge))
+    #display(transpose(ridge))
     transpose(ridge)
 end

@@ -26,6 +26,12 @@ end
 @testset "Test user utilties" begin
     include("t_user_geoarray_utilties.jl")
 end
+@testset "Test filter" begin
+    include("t_filter.jl")
+end
+@testset "Test elevation contour" begin
+    include("t_contour.jl")
+end
 @testset "Test BitmapMaps pipeline" begin
     include("t_pipeline.jl")
 end
