@@ -1,34 +1,37 @@
 # Utility for saving pngs 
 """
     save_png_with_phys(ffna::String,
-        image::S,
-        pt_m⁻¹::Int;
+        image::S;
+        density_pt_m⁻¹::Int == 11811,
         compression_level::Integer = Z_BEST_SPEED,
         compression_strategy::Integer = Z_RLE,
         filters::Integer = Int(PNG_FILTER_PAETH),
         file_gamma::Union{Nothing,Float64} = nothing,
         background::Union{Nothing,UInt8,AbstractGray,AbstractRGB} = nothing,
-    ) where {
-        T,
-        S<:Union{AbstractMatrix{T},AbstractArray{T,3}}
-    }
+        ) where {
+            T,
+            S<:Union{AbstractMatrix{T},AbstractArray{T,3}}
+        }
         ---> nothing
 
-For exact printing size control, saves a .png and sets the more advanced printing related metadata.
+For exact printing size control, this saves a .png and sets the more advanced printing related metadata.
 This is used for printing with e.g. IrfanView, but is ignored by the default win64 printing
 via default apps.
-It sets the pHYs chunk values to `pt_m⁻¹` for both vertical and horizontal, unlike 'PNGFiles.save'.
+It difffers from 'PNGFiles.save', in that tt sets the pHYs chunk values to `density_pt_m⁻¹` for both vertical and horizontal.
+Default density is
 
     300 dpi == 300 dots per inch == 300 dots inch⁻¹ == 300 * / (0.0254 m) == 11811 dots·m⁻¹
 
+# Example 
+
 If the A4 printable width is 0.191 m and the number of pixels or dots in the image is 640:
 
-    pt_m⁻¹ == Int(round(640 / 0.191)) == 3351
-# TODO: make density a keyword with default 11811.
+    density_pt_m⁻¹ = Int(round(640 / 0.191)) == 3351
+    save_png_with_phys("file.png", image; density_pt_m⁻¹)
 """
 function save_png_with_phys(ffna::String,
-        image::S,
-        density_pt_m⁻¹::Int;
+        image::S;
+        density_pt_m⁻¹::Int = 11811,
         compression_level::Integer = Z_BEST_SPEED,
         compression_strategy::Integer = Z_RLE,
         filters::Integer = Int(PNG_FILTER_PAETH),
@@ -45,9 +48,6 @@ function save_png_with_phys(ffna::String,
     fp = ccall(:fopen, Ptr{Cvoid}, (Cstring, Cstring), ffna, "wb")
     fp == C_NULL && error("Could not open $(ffna) for writing")
     png_ptr = create_write_struct()
-    # We're saving intermediate files without respecting density_pt_m⁻¹.
-    # This would be confusing to the user. Hence, we're dropping the debug log of it.
-    #@debug "save_png_with_phys:" ffna png_ptr density_pt_m⁻¹
     info_ptr = create_info_struct(png_ptr)
     png_init_io(png_ptr, fp)
     # Set the pHYs chunk here, unlike 'PNGFiles.save'

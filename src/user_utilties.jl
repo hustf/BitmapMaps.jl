@@ -36,13 +36,13 @@ function copy_relevant_tifs_to_folder(source_folder, destination_folder)
     for cafna in cs
         printstyled(stdout, repeat(' ', 8), cafna , "\n"; color = :light_black)
         if is_source_relevant(d, cafna)
-            @debug "Found relevant file $cafna"
+            @debug "    Found relevant file $cafna"
             dfna = file_name_at_dest(cafna, destination_folder)
             cp(cafna, dfna)
             push!(destination_files, dfna)
         else
             bbs = closed_box_string(d)
-            @debug "Ignored copying $(splitdir(cafna)[end]) because it does not overlap the geographical region $bbs"
+            @debug "    Ignored copying $(splitdir(cafna)[end]) because it does not overlap the geographical region $bbs"
         end
     end
     destination_files

@@ -12,7 +12,7 @@ for candidates for deletion. Just keep the zip file and CONSOLIDATED_FNAM.
 unzip_tif(sb::SheetBuilder) = unzip_tif(full_folder_path(sb))
 function unzip_tif(fofo)
     if isfile(joinpath(fofo, CONSOLIDATED_FNAM))
-        @debug "$CONSOLIDATED_FNAM in $fofo already exists. Exiting `unzip_tif`."
+        @debug "    $CONSOLIDATED_FNAM in $fofo already exists. Exiting `unzip_tif`"
         return true
     end
     zipfiles = filter(f-> endswith(f, ".zip"), readdir(fofo, join = true))
@@ -49,10 +49,10 @@ function _unzip_tif(zipfile)
                 end
                 # Check to see if the new file has the same content.
                 if is_files_equal(full_unique_name, fullFilePath)
-                    @debug "Name, path and content similarity, coming from two different zip files. Removed duplicate."
+                    @debug "    Name, path and content similarity, coming from two different zip files. Removed duplicate"
                     rm(full_unique_name)
                 else
-                    @debug "Name and path similarity, made unique file namme."
+                    @debug "    Name and path similarity => made unique file name"
                 end
             end
         end

@@ -10,20 +10,17 @@
 grid_overlay(sb::SheetBuilder) = grid_overlay(full_folder_path(sb), sb.cell_iter, cell_to_utm_factor(sb), sb.f_I_to_utm)
 function grid_overlay(fofo, cell_iter, cell2utm, f_I_to_utm)
     if isfile(joinpath(fofo, COMPOSITE_FNAM))
-        @debug "$COMPOSITE_FNAM in $fofo already exists. Exiting `grid_overlay`."
+        @debug "    $COMPOSITE_FNAM in $fofo already exists. Exiting `grid_overlay`"
         return true
     end
     if isfile(joinpath(fofo, GRID_FNAM))
-        @debug "$GRID_FNAM in $fofo already exists. Exiting `grid_overlay`."
+        @debug "    $GRID_FNAM in $fofo already exists. Exiting `grid_overlay`"
         return true
     end
     res = _grid_utm(fofo, cell_iter, cell2utm, f_I_to_utm)
     ffna = joinpath(fofo, GRID_FNAM)
-    # We won't ever print this. The value won't be used. So we specify a standard 300 dpi, disregarding user specs
-    # for the bitmapmap
-    density_pt_m⁻¹ = 11811
-    @debug "Saving $ffna"
-    save_png_with_phys(ffna, res, density_pt_m⁻¹)
+    @debug "    Saving $ffna"
+    save_png_with_phys(ffna, res)
     true
 end
 function _grid_utm(fofo, cell_iter, cell2utm, f_I_to_utm)
@@ -31,7 +28,7 @@ function _grid_utm(fofo, cell_iter, cell2utm, f_I_to_utm)
     ny, nx = size(cell_iter)
     linecol = RGBA{N0f8}(1.0, 0.843, 0.0, 0.651)
     transpcol = RGBA{N0f8}(0, 0, 0, 0)
-    @debug "Render grid lines"
+    @debug "    Render grid lines"
     fg = generate_grid_utm_func(linecol, transpcol, f_I_to_utm)
     grid = map(fg, cell_iter)
     #display(grid)

@@ -17,15 +17,15 @@ function water_overlay(sb::SheetBuilder)
 end
 function water_overlay(fofo, cell_size)
     if isfile(joinpath(fofo, COMPOSITE_FNAM))
-        @debug "$COMPOSITE_FNAM in $fofo already exists. Exiting `water_overlay`."
+        @debug "    $COMPOSITE_FNAM in $fofo already exists. Exiting `water_overlay`"
         return true
     end
     if ! isfile(joinpath(fofo, CONSOLIDATED_FNAM))
-        @debug "$CONSOLIDATED_FNAM in $fofo does not exist. Exiting `water_overlay`."
+        @debug "    $CONSOLIDATED_FNAM in $fofo does not exist. Exiting `water_overlay`"
         return false
     end
     if isfile(joinpath(fofo, WATER_FNAM))
-        @debug "$WATER_FNAM in $fofo already exists. Exiting `water_overlay`."
+        @debug "    $WATER_FNAM in $fofo already exists. Exiting `water_overlay`"
         return true
     end
     ffna = joinpath(fofo, CONSOLIDATED_FNAM)
@@ -58,12 +58,9 @@ function save_lakes_overlay_png(lm_bool, elevations, ice_elevation, folder)
             transparent
         end
     end)
-    # We won't ever print this. The value won't be used. So we specify a standard 300 dpi, disregarding user specs
-    # for the bitmapmap
-    density_pt_m⁻¹ = 11811
     ffna = joinpath(folder, WATER_FNAM)
-    @debug "Saving $ffna"
-    save_png_with_phys(ffna, img, density_pt_m⁻¹)
+    @debug "    Saving $ffna"
+    save_png_with_phys(ffna, img)
     # Feedback for testing purposes
     img
 end
@@ -77,7 +74,7 @@ function is_water_surface(elevations, horizontal_distance)
     # Values was increased in order to indicate utm 33N 6930548 47889 as a lake.
     lake_steepness_max = 0.158 #0.155 NOK # 0.15 NOK # 0.16 OK # 0.1375 NOK # 0.2 OK #0.075 OK
     # data
-    @debug "Calculating steepness"
+    @debug "    Calculating steepness"
     steep_matrix = steepness_decirad_capped(elevations, horizontal_distance)
     # Boolean result matrix
     lake_matrix(steep_matrix, k, lake_steepness_max, lake_pixels_min)
@@ -112,29 +109,29 @@ end
 function lake_matrix(steep_matrix, k, lake_steepness_max, lake_pixels_min)
     # Divide the steepness matrix into segments, based on proximity and steepness difference.
     # Note that we don't have or use a minimum cell count argument here. will apply a size check later.
-    @debug "First steepness segmentation"
+    @debug "    First steepness segmentation"
     steep_segments = felzenszwalb(steep_matrix, k)
     is_flat(i) = segment_mean(steep_segments, i) < lake_steepness_max
     is_large(i) = segment_pixel_count(steep_segments, i) >= lake_pixels_min
     # Create a black-and-white image, where we discard small and too steep segments.
     # We do not create a bool matrix, because we want to re-segment the result afterwards.
-    @debug "Grouping segments"
+    @debug "    Grouping segments"
     islake_matrix = map(labels_map(steep_segments)) do i # i is a label, representing a set of pixels.
         Gray{N0f8}(is_large(i) && is_flat(i))
     end
     # A common artifact is lines across a lake, possibly from power lines.
     # Let's grow the lakes, then shrink, with 8-connectivity to add
     # lake shores.
-    @debug "Dilate -> erode lakes"
+    @debug "    Dilate -> erode lakes"
     dilate!(islake_matrix, copy(islake_matrix))
     erode!(islake_matrix, copy(islake_matrix))
     # We are confident that positives are true positives. Still, we have lots of fake negatives
     # inside of the lake regions. They would appear as islands that are really just noise, waves,
     # or recalibration. Most of them coindicentally fall below lake_pixels_min:
-    @debug "Second segmentation"
+    @debug "    Second segmentation"
     cleanup_segments = felzenszwalb(islake_matrix, k, lake_pixels_min)
     # Create a black-and-white image, where any segments with any trace of a lake is a lake.
-    @debug "Cleaning fake islands"
+    @debug "    Cleaning fake islands"
     map(labels_map(cleanup_segments)) do i
         islake = segment_mean(cleanup_segments, i) > 0.0f0
         Gray{Bool}(islake)

@@ -7,28 +7,28 @@
 
 """
 function topo_relief(sb::SheetBuilder)
-    topo_relief(full_folder_path(sb), sb.cell_iter, cell_to_utm_factor(sb), sb.density_pt_m⁻¹)
+    topo_relief(full_folder_path(sb), sb.cell_iter, cell_to_utm_factor(sb))
 end
-function topo_relief(fofo, cell_iter, cell2utm, density_pt_m⁻¹)
+function topo_relief(fofo, cell_iter, cell2utm)
     if isfile(joinpath(fofo, COMPOSITE_FNAM))
-        @debug "$COMPOSITE_FNAM in $fofo already exists. Exiting `topo_relief`."
+        @debug "    $COMPOSITE_FNAM in $fofo already exists. Exiting `topo_relief`"
         return true
     end
     if isfile(joinpath(fofo, TOPORELIEF_FNAM))
-        @debug "$TOPORELIEF_FNAM in $fofo already exists. Exiting `topo_relief`."
+        @debug "    $TOPORELIEF_FNAM in $fofo already exists. Exiting `topo_relief`"
         return true
      end
     if ! isfile(joinpath(fofo, CONSOLIDATED_FNAM))
-        @debug "$CONSOLIDATED_FNAM in $fofo does not exist. Exiting `topo_relief`."
+        @debug "    $CONSOLIDATED_FNAM in $fofo does not exist. Exiting `topo_relief`"
         return false
     end
-    res = _topo_relief(fofo, cell_iter, cell2utm, density_pt_m⁻¹)
+    res = _topo_relief(fofo, cell_iter, cell2utm)
     ffna = joinpath(fofo, TOPORELIEF_FNAM)
-    @debug "Saving $ffna"
-    save_png_with_phys(ffna, res, density_pt_m⁻¹)
+    @debug "    Saving $ffna"
+    save_png_with_phys(ffna, res)
     true
 end
-function _topo_relief(fofo, cell_iter, cell2utm, density_pt_m⁻¹)
+function _topo_relief(fofo, cell_iter, cell2utm)
     fr = generate_render_func(generate_directional_pallette_func())
     # Get elevation matrix. This samples every point regardless of cell_to_utm_factor
     g = readclose(joinpath(fofo, CONSOLIDATED_FNAM))
@@ -36,7 +36,7 @@ function _topo_relief(fofo, cell_iter, cell2utm, density_pt_m⁻¹)
     # Establish output image matrix
     ny, nx = size(cell_iter)
     source_indices = (1:cell2utm:(nx * cell2utm), 1:cell2utm:(ny * cell2utm))
-    @debug "Render topo relief"
+    @debug "    Render topo relief"
     relief = mapwindow(fr, za, (3, 3), indices = source_indices)
     #display(transpose(relief))
     transpose(relief)

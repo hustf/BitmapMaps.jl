@@ -1,23 +1,25 @@
 # Internals to _elev_contour.
+# This is best checked in a slightly large area, which we won't 
+# include in the repo resources. Instead, we rely on local files,
+# which can be downloaded without creating a user account.
 using Test
 using BitmapMaps
-using BitmapMaps: CONSOLIDATED_FNAM, fir_lp_coefficients, centered
+using BitmapMaps: fir_lp_coefficients, centered
 using BitmapMaps: imfilter, mapwindow, mapwindow!
 using ImageCore: N0f32, N0f16, N0f8, Normed, scaleminmax, RGB, channelview, GrayA, RGBA, gray, alpha
-using ImageCore: red, green, blue, Gray, CartesianIndices, mosaic
+using ImageCore: red, green, blue, Gray, mosaic
 using ImageFiltering: FIRTiled, imfilter!, imgradients, KernelFactors, Fill
 import ColorBlendModes
 using ColorBlendModes: BlendLighten
 import ImageMorphology: erode, dilate
 
 
-fofo = "C:\\Users\\frohu_h4g8g6y\\bitmapmaps\\render\\1 1  47675 6929520  54041 6938686"
-g = readclose(joinpath(fofo, CONSOLIDATED_FNAM))
-za = g.A[:, :, 1]
-source_indices = (1:2:6365, 1:2:9165)
-ci = CartesianIndices(source_indices)
-# Make an RGB{Float32} array of elevation (red) plus filtered steepness (blue)!
-# elevation (z), Steepness, Contour
+fofo = joinpath(homedir(), "bitmapmaps\\render\\1 1  47675 6929520  54041 6938686")
+g = readclose(joinpath(fofo, BitmapMaps.CONSOLIDATED_FNAM))
+source_indices = (1:2:size(g)[1], 1:2:size(g)[2])
+csi = CartesianIndices(source_indices)
+# Make an array of elevation (red) plus filtered steepness (blue).
+# The blue channel is added below.
 zs = GrayA{Float32}.(g.A[:, :, 1], Array{Float32}(undef, size(g.A[:, :, 1])...))
 # This emphasizes small value differences. Inspect filtering with it.
 # view(zsc, 7:1400, 7:1400) |> img -> scaleminmax(RGB, extrema(red.(img))...).(img)
@@ -46,7 +48,7 @@ mosaic(zf .|> scaleminmax(extrema(r)...) .|> Gray |> transpose, α .|> scaleminm
 
 fc = BitmapMaps.func_elev_contour(20f0)
 # pre-allocate
-bw = Array{Gray{Bool}}(undef, size(ci)...)
+bw = Array{Gray{Bool}}(undef, size(csi)...)
 # 0.233s
 @time mapwindow!(fc, bw, zs, (1, 1); indices = source_indices)
 
@@ -60,7 +62,7 @@ imcol = map(bw) do pix
 end
 
 ffna = joinpath(fofo, BitmapMaps.CONTOUR_FNAM)
-save_png_with_phys(ffna, transpose(imcol), 11811)
+save_png_with_phys(ffna, transpose(imcol))
 
 #
 # Combine black-white images:
@@ -214,3 +216,5 @@ img = Gray{Bool}[0 0 1 0
 #@btime remove_small_islands($img)
 # 2.344 μs (32 allocations: 5.34 KiB)
 #@btime remove_small_islands!($img)
+
+

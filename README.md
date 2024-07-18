@@ -19,7 +19,7 @@ The example includes default elevation contours every 100 m with a fatter curve 
 
 Rendering the finished bitmaps is not expected to run in one step. As a minimum:
 - Step 1: `run_bitmapmap_pipeline()` => A folder hierarchy is established.
-- Step 2: User moves in elevation data. This may help: `copy_relevant_tifs_to_folder(source_folder, destination_folder)
+- Step 2: User moves in elevation data. This may help: `copy_relevant_tifs_to_folder(source_folder, destination_folder)`
 - Step 3: `run_bitmapmap_pipeline()` => User inspects rendered images.
 
 An .ini file is generated with default argument values. User updates arguments in the file (recommended) or by passing keywords to the pipeline.
@@ -40,7 +40,7 @@ Steps in the pipeline, in sequece:
 8) Make elevation contours (`contour_lines_overlay`).
 9) Add UTM grid (`grid_overlay`).
 10) Mark dieders and ridges (`ridge_overlay`).
-11) Make vector graphics and text covering the full map area. You may use RouteMap.jl for this step.
+11) Make vector graphics and text covering the full map area. 
 12) Composite bitmap and vector graphics (`join_layers`).
 
 # Example
@@ -52,8 +52,10 @@ run_bitmapmap_pipeline()
 ```
 # Current state
 
-Code has been adapted from environments 'geoarrays' and 'tutorial_images, as well as package 'RouteMap.jl'. Step 11 is currently missing.
-Step 10 needs some tweaking and is temporary. `GeoArrays.jl` has breaking changes in  version 0.9 (we currently pin to 0.8.5). Cairo / Pango has long-standing font issues on Windows, we currently pin the version. We could use Inkscape, but it seems to be affected as well.
+Code has been adapted from environments 'geoarrays' and 'tutorial_images, as well as package 'RouteMap.jl'. Step 11 is currently missing. The
+previous version used LuxorLayout for this, but the svg's are in practice uneditable. Linking bitmaps from 'self-produced' svgs may be a better option overall.
+
+`GeoArrays.jl` has breaking changes in  version 0.9 (we currently pin to 0.8.5). Cairo / Pango has long-standing font issues on Windows, we currently pin the version. We could use Inkscape, but it seems to be affected as well.
 
 Some of the changes from scripting workflow:
 
@@ -74,8 +76,7 @@ Some of the changes from scripting workflow:
 
 - Side-by-side overview of all sheets
 - Show correct grid for the area, e.g. UTM32.
-- Contour lines for 20 m elevation step.
-- Mark maxima, use primary top measurement.
+- Mark maxima, use prominence. Editable text file for peaks? Add peak labels in .svg?
 - Check against irrelevant keywords.
 
 # Bounding box functions

@@ -17,7 +17,7 @@ end
 """
 function consolidate_data_in_folder_to_geoarray(fofo)
     if isfile(joinpath(fofo, CONSOLIDATED_FNAM))
-        @debug "$CONSOLIDATED_FNAM in $fofo already exists. Exiting `consolidate_data_in_folder_to_geoarray`."
+        @debug "    $CONSOLIDATED_FNAM in $fofo already exists. Exiting `consolidate_data_in_folder_to_geoarray`"
         return true
     end
     # The folder fofo's name contains the geometry request made at høydedata.no or similar!
@@ -84,7 +84,8 @@ function sample_values_larger_than_limit!(g_dest::GeoArray, g_source::GeoArray)
                 # Some source files has value zero where data is really missing.
                 # Also, close to zero elevation, there is much noise from waves and
                 # also from elevation recalibration. This heuristic gets rid of most.
-                if g_source[i, j, z] > 0.7
+                val = g_source[i, j, z]
+                if ! ismissing(val) && val > 0.7
                     g_dest[io, jo, z] = g_source[i, j, z]
                 end
             end

@@ -18,20 +18,17 @@ function contour_lines_overlay(sb::SheetBuilder)
 end
 function contour_lines_overlay(fofo, cell_iter, cell2utm, thick_20, thick_100, thick_1000)
     if isfile(joinpath(fofo, COMPOSITE_FNAM))
-        @debug "$COMPOSITE_FNAM in $fofo already exists. Exiting `contour_lines_overlay`."
+        @debug "    $COMPOSITE_FNAM in $fofo already exists. Exiting `contour_lines_overlay`"
         return true
     end
     if isfile(joinpath(fofo, CONTOUR_FNAM))
-        @debug "$CONTOUR_FNAM in $fofo already exists. Exiting `contour_lines_overlay`."
+        @debug "    $CONTOUR_FNAM in $fofo already exists. Exiting `contour_lines_overlay`"
         return true
     end
     res = _elev_contours(fofo, cell_iter, cell2utm, thick_20, thick_100, thick_1000)
     ffna = joinpath(fofo, CONTOUR_FNAM)
-    # We won't ever print this. The value won't be used. So we specify a standard 300 dpi, disregarding user specs
-    # for the bitmapmap
-    density_pt_m⁻¹ = 11811
-    @debug "Saving $ffna"
-    save_png_with_phys(ffna, res, density_pt_m⁻¹)
+    @debug "    Saving $ffna"
+    save_png_with_phys(ffna, res)
     true
 end
 function _elev_contours(fofo, cell_iter, cell2utm, thick_20, thick_100, thick_1000)

@@ -4,7 +4,7 @@
     ---> SheetMatrixBuilder
 
 The job is defined in file BitmapMaps.ini, in user's home directory.
-You can overrule parameters with keywords, but changing the .ini file
+You can overrule parameters from the .ini file with identical keywords, but changing the .ini file
 is recommended.
 
 # Arguments
@@ -48,6 +48,9 @@ SheetMatrixBuilder((4873, 6909048), # southwest_corner
 ```
 """
 function run_bitmapmap_pipeline(; complete_sheets_first = true, kwds...)
+    if get(ENV, "JULIA_DEBUG", "") !== "BitmapMaps"
+        @info "Pipeline running. Set ENV[\"JULIA_DEBUG\"] = \"BitmapMaps\" for detailed progress."
+    end
     smb = define_builder(; kwds...)
     ok_res = process_job(smb, complete_sheets_first)
     if ok_res
@@ -74,9 +77,14 @@ end
 
 Make a grid for individual printed pages. Each page is associated with an utm coordinate bounding box.
 
-Parameters from .ini file will be overridden by key words.
+Parameters from .ini file will be overridden by keywords. See `run_bitmapmap_pipeline`.
 """
 function define_builder(; kwds...)
+    allowed_keywords = [:southwest_corner, :cell_to_utm_factor, :sheet_width_mm, :sheet_height_mm, :density_pt_m⁻¹, :pth, :density_limit_pt_inch⁻¹, :sheet_indices, :nrc]
+    unrecognized_keywords = filter(∉(allowed_keywords), keys(kwds))
+    if ! isempty(unrecognized_keywords)
+        throw(ArgumentError("Unrecognized_keywords: $unrecognized_keywords. See file BitmapMap.ini for keywords, like: 'sheet_width_mm'"))
+    end
     # Parameters from .ini file, overridden by key words.
     southwest_corner = get_kw_or_config_value(:southwest_corner ,"Geographical position", "Southwest corner (utm easting northing)", Tuple{Int, Int}; kwds...)
     cell_to_utm_factor = get_kw_or_config_value(:cell_to_utm_factor, "Cell to utm factor", "Utm unit distance between elevation sampling points", Int; kwds...)
@@ -92,7 +100,7 @@ function define_builder(; kwds...)
         throw(ArgumentError("Any BmParition path must match regex r\"(b|B)itmap(M|m)aps\". Current path is $pth"))
     end
     # Either nrc (number of rows and columns) or sheet_indices can be specified.
-    # If nrc is specifies, this overrules.
+    # If nrc is specified, this overrules.
     if (:sheet_indices ∉ keys(kwds)) || (:sheet_indices ∈ keys(kwds) && :nrc ∈ keys(kwds))
         nrc = get_kw_or_config_value(:nrc ,"Number of printable sheets", "(rows columns)", Tuple{Int, Int}; kwds...)
         smb = SheetMatrixBuilder(southwest_corner, nrc, cell_to_utm_factor, sheet_width_mm, sheet_height_mm, density_pt_m⁻¹, pth)
@@ -137,12 +145,13 @@ function process_job(smb, complete_sheets_first)
     true
 end
 function call_func(fn, sb)
+    @debug "Calling `$fn`. $(full_folder_path(sb))"
     ok_res = fn(sb)
     if ! ok_res
-        @warn "Could not finish $fn($sb) with success. Exiting."
+        @warn "Could not finish $fn($sb) with success. Exiting"
         return false
     else
-        @debug "Finished $fn"
+        @debug "Finished"
     end
     true
 end

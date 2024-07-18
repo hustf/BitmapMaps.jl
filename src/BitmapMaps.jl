@@ -36,9 +36,6 @@ import Dates
 # Calculating gradients, topo map
 import ImageFiltering
 using ImageFiltering: imgradients, KernelFactors, mapwindow, mapwindow!, Kernel, imfilter, centered
-# Inspect arrays...
-import ImageCore
-using ImageCore: scaleminmax
 # Pick color from lightness
 import Colors
 import ColorTypes
@@ -50,6 +47,7 @@ import ImageMorphology
 using ImageMorphology: erode!, dilate!, dilate, GuoAlgo, thinning, strel_diamond
 # Elevation contours
 using ColorTypes: GrayA, gray, alpha
+import ImageCore
 using ImageCore: channelview
 using ImageFiltering: FIRTiled, Fill
 # Overlays to composite
@@ -96,5 +94,6 @@ include("contour.jl")
 include("grid.jl")
 include("ridges.jl")
 include("layers.jl")
+include("mark_utils.jl")
 
 end

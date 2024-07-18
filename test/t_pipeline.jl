@@ -48,8 +48,8 @@ end
 # Extract and inspect.
 withenv("JULIA_DEBUG" => "BitmapMaps") do
     @test_logs(
-        (:debug, r"Name and path similarity, made unique file namme."),
-        (:debug, r"Name and path similarity, made unique file namme."),
+        (:debug, r"Name and path similarity => made unique file name"),
+        (:debug, r"Name and path similarity => made unique file name"),
         unzip_tif(tmpdir_pipeline))
 end
 

@@ -40,7 +40,7 @@ julia> smb = run_bitmapmap_pipeline(); # No matter how early the pipeline exits,
 julia> smb[2, 2]  # Let's examine one of the sheets
 SheetBuilder(;pixel_origin_ref_to_bitmapmap = (2255, 3248),
                          cell_iter = CartesianIndices((1:3248, 1:2255)),
-                        f_I_to_utm = (11638, 6928536),
+                        f_I_to_utm = (11638, 6928536)@(1, 1),
                       sheet_number = 5,
                     density_pt_m⁻¹ = 11811,
                              pthsh = "bitmapmaps/default\\2 2  11638 6918792  18403 6928536")
@@ -86,7 +86,9 @@ function Base.show(io::IO, ::MIME"text/plain", sb::SheetBuilder)
         colwi = sy == :pixel_origin_ref_to_bitmapmap ? 9 : 34
         print(io, lpad("$sy", colwi), " = ")
         if sy == :f_I_to_utm
-            print(io, sb.f_I_to_utm(first(sb.cell_iter)))
+            I = first(sb.cell_iter)
+            print(io, sb.f_I_to_utm(I))
+            print(io, "@", "$(getfield(I, :I))")
         else
             print(io, repr(va))
         end
@@ -101,11 +103,13 @@ function Base.show(io::IO, sb::SheetBuilder)
     print(io, "SheetBuilder(")
     print(io, sb.pixel_origin_ref_to_bitmapmap, ", ")
     print(io, sb.cell_iter.indices, ", ")
-    print(io, "f(I) -> utm", ", ")
-    print(io, sb.sheet_number)
+    I = first(sb.cell_iter)
+    print(io, sb.f_I_to_utm(I))
+    print(io, "@", getfield(I, :I), ", ")
+    print(io, sb.sheet_number, ", ")
     print(io, sb.density_pt_m⁻¹, ", ")
-    print(io, repr(sb.pthsh), ", ")
-    println(io, " )")
+    print(io, repr(sb.pthsh))
+    println(io, ")")
 end
 
 
