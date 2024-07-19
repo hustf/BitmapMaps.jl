@@ -63,10 +63,11 @@ Some of the changes from scripting workflow:
 - Printing metadata is made and stored in .png files. Settings are respected by e.g. `Gimp`, `MS Paint`, and `IrFanview`.
 - Water surfaces are found with a new algorithm. Manual corrections will hopefully be less of a requirement.
 - The colour palette is FixedPointNumbers.Normed{UInt8, 8}, not Float64 - based.
-- Topographic relief is rendered cell by cell using `ImageFiltering.mapwindow`. Renders independently from output map resolution.
+- Topographic relief is rendered faster with `ImageFiltering.mapwindow`.
 - Step 5, 'consolidation' stores an inspectable .tif file.
 - The SheetMatrixBuilder and SheetBuilder types are more flexible than storing specifications in folder names. 
 - The pipeline can reuse `SheetMatrixBuilder` and modify it by steps, using keywords.
+- Ridge lines and dieder (inward corner) lines. 
 - Change sheet numbering to start in SW corner. See figure:
 
 <img src="resource/matrix_sheet_cell_utm.svg" alt = "resource/matrix_sheet_cell_utm.svg" style="display: inline-block; margin: 0 auto; max-width: 640px">
@@ -77,7 +78,6 @@ Some of the changes from scripting workflow:
 - Side-by-side overview of all sheets
 - Show correct grid for the area, e.g. UTM32.
 - Mark maxima, use prominence. Editable text file for peaks? Add peak labels in .svg?
-- Check against irrelevant keywords.
 
 # Bounding box functions
 

@@ -34,7 +34,6 @@ function water_overlay(fofo, cell_size)
         z.A[:, :, 1]
     end
     lm_bool = is_water_surface(elevations, cell_size)
-    #display(transpose(lm_bool))
     ice_elevation = 1000.0 # Hardcoded that lakes above 1000m are frozen.
     save_lakes_overlay_png(lm_bool, elevations, ice_elevation, fofo)
     true
@@ -58,6 +57,9 @@ function save_lakes_overlay_png(lm_bool, elevations, ice_elevation, folder)
             transparent
         end
     end)
+    # Feedback
+    display_if_vscode(img)
+    # Save
     ffna = joinpath(folder, WATER_FNAM)
     @debug "    Saving $ffna"
     save_png_with_phys(ffna, img)

@@ -7,8 +7,8 @@
     grid_overlay(fofo, cell_iter, cell_to_utm_factor)
 
 """
-grid_overlay(sb::SheetBuilder) = grid_overlay(full_folder_path(sb), sb.cell_iter, cell_to_utm_factor(sb), sb.f_I_to_utm)
-function grid_overlay(fofo, cell_iter, cell2utm, f_I_to_utm)
+grid_overlay(sb::SheetBuilder) = grid_overlay(full_folder_path(sb), sb.cell_iter, sb.f_I_to_utm)
+function grid_overlay(fofo, cell_iter, f_I_to_utm)
     if isfile(joinpath(fofo, COMPOSITE_FNAM))
         @debug "    $COMPOSITE_FNAM in $fofo already exists. Exiting `grid_overlay`"
         return true
@@ -17,21 +17,21 @@ function grid_overlay(fofo, cell_iter, cell2utm, f_I_to_utm)
         @debug "    $GRID_FNAM in $fofo already exists. Exiting `grid_overlay`"
         return true
     end
-    res = _grid_utm(fofo, cell_iter, cell2utm, f_I_to_utm)
+    res = _grid_utm(cell_iter, f_I_to_utm)
+    # Save
     ffna = joinpath(fofo, GRID_FNAM)
     @debug "    Saving $ffna"
     save_png_with_phys(ffna, res)
     true
 end
-function _grid_utm(fofo, cell_iter, cell2utm, f_I_to_utm)
+
+function _grid_utm(cell_iter, f_I_to_utm)
     # Establish output image matrix
-    ny, nx = size(cell_iter)
     linecol = RGBA{N0f8}(1.0, 0.843, 0.0, 0.651)
     transpcol = RGBA{N0f8}(0, 0, 0, 0)
     @debug "    Render grid lines"
     fg = generate_grid_utm_func(linecol, transpcol, f_I_to_utm)
     grid = map(fg, cell_iter)
-    #display(grid)
     grid
 end
 

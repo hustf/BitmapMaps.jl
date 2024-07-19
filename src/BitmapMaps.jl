@@ -45,10 +45,10 @@ import ImageSegmentation
 using ImageSegmentation: felzenszwalb, labels_map, segment_pixel_count, segment_mean
 import ImageMorphology
 using ImageMorphology: erode!, dilate!, dilate, GuoAlgo, thinning, strel_diamond
-# Elevation contours
+# Elevation contours, consolidate feedback
 using ColorTypes: GrayA, gray, alpha
 import ImageCore
-using ImageCore: channelview
+using ImageCore: channelview, scaleminmax, colorview
 using ImageFiltering: FIRTiled, Fill
 # Overlays to composite
 import ColorBlendModes
@@ -66,7 +66,7 @@ export southwest_corner, southwest_external_corner, southwest_internal_corner
 export geo_grid_centre_single, geo_centre, bbox_external_string, polygon_string, show_augmented
 export geo_area, nonzero_raster_closed_polygon_string, raster_polygon_string, nonzero_raster_rect
 export copy_relevant_tifs_to_folder, tif_full_filenames_buried_in_folder, unzip_tif
-export show_derived_properties, readclose
+export show_derived_properties, readclose, display_if_vscode
 
 const CONSOLIDATED_FNAM = "Consolidated.tif"
 const TOPORELIEF_FNAM = "Toporelief.png"

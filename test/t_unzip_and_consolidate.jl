@@ -24,7 +24,6 @@ for (p, zfi) in zip([smb[1,1], smb[2,2]], ["../resource/eksport_796345_20240420.
     unzip_tif(p)
     if p == smb[1, 1]
         fn1 = joinpath(full_folder_path(p), "dom1", "data", "dom1-33-1-428-189-53.tif")
-        @show fn1
         @test isfile(fn1)
         fn2 = joinpath(full_folder_path(p), "dom1", "data", "dom1-33-1-428-189-63.tif")
         @test isfile(fn2)

@@ -18,6 +18,9 @@ function ridge_overlay(fofo, cell_iter, cell2utm)
         return false
     end
     res = _ridge(fofo, cell_iter, cell2utm)
+    # Feedback
+    display_if_vscode(res)
+    # Save
     ffna = joinpath(fofo, RIDGE_FNAM)
     @debug "    Saving $ffna"
     save_png_with_phys(ffna, res)
@@ -49,7 +52,6 @@ function _ridge(fofo, cell_iter, cell2utm)
         thicknesses = [3, 5]
         _corners_and_dieders!(result, bbuf, laplacian, source_indices, criterion_functions, [colo_corner, colo_dieder], thicknesses)
     end
-    display(transpose(result))
     transpose(result)
 end
 function _corners_and_dieders!(result, bbuf, source, source_indices, criterion_functions, colors, thicknesses)

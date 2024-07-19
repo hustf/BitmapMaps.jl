@@ -5,6 +5,7 @@
 
 using Test
 using BitmapMaps
+using BitmapMaps: mapwindow
 
 ###################################################
 # Preparation (much the same as in `test_pipeline`)
@@ -36,27 +37,29 @@ end
 # Extract and inspect.
 unzip_tif(tmpdir_topo_relief)
 fna = first(tif_full_filenames_buried_in_folder(tmpdir_topo_relief))
-
-@test nonzero_raster_closed_polygon_string(fna)== "POLYGON ((18294 6937562, 18449 6937562, 18449 6937717, 18294 6937717, 18294 6937562))"
-
-
+@test nonzero_raster_closed_polygon_string(fna)== "(18294 6937563, 18449 6937563, 18449 6937717, 18294 6937717, 18294 6937563)"
+@test BitmapMaps.polygon_string(fna) ==  "POLYGON ((18294 6937562, 18449 6937562, 18449 6937717, 18294 6937717, 18294 6937562),\n                   (18294 6937563, 18449 6937563, 18449 6937717, 18294 6937717, 18294 6937563))"
 ##################
 # More preparation
 ##################
-
-smb = SheetMatrixBuilder(   155, # width_cell
-                            155, # height_cell
-                             155, # sheet_width_cell
-                             155, # sheet_height_cell
-                               1, # nrows
-                               1, # ncols
-                (18294, 6937562), # southwest_corner
-    CartesianIndices((1:1, 1:1)), # sheet_indices
-                               1, # cell_to_utm_factor
-                             189, # sheet_width_mm
-                             pth) # pth
-
-@test size(smb[1].cell_iter) == ( sheet_height_cell(smb), sheet_width_cell(smb))
+smb = let
+    mapscale = 1 // 1000
+    density_pt_m⁻¹ = Int(round(1 / mapscale))
+    side_sn_m = 6937717 - 6937563
+    side_we_m = 18449 - 18294
+    side_sn_paper_mm = Int(round(1000 * side_sn_m * mapscale))
+    side_we_paper_mm = Int(round(1000 * side_we_m * mapscale))
+    SheetMatrixBuilder(
+        (18294, 6937563), # southwest_corner::Tuple{Int, Int},
+        (1,1), # nrc::Tuple{Int, Int},
+        1,  # cell_to_utm_factor::Int,
+        side_we_paper_mm, # sheet_width_mm::Int,
+        side_sn_paper_mm, # sheet_height_mm::Int,
+        density_pt_m⁻¹,# density_pt_m⁻¹::Int,
+        pth# pth::String
+    )
+end
+@test size(smb[1].cell_iter) == (BitmapMaps.sheet_height_cell(smb), BitmapMaps.sheet_width_cell(smb))
 
 # Establish test folder hierarchy
 @test BitmapMaps.establish_folder.(smb) == [true]
@@ -65,171 +68,145 @@ smb = SheetMatrixBuilder(   155, # width_cell
 fnas = copy_relevant_tifs_to_folder(tmpdir_topo_relief, smb)
 # Consolidate
 @test BitmapMaps.consolidate_elevation_data.(smb) == [true]
-for sb in smb
-    fna = joinpath(full_folder_path(sb), BitmapMaps.CONSOLIDATED_FNAM)
-    # Get elevation matrix
-    za = let
-        z = readclose(fna)
-        transpose(z.A[:, :, 1])
-    end
-    @test sum(za) > 0
-end
-
-
-##############################
-# Start working on topo_relief
-##############################
-sb = smb[1]
-BitmapMaps.topo_relief(sb)
-
-outfnam = joinpath(full_folder_path(sb), BitmapMaps.TOPORELIEF_FNAM)
-isfile(outfnam)
-rm(outfnam)
-BitmapMaps.topo_relief(sb)
-
-
-
-
-sb.cell_iter
-
-
-
-
-
-
-
-
-
-SheetMatrixBuilder(;
-        width_cell                     = 1592,
-        height_cell                    = 1150,
-        sheet_width_cell                  = 796,
-        sheet_height_cell                 = 1150,
-        nrows                            = 1,
-        ncols                            = 2,
-        southwest_corner                 = (43200, 6909000),
-        sheet_indices                    = CartesianIndices((1:1, 1:2)),
-        cell_to_utm_factor                = 1,
-        pth                              = "BitmapMaps\test_topo3")
-
-SheetMatrixBuilder(
-        1592,
-        1150,
-        796,
-        1150,
-        1,
-        2,
-        (43200, 6909000),
-        CartesianIndices((1:1, 1:2)),
-         1,
-        "BitmapMaps\test_topo3")
-
-
-
-
-
-
-
-
-
-
-
-
-# cleanup
-for fo in ["test1", "test_topo2", "test_topo3"]
-    if ispath(joinpath(homedir(), "BitmapMaps", fo))
-        sleep(1) # prevent resource busy error....
-        rm(joinpath(homedir(), "BitmapMaps", fo), recursive = true)
-    end
-end
-
-# First some impossible jobs to finish.
-@test_logs(
-    (:info, r"Since geographical area per sheet is  > 16km²"),
-    (:info, r"No .tif files"),
-    (:info, r"Could not make consolidated"),
-    (:warn, r"Could not finish consolidate_elevation_data"),
-    run_bitmapmap_pipeline(;pth = "BitmapMaps\\test1"))
-
-
-@test ispath(joinpath(homedir(), "BitmapMaps", "test1"))
-
-@test_logs(
-    (:info, r"No .tif files"),
-    (:info, r"Could not make consolidated"),
-    (:warn, r"Could not finish consolidate_elevation_data"),
-    #match_mode = :any,
-    run_bitmapmap_pipeline(;nrc = (1, 1), cell_to_utm_factor = 1, pth = "BitmapMaps\\test_topo2"))
-
-@test ispath(joinpath(homedir(), "BitmapMaps", "test_topo2"))
-
-
-
-
-# Work with the limited data in /resource
-# Unzip the files to a temporary folder, where the folder name does not provide relevant info.
-tmpdir_pipeline = mktempdir()
 let
-    for zfi in ["../resource/eksport_796345_20240420.zip", "../resource/eksport_796340_20240420.zip"]
-        zipfi = joinpath(@__DIR__, zfi)
-        dest = joinpath(tmpdir_pipeline, splitdir(zipfi)[2])
-        if ! isfile(dest)
-            cp(zipfi, dest)
+    for sb in smb
+        fna = joinpath(full_folder_path(sb), BitmapMaps.CONSOLIDATED_FNAM)
+        # Get elevation matrix
+        za = let
+            z = readclose(fna)
+            transpose(z.A[:, :, 1])
         end
-        println(dest)
+        @test sum(za) > 0
     end
 end
-# A zip file now exists in tmpdir_pipeline, as if downloaded by user.
-# Extract and inspect.
-unzip_tif(tmpdir_pipeline)
-fnas = tif_full_filenames_buried_in_folder(tmpdir_pipeline)
-@test nonzero_raster_closed_polygon_string.(fnas)== ["POLYGON ((43200 6909000, 44000 6909000, 44000 6909600, 43200 6909600, 43200 6909000))", "POLYGON ((44000 6909000, 44800 6909000, 44800 6909600, 44000 6909600, 44000 6909000))"]
 
-# Calculate widths, densities and so forth to make a bitmapmap which uses the entire width of the data we have here and fills two A4 sheets
-# Since we're dealing with integers, it's a bit of an iteration to get it right
-pth = "BitmapMaps\\test_topo3"
-nrc = (1, 2)
-cell_to_utm_factor = 1
-data_cell_width = 44800 - 43200
-sheet_width_cell = Int(round(data_cell_width / 2))
-pwi_max_inch = 191 / 25.4 # mm / (mm / inch) - sheet width in inches
-density_pt_m⁻¹ = Int(ceil(sheet_width_cell / pwi_max_inch ))  # Pixels per inch so as to fit roughly sheet_width_cell pixels or more on a sheet
-# Reduce the printable width a little from the maximum, so as to fit close to sheet_width_cell pixels
-pwi_inch = sheet_width_cell / density_pt_m⁻¹ # cells / (cells / inch)
-sheet_width_mm =  Int(floor(pwi_inch * 25.4))  # mm = inch  * (mm/ inch)
-sheet_height_mm = Int(ceil((275 / 191) * sheet_width_mm))
-complete_sheets_first = false
-# Let the pipeline establish the folder structure first:
-smb = @test_logs(
-    (:info, r"No .tif files"),
-    (:info, r"Could not make consolidated"),
-    (:warn, r"Could not finish consolidate_elevation_data"),
-    run_bitmapmap_pipeline(;nrc, cell_to_utm_factor, pth, southwest_corner = (43200, 6909000),
-    density_pt_m⁻¹, sheet_width_mm, sheet_height_mm, complete_sheets_first)
-    )
-
-
-
-@test abs(sheet_width_cell(smb) - sheet_width_cell) <= 4 # Good enough, fits inside data
-@test nrows(smb) == 1
-@test BitmapMaps.ncols(smb) == 2
-@test ispath(full_folder_path(smb[1,1]))
-@test ispath(full_folder_path(smb[1,2]))
-
-# Now copy the relevant files to the relevant directories
-fnas = copy_relevant_tifs_to_folder(tmpdir_pipeline, smb)
-# One of the sheets is based off two files, the other sheet is fully covered by one of those two files.
-@test length(fnas) == 3
-
-# Run the pipeline again, this time proceeding further
-smb = run_bitmapmap_pipeline(;nrc, cell_to_utm_factor, pth, southwest_corner = (43200, 6909000),
-    density_pt_m⁻¹, sheet_width_mm, sheet_height_mm)
-@test ispath(joinpath(full_folder_path(smb[1,1]), BitmapMaps.CONSOLIDATED_FNAM))
-@test ispath(joinpath(full_folder_path(smb[1,2]), BitmapMaps.CONSOLIDATED_FNAM))
-
-
-# cleanup
-if ispath(joinpath(homedir(), pth))
-    rm(joinpath(homedir(), pth), recursive = true)
+################
+# Render to file
+################
+let
+    sb = smb[1]
+    outfnam = joinpath(full_folder_path(sb), BitmapMaps.TOPORELIEF_FNAM)
+    if isfile(outfnam)
+        rm(outfnam)
+    end
+    BitmapMaps.topo_relief(sb)
+    @test isfile(outfnam)
+    if isfile(outfnam)
+        rm(outfnam)
+    end
 end
 
+###############################
+# Render to display (in vscode)
+###############################
+let
+    sb = smb[1]
+    cell2utm = BitmapMaps.cell_to_utm_factor(sb)
+    consfnam = joinpath(full_folder_path(sb), BitmapMaps.CONSOLIDATED_FNAM)
+    @assert isfile(consfnam)
+    g = readclose(consfnam)
+    # We're transposing the source data here, because
+    # it makes it easier to reason about north, south, east west.
+    za = transpose(g.A[:, :, 1])
+    @time img = BitmapMaps.__topo_relief(za, sb.cell_iter, cell2utm)
+    display_if_vscode(img)
+end
+
+
+
+################################################################
+# Verify directions for `_topo_relief` -> 'func_render'
+################################################################
+let
+    # Prepare
+    sb = smb[1]
+    cell2utm = BitmapMaps.cell_to_utm_factor(sb)
+    ny, nx = size(sb.cell_iter)
+    source_indices = (1:cell2utm:(ny * cell2utm), 1:cell2utm:(nx * cell2utm))
+    @assert nx == 155 && ny == 154 # Wider East-West than North-South
+    consfnam = joinpath(full_folder_path(sb), BitmapMaps.CONSOLIDATED_FNAM)
+    @assert isfile(consfnam)
+    g = readclose(consfnam)
+    # We're transposing the source data here, because
+    # it makes it easier to reason about north, south, east west.
+    za = transpose(g.A[:, :, 1])
+    display_if_vscode(za)
+    function f_verif(M::Matrix)
+        @assert size(M) == (3, 3)
+        _, w, _, n, z, s, _, e, _ = M
+        deriv_east_west = (e - w) / 2
+        deriv_south_north = (n - s) / 2
+        mag = sqrt(1 + deriv_south_north^2 + deriv_east_west^2)
+        n_ew = -deriv_east_west / mag
+        n_sn = -deriv_south_north / mag
+        n_up =  1 / mag
+        # Unit vector in a right-handed Euclidean coordinate system
+        n_ew, n_sn, n_up
+    end
+    #
+    # Flat landscape
+    #
+    fill!(za, 1.0f0)
+    ver = mapwindow(f_verif, za, (3, 3), indices = source_indices)
+    # Normal unit vector points straight up
+    @test ver[1] == (0, 0, 1)
+    @test all(x -> x == ver[1], ver)
+    #
+    # Landscape sloping up 45°, highest in the north
+    #
+    z_northslope  = map(sb.cell_iter) do I
+        easting, northing = sb.f_I_to_utm(I)
+        northing - southwest_external_corner(sb)[2]
+    end
+    display_if_vscode(z_northslope)
+    ver = mapwindow(f_verif, z_northslope, (3, 3), indices = source_indices)
+    # Normal unit vector points south and up.
+    # The normal at the edges depend on the defaul argument to mapwindow: border = "replicate"
+    @test sum(abs.(ver[2] .- (0, -0.5√2, 0.5√2))) < 1e-10
+    @test all(x -> x == ver[2], ver[2:(end - 2), :])
+    #
+    # Landscape sloping up 45°, highest in the east
+    #
+    z_eastslope  = map(sb.cell_iter) do I
+        easting, northing = sb.f_I_to_utm(I)
+        easting - southwest_external_corner(sb)[1]
+    end
+    display_if_vscode(z_eastslope)
+    ver = mapwindow(f_verif, z_eastslope, (3, 3), indices = source_indices)
+    # Normal unit vector points west and up
+    @test sum(abs.(ver[2, 2] .- (-0.5√2, 0, 0.5√2))) < 1e-10
+    # The normal at the edges depend on the defaul argument to mapwindow: border = "replicate"
+    @test all(x -> x == ver[2, 2], ver[:, 2:(end - 1)])
+end
+
+
+
+#########
+# Cleanup
+#########
+rm(tmpdir_topo_relief, recursive = true)
+let 
+    fo = full_folder_path(smb)
+    if ispath(fo)
+        sleep(1) # prevent resource busy error....
+        rm(fo, recursive = true)
+    end
+end
+if ispath(full_folder_path(smb))
+    sleep(1) # prevent resource busy error....
+    rm(full_folder_path(smb), recursive = true)
+end
+
+
+function f_verif1(M::Matrix)
+    @assert size(M) == (3, 3)
+    _, w, _, n, z, s, _, e, _ = M
+    deriv_south_north = (n - s) / 2
+    deriv_east_west = (w - e) / 2
+    mag = sqrt(1 + deriv_south_north^2 + deriv_east_west^2)
+    n_sn = -deriv_south_north / mag
+    n_ew = -deriv_east_west / mag
+    n_up =  1 / mag
+    # Unit vector in a right-handed Euclidean coordinate system
+    n_ew, n_sn, n_up
+end 

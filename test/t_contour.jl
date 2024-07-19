@@ -15,6 +15,12 @@ import ImageMorphology: erode, dilate
 
 
 fofo = joinpath(homedir(), "bitmapmaps\\render\\1 1  47675 6929520  54041 6938686")
+if ! ispath(joinpath(fofo))
+    throw("Missing folder, cannot continue. Try to establish $fofo and \n copy_relevant_tifs_to_folder(source_folder, destination_folder) ")
+end
+if ! isfile(joinpath(fofo, BitmapMaps.CONSOLIDATED_FNAM))
+    throw("Missing file, cannot continue. Try \n BitmapMaps.consolidate_data_in_folder_to_geoarray(fofo)")
+end
 g = readclose(joinpath(fofo, BitmapMaps.CONSOLIDATED_FNAM))
 source_indices = (1:2:size(g)[1], 1:2:size(g)[2])
 csi = CartesianIndices(source_indices)

@@ -18,6 +18,9 @@ function join_layers(fofo, cell_iter, density_pt_m⁻¹)
         return false
     end
     res = _join_layers(fofo, cell_iter)
+    # Feedback
+    display_if_vscode(res)
+    # Save file
     ffna = joinpath(fofo, COMPOSITE_FNAM)
     @debug "    Saving $ffna"
     save_png_with_phys(ffna, res; density_pt_m⁻¹)

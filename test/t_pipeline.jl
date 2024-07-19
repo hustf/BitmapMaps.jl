@@ -11,6 +11,7 @@ end
 
 # First some impossible jobs to finish.
 @test_logs(
+    (:info, r"Pipeline running."),
     (:info, r"Since geographical area per sheet is  > 16km²"),
     (:info, r"No .tif files"),
     (:info, r"Could not make consolidated"),
@@ -21,6 +22,7 @@ end
 @test ispath(joinpath(homedir(), "BitmapMaps", "test_pipeline1"))
 
 @test_logs(
+    (:info, r"Pipeline running."),
     (:info, r"No .tif files"),
     (:info, r"Could not make consolidated"),
     (:warn, r"Could not finish consolidate_elevation_data"),
@@ -78,17 +80,18 @@ nrc = (1, 2)
 cell2utm = 1
 southwest_c = (44000, 6909047)
 data_cell_width = 44012 - southwest_c[1]
-sheet_width_cell = Int(round(data_cell_width / 2))
+sh_width_cell = Int(round(data_cell_width / 2))
 sheet_width_mm = 191
-density_pt_m⁻¹ = Int(ceil(1000 *sheet_width_cell / sheet_width_mm ))
+density_pt_m⁻¹ = Int(ceil(1000 * sh_width_cell / sheet_width_mm ))
 # Let the pipeline establish the folder structure first. Data files are missing, so will fail gracefully.
 smb = @test_logs(
+    (:info, r"Pipeline running."),
     (:info, r"No .tif files"),
     (:info, r"Could not make consolidated"),
     (:warn, r"Could not finish consolidate_elevation_data"),
     run_bitmapmap_pipeline(;nrc, cell_to_utm_factor = cell2utm, pth, southwest_corner = southwest_c, density_pt_m⁻¹, sheet_width_mm,
        complete_sheets_first = false))
-@test BitmapMaps.sheet_width_cell(smb) == sheet_width_cell
+@test BitmapMaps.sheet_width_cell(smb) == sh_width_cell
 @test BitmapMaps.nrows(smb) == 1
 @test BitmapMaps.ncols(smb) == 2
 @test ispath(full_folder_path(smb[1,1]))

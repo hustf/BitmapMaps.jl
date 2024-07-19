@@ -26,6 +26,9 @@ function contour_lines_overlay(fofo, cell_iter, cell2utm, thick_20, thick_100, t
         return true
     end
     res = _elev_contours(fofo, cell_iter, cell2utm, thick_20, thick_100, thick_1000)
+    # Feedback
+    display_if_vscode(res)
+    # Save
     ffna = joinpath(fofo, CONTOUR_FNAM)
     @debug "    Saving $ffna"
     save_png_with_phys(ffna, res)

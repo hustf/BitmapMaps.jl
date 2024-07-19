@@ -92,18 +92,19 @@ for (i, _) in enumerate(smb)
     i == 6 && @test (current_row, current_col) == (2, 3)
 end
 
-for i in 1:6
-    sb = smb[i]
-    xy = sb.pixel_origin_ref_to_bitmapmap
-    i == 1 && @test xy == (0, 4)
-    i == 2 && @test xy == (0, 0)
-    i == 3 && @test xy == (3, 4)
-    i == 4 && @test xy == (3, 0)
-    i == 5 && @test xy == (6, 4)
-    i == 6 && @test xy == (6, 0)
-    @test xy == BitmapMaps._SheetBuilder(smb, i).pixel_origin_ref_to_bitmapmap
+let
+    for i in 1:6
+        sb = smb[i]
+        xy = sb.pixel_origin_ref_to_bitmapmap
+        i == 1 && @test xy == (0, 4)
+        i == 2 && @test xy == (0, 0)
+        i == 3 && @test xy == (3, 4)
+        i == 4 && @test xy == (3, 0)
+        i == 5 && @test xy == (6, 4)
+        i == 6 && @test xy == (6, 0)
+        @test xy == BitmapMaps._SheetBuilder(smb, i).pixel_origin_ref_to_bitmapmap
+    end
 end
-
 for (i, sb) in enumerate(smb)
     shi1 = BitmapMaps._SheetBuilder(smb, i)
     @test shi1.f_I_to_utm(CartesianIndex(2, 2)) == sb.f_I_to_utm(CartesianIndex(2, 2))

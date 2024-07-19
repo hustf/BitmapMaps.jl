@@ -20,6 +20,9 @@ end
 @testset "Test consolidate elevation data" begin
     include("t_unzip_and_consolidate.jl")
 end
+@testset "Test topo relief" begin
+    include("t_topo_relief.jl")
+end
 @testset "Test identifying water surfaces" begin
     include("t_water.jl")
 end
@@ -29,9 +32,9 @@ end
 @testset "Test filter" begin
     include("t_filter.jl")
 end
-@testset "Test elevation contour" begin
-    include("t_contour.jl")
-end
+#@testset "Test elevation contour" begin # depends on local data files
+#    include("t_contour.jl")
+#end
 @testset "Test BitmapMaps pipeline" begin
     include("t_pipeline.jl")
 end

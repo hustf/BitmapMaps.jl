@@ -23,40 +23,59 @@ function topo_relief(fofo, cell_iter, cell2utm)
         return false
     end
     res = _topo_relief(fofo, cell_iter, cell2utm)
+    # Feedback
+    display_if_vscode(res)
+    # Save
     ffna = joinpath(fofo, TOPORELIEF_FNAM)
     @debug "    Saving $ffna"
     save_png_with_phys(ffna, res)
     true
 end
 function _topo_relief(fofo, cell_iter, cell2utm)
-    fr = generate_render_func(generate_directional_pallette_func())
     # Get elevation matrix. This samples every point regardless of cell_to_utm_factor
     g = readclose(joinpath(fofo, CONSOLIDATED_FNAM))
-    za = g.A[:, :, 1]
-    # Establish output image matrix
-    ny, nx = size(cell_iter)
-    source_indices = (1:cell2utm:(nx * cell2utm), 1:cell2utm:(ny * cell2utm))
-    @debug "    Render topo relief"
-    relief = mapwindow(fr, za, (3, 3), indices = source_indices)
-    #display(transpose(relief))
-    transpose(relief)
+    # We're transposing the source data here, because
+    # it makes it easier to reason about north, south, east west.
+    za = transpose(g.A[:, :, 1])
+    __topo_relief(za, cell_iter, cell2utm)
 end
 
-function generate_render_func(f_hypso)
+function __topo_relief(za, cell_iter, cell2utm)
+    # Output image indices
+    ny, nx = size(cell_iter)
+    source_indices = (1:cell2utm:(ny * cell2utm), 1:cell2utm:(nx * cell2utm))
+    # We need a 'render single output pixel function'. It changes a pixel at a time,
+    # and its argument is its immediate surrounding in the source data.
+    # It also needs to know more, but we're capturing that data.
+    fr = func_render(generate_directional_pallette_func())
+    # Now map the render function to an output image.
+    @debug "    Render topo relief"
+    mapwindow(fr, za, (3, 3), indices = source_indices)
+end
+
+function func_render(f_hypso)
     # f_hypso takes two arguments: elevation and direction number 1..4.
     # It returns an RGB{N0f8}.
     (M::Matrix) -> @inbounds begin
         @assert size(M) == (3, 3)
+        # If rows in M correspond to south -> north
+        # and cols in M correspond to west -> east
+        # _ n _
+        # w z e  
+        # _ s _
         _, w, _, n, z, s, _, e, _ = M
+        deriv_east_west = (e - w) / 2
         deriv_south_north = (n - s) / 2
-        deriv_east_west = (w - e) / 2
-        # Surface normal unit vectors, to the upper side.
         mag = sqrt(1 + deriv_south_north^2 + deriv_east_west^2)
-        n_sn = -deriv_south_north / mag
+        # Surface normal unit vectors, to the upper side.
         n_ew = -deriv_east_west / mag
+        n_sn = -deriv_south_north / mag
         n_up =  1 / mag
         # Find the color reflected from the sun's direction
-        col  = reflected_color(1, z, n_sn, n_ew, n_up, f_hypso)
+        col  = reflected_color(1, z, n_ew, n_sn, n_up, f_hypso)
+        # Find the color reflected from the other light sources direction
+        # If that reflection is stronger (we're probably in the shade),
+        # use that light source instead.
         for lightsource_no in 2:4
             othercol  = reflected_color(lightsource_no, z, n_sn, n_ew, n_up, f_hypso)
             if luminance(othercol) > luminance(col)
@@ -67,16 +86,32 @@ function generate_render_func(f_hypso)
     end
 end
 
-function reflected_color(direction_no, z, n_sn, n_ew, n_up, f_hypso)
+function reflected_color(direction_no, z, n_ew, n_sn, n_up, f_hypso)
     @assert 1 <= direction_no <= 4
-    expon = shade_exponent(z)
     sun = 202
     azimuth_deg = [sun, sun -180 -60, sun - 180, sun - 180 + 60]
     elevation_deg = [9, 30, 30, 30]
     az_deg = azimuth_deg[direction_no]
     el_deg = elevation_deg[direction_no]
-    lambert_reflection = lambert_shade(n_sn, n_ew, n_up, az_deg * π / 180, el_deg * π / 180)
-    reflection = convert(N0f8, min(1.0f0, lambert_reflection^expon))
+    azim = az_deg * π / 180
+    elev = el_deg * π / 180
+    # Convert azimuth and elevation to a lighting direction vector.
+    # Azimuth of 0     <=> Light from north, vector points north
+    # Azimuth of π / 2 <=> Light from east, vector points east
+    # Azimuth of π     <=> Light from south, vector points south
+    # Elevation 0      <=> Light from horizon
+    # Elevation π / 2  <=> Light from above
+    # 
+    # Unit vector of the light source.
+    l_ew = cos(elev) * sin(azim)
+    l_sn = cos(elev) * cos(azim)
+    l_up = sin(elev)
+    # The dot product of light and surface normal is the fraction of light 
+    # reflected towards the observer
+    lambert_reflection = lambert_shade(n_ew, n_sn, n_up, l_ew, l_sn, l_up)
+    # We want a wider spread of reflected light further up, where snow is.
+    reflection = convert(N0f8, min(1.0f0, lambert_reflection^shade_exponent(z)))
+    #
     f_hypso(z, direction_no) * reflection
 end
 function shade_exponent(z)
@@ -93,22 +128,7 @@ function shade_exponent(z)
         1 + (low_exponent - 1) * (z - upper_limit_exponent_1) / (lower_limit_low_exponent - upper_limit_exponent_1)
     end
 end
-function lambert_shade(n_sn, n_ew, n_up, azim, elev)
-    # Convert azimuth and elevation to a lighting direction vector.
-    # Azimuth of 0     <=> Light from north, vector points north
-    # Azimuth of π / 2 <=> Light from east, vector points east
-    # Azimuth of π     <=> Light from south, vector points south
-    # Elevation 0      <=> Light from horizon
-    # Elevation π / 2  <=> Light from above
-    le = cos(elev) * sin(azim)
-    ln = cos(elev) * cos(azim)
-    lu = sin(elev)
-    # Vector from the point in question to the light source.
-    # Same coordinate system as surface normals (just to be clear about positive directions)
-    l_sn = ln
-    l_ew = le
-    l_up = lu
-    #
+function lambert_shade(n_ew, n_sn, n_up, l_ew, l_sn, l_up)
     # Pure Lambertian reflection: dot product between surface normal and light direction normal.
     r = l_sn * n_sn + l_ew * n_ew + l_up * n_up
     # If the angle between l and n is more than 180°, reflection is negative. That means,

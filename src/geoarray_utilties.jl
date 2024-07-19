@@ -65,7 +65,7 @@ function nonzero_raster_rect(g::GeoArray)::@NamedTuple{min_x::Int64, min_y::Int6
     if itup == (nothing, nothing)
         return (; min_x = 0, min_y =  0, max_x = 0, max_y = 0)
     end
-    Irng = CartesianIndices(unpadded_indices(g.A[:,:,1]))
+    Irng = CartesianIndices(itup)
     x4, y4 = northwest_corner(g, Irng)
     x2, y2 = southeast_external_corner(g, Irng)
     x3, y3 = x2, y4 # NE

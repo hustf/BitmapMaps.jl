@@ -44,6 +44,8 @@ function consolidate_data_in_folder_to_geoarray(fofo)
         @info "No relevant data to consolidate. Exiting."
         return false
     end
+    # Feedback
+    display_if_vscode(transpose(g_dest.A[:, :, 1]))
     # Write to consolidated file
     GeoArrays.write(joinpath(fofo, CONSOLIDATED_FNAM), g_dest)
     return true
