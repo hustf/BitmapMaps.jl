@@ -68,6 +68,7 @@ Some of the changes from scripting workflow:
 - The SheetMatrixBuilder and SheetBuilder types are more flexible than storing specifications in folder names. 
 - The pipeline can reuse `SheetMatrixBuilder` and modify it by steps, using keywords.
 - Ridge lines and dieder (inward corner) lines. 
+- The UTM grid is the correct one for the local zone. 
 - Change sheet numbering to start in SW corner. See figure:
 
 <img src="resource/matrix_sheet_cell_utm.svg" alt = "resource/matrix_sheet_cell_utm.svg" style="display: inline-block; margin: 0 auto; max-width: 640px">

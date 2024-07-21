@@ -74,7 +74,9 @@ function is_water_surface(elevations, horizontal_distance)
     lake_pixels_min = Int(round(lake_area_min / horizontal_distance^2))
     k = 3.8
     # Values was increased in order to indicate utm 33N 6930548 47889 as a lake.
-    lake_steepness_max = 0.158 #0.155 NOK # 0.15 NOK # 0.16 OK # 0.1375 NOK # 0.2 OK #0.075 OK
+    # TODO: Include in .ini file, as the data quality varies significantly and no 
+    # single value is found to render acceptable results.
+    lake_steepness_max = 0.156 # 0.158 NOK #0.155 NOK # 0.15 NOK # 0.16 OK # 0.1375 NOK # 0.2 OK #0.075 OK
     # data
     @debug "    Calculating steepness"
     steep_matrix = steepness_decirad_capped(elevations, horizontal_distance)
@@ -99,6 +101,10 @@ For other purposes than finding water surfaces, cap_deg = 86 ° is a practical u
 """
 function steepness_decirad_capped(elevations, horizontal_distance; cap_deg =  1.5)
     z_norm = elevations ./ horizontal_distance
+    # The next line may meet memory restrictions. It calculates gradients at every sample point.
+    # If we sampled fewer points, the parameters for dealing with elevation data noise 
+    # would need adjustments.
+    # One workaround may be to split areas further, and patch together 'WATER_FNAM' manually.
     g1, g2 = imgradients(z_norm, KernelFactors.prewitt)
     # We limit inclination to 86 degree, as a compromise. Many above that value are artifacts.
     # TODO speed up, see contours.jl
@@ -110,7 +116,8 @@ end
 
 function lake_matrix(steep_matrix, k, lake_steepness_max, lake_pixels_min)
     # Divide the steepness matrix into segments, based on proximity and steepness difference.
-    # Note that we don't have or use a minimum cell count argument here. will apply a size check later.
+    # Note that we don't have or use a minimum cell count argument here. 
+    # Note: A size check might be good here because this can take > 10 minutes.
     @debug "    First steepness segmentation"
     steep_segments = felzenszwalb(steep_matrix, k)
     is_flat(i) = segment_mean(steep_segments, i) < lake_steepness_max

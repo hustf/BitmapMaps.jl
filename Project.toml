@@ -1,7 +1,7 @@
 name = "BitmapMaps"
 uuid = "dcf5437e-85d8-460a-98f8-69920db83c61"
 authors = ["hustf <hustf@users.noreply.github.com> and contributors"]
-version = "0.0.25"
+version = "0.0.26"
 
 [deps]
 ColorBlendModes = "60508b50-96e1-4007-9d6c-f475c410f16b"
@@ -11,6 +11,7 @@ Dates = "ade2ca70-3891-5945-98fb-dc099432e06a"
 FileIO = "5789e2e9-d7fb-5bc7-8068-2c6fae9b9549"
 GDAL_jll = "a7073274-a066-55f0-b90d-d619367d196c"
 GeoArrays = "2fb1d81b-e6a0-5fc5-82e6-8e06903437ab"
+Geodesy = "0ef565a4-170c-5f04-8de2-149903a85f3d"
 ImageCore = "a09fc81d-aa75-5fe9-8630-4744c3626534"
 ImageFiltering = "6a3955dd-da59-5b1f-98d4-e7296123deb5"
 ImageIO = "82e4d734-157c-48bb-816b-45c225c6df19"

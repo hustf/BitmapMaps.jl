@@ -108,7 +108,7 @@ let
     # We're transposing the source data here, because
     # it makes it easier to reason about north, south, east west.
     za = transpose(g.A[:, :, 1])
-    @time img = BitmapMaps.__topo_relief(za, sb.cell_iter, cell2utm)
+    img = BitmapMaps.__topo_relief(za, sb.cell_iter, cell2utm)
     display_if_vscode(img)
 end
 

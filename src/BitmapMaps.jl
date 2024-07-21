@@ -45,6 +45,9 @@ import ImageSegmentation
 using ImageSegmentation: felzenszwalb, labels_map, segment_pixel_count, segment_mean
 import ImageMorphology
 using ImageMorphology: erode!, dilate!, dilate, GuoAlgo, thinning, strel_diamond
+# Grid
+import Geodesy
+using Geodesy: LLAfromUTMZ, UTMZfromLLA, wgs84, UTMZ, UTM
 # Elevation contours, consolidate feedback
 using ColorTypes: GrayA, gray, alpha
 import ImageCore

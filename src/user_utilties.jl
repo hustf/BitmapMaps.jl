@@ -30,7 +30,11 @@ function copy_relevant_tifs_to_folder(source_folder, destination_folder)
     # Candidates from file names only, no geographical info. If the same file name occurs twice in the source folder hierarchy,
     # only one will be copied.
     cs = candidate_tif_names(source_folder, destination_folder)
-    @info "Found $(length(cs)) candidates for copying. Set ENV[\"JULIA_DEBUG\"] = \"BitmapMaps\" for detailed output."
+    if get(ENV, "JULIA_DEBUG", "") !== "BitmapMaps"
+        @info "Found $(length(cs)) candidates for copying."
+    else
+        @info "Found $(length(cs)) candidates for copying. Set ENV[\"JULIA_DEBUG\"] = \"BitmapMaps\" for detailed output."
+    end
     # Candidate by candidate is checked for geographical match, then copied.
     destination_files = String[]
     for cafna in cs
@@ -38,6 +42,9 @@ function copy_relevant_tifs_to_folder(source_folder, destination_folder)
         if is_source_relevant(d, cafna)
             @debug "    Found relevant file $cafna"
             dfna = file_name_at_dest(cafna, destination_folder)
+            @assert ! isfile(dfna)
+            @debug "    Destination file $dfna"
+            # This has at least once failed for a file > 1 Gb, but not every time. Do it manually if that occurs.
             cp(cafna, dfna)
             push!(destination_files, dfna)
         else

@@ -35,6 +35,9 @@ function _prepare_init_file_configuration(io)
     entry("Line thicknesses", "Elevation contour 20m", "1  "; comm = "No keyword. \r\n  #  Values: 0, 1, 3, 5...")
     entry("Line thicknesses", "Elevation contour 100m", "3 "; comm = "No keyword. \r\n  #  Values: 0, 1, 3, 5...")
     entry("Line thicknesses", "Elevation contour 1000m", "5"; comm = "No keyword. \r\n  #  Values: 0, 1, 3, 5...")
+    entry("UTM grid", "Grid line thickness", "5"; comm = "No keyword.")
+    entry("UTM grid", "Grid spacing [m]", "1000"; comm = "No keyword.")
+    entry("UTM grid", "Zone for elevation data", "33"; comm = "No keyword. \r\n  #  File metadata is ignored. wgs84 datum assumed.")
     # To file..
     println(io, ini)
 end
