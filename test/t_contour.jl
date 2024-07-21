@@ -19,7 +19,7 @@ if ! ispath(joinpath(fofo))
     throw("Missing folder, cannot continue. Try to establish $fofo and \n copy_relevant_tifs_to_folder(source_folder, destination_folder) ")
 end
 if ! isfile(joinpath(fofo, BitmapMaps.CONSOLIDATED_FNAM))
-    throw("Missing file, cannot continue. Try \n BitmapMaps.consolidate_data_in_folder_to_geoarray(fofo)")
+    throw("Missing file, cannot continue. Try \n BitmapMaps.consolidate_local_data_to_geoarray_in_folder(fofo)")
 end
 g = readclose(joinpath(fofo, BitmapMaps.CONSOLIDATED_FNAM))
 source_indices = (1:2:size(g)[1], 1:2:size(g)[2])

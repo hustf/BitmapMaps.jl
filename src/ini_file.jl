@@ -38,6 +38,7 @@ function _prepare_init_file_configuration(io)
     entry("UTM grid", "Grid line thickness", "5"; comm = "No keyword.")
     entry("UTM grid", "Grid spacing [m]", "1000"; comm = "No keyword.")
     entry("UTM grid", "Zone for elevation data", "33"; comm = "No keyword. \r\n  #  File metadata is ignored. wgs84 datum assumed.")
+    entry("Water", "Lake steepness max", "0.156"; comm = "No keyword. \r\n  #  Values with success in different terrains: 0.075, 0.156, 0.16, 0.2")
     # To file..
     println(io, ini)
 end

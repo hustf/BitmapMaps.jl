@@ -6,6 +6,7 @@
 # To build the folder structure first, you can either `run_bitmapmap_pipeline()`,
 # which aborts the run when not finding data, or run
 # `establish_folder.(sheet_matrix_builder)`
+
 """
     copy_relevant_tifs_to_folder((source_folder, destination_folder)
     copy_relevant_tifs_to_folder(source_folder, smb::SheetMatrixBuilder)
@@ -14,7 +15,7 @@
 
 - `source_folder` is searched recursively. Each file is opened to find if it's relevant to the destination coordinates.
 - `destination_folder` respects the integers naming scheme: `r c min_x min_y max_x max_y` (ref. `parse_folder_name`).
-   Relevant files copied in the first level of destination's hierarchy.
+   Relevant files copied into the destination's first level.
 
 Any files to be copied need to match the geographical area specified in destination folder name.
 

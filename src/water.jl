@@ -10,12 +10,11 @@ Creates water overlay from elevation data.
 Output is image files with full transparency outside water surfaces, for manual touch-up.
 """
 function water_overlay(sb::SheetBuilder)
-    # Extract the utm / metre distance between neigbouring pixels
-    cell_size = sb.f_I_to_utm(CartesianIndex(1,2))[1] - sb.f_I_to_utm(CartesianIndex(1,1))[1]
+    lake_steepness_max = get_config_value("Water", "Lake steepness max", Float32; nothing_if_not_found = false)
     # Go ahead
-    water_overlay(full_folder_path(sb), cell_size)
+    water_overlay(full_folder_path(sb), sb.cell_iter, cell_to_utm_factor(sb), lake_steepness_max)
 end
-function water_overlay(fofo, cell_size)
+function water_overlay(fofo, cell_iter, cell2utm, lake_steepness_max)
     if isfile(joinpath(fofo, COMPOSITE_FNAM))
         @debug "    $COMPOSITE_FNAM in $fofo already exists. Exiting `water_overlay`"
         return true
@@ -33,7 +32,7 @@ function water_overlay(fofo, cell_size)
         z = readclose(ffna)
         z.A[:, :, 1]
     end
-    lm_bool = is_water_surface(elevations, cell_size)
+    lm_bool = is_water_surface(elevations, cell_iter, cell2utm, lake_steepness_max)
     ice_elevation = 1000.0 # Hardcoded that lakes above 1000m are frozen.
     save_lakes_overlay_png(lm_bool, elevations, ice_elevation, fofo)
     true
@@ -68,25 +67,20 @@ function save_lakes_overlay_png(lm_bool, elevations, ice_elevation, folder)
 end
 
 
-function is_water_surface(elevations, horizontal_distance)
-    # Hardcoded parmeters for identifying lake regions from steepness using Felzenszwalb regions
+function is_water_surface(elevations, cell_iter, horizontal_distance, lake_steepness_max)
+    # Hardcoded parmeter for identifying lake regions from steepness using Felzenszwalb regions
     lake_area_min = 900 # m²
     lake_pixels_min = Int(round(lake_area_min / horizontal_distance^2))
     k = 3.8
-    # Values was increased in order to indicate utm 33N 6930548 47889 as a lake.
-    # TODO: Include in .ini file, as the data quality varies significantly and no 
-    # single value is found to render acceptable results.
-    lake_steepness_max = 0.156 # 0.158 NOK #0.155 NOK # 0.15 NOK # 0.16 OK # 0.1375 NOK # 0.2 OK #0.075 OK
-    # data
     @debug "    Calculating steepness"
-    steep_matrix = steepness_decirad_capped(elevations, horizontal_distance)
+    steep_matrix = steepness_decirad_capped(elevations, cell_iter, horizontal_distance)
     # Boolean result matrix
     lake_matrix(steep_matrix, k, lake_steepness_max, lake_pixels_min)
 end
 
 
 """
-    steepness_decirad_capped(elevations, horizontal_distance; cap_deg = 1.5)
+    steepness_decirad_capped(elevations, cell_iter, horizontal_distance; cap_deg = 1.5)
     ---> Matrix{Float64}
 
 `elevations` is a matrix in the same unit as scalar `horizontal_distance`.
@@ -99,7 +93,11 @@ Returns local stepness, a matrix of scalars in values of decirad:
 
 For other purposes than finding water surfaces, cap_deg = 86 ° is a practical upper limit.
 """
-function steepness_decirad_capped(elevations, horizontal_distance; cap_deg =  1.5)
+function steepness_decirad_capped(elevations, cell_iter, horizontal_distance; cap_deg =  1.5)
+    # WORK IN PROGRESS.
+    # Try the same approach as in topo_relief.
+    # Transpose the data before calling this.
+    # Don't allocate g1, g1, use map or mapwindow instead.
     z_norm = elevations ./ horizontal_distance
     # The next line may meet memory restrictions. It calculates gradients at every sample point.
     # If we sampled fewer points, the parameters for dealing with elevation data noise 
@@ -112,6 +110,7 @@ function steepness_decirad_capped(elevations, horizontal_distance; cap_deg =  1.
         min(10 * atan(hypot(gr1, gr2)), cap_deg * 10 * π / 180)
     end
 end
+
 
 
 function lake_matrix(steep_matrix, k, lake_steepness_max, lake_pixels_min)
@@ -146,3 +145,4 @@ function lake_matrix(steep_matrix, k, lake_steepness_max, lake_pixels_min)
         Gray{Bool}(islake)
     end
 end
+

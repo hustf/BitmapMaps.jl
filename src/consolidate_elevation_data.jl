@@ -1,9 +1,14 @@
 # Step in pipeline
 """
-    consolidate_elevation_data(sb) ---> Bool
+    consolidate_elevation_data(sb::SheetBuilder) ---> Bool
+
+`sb` is a SheetBuilder, which is part of a collection SheetMatrixBuilder.
+
+This calls `consolidate_local_data_to_geoarray_in_folder(sb.pthsh)`.
+See that function regarding where to place input .tif files.
 """
 function consolidate_elevation_data(sb)
-    consolidated = consolidate_data_in_folder_to_geoarray(full_folder_path(sb))
+    consolidated = consolidate_local_data_to_geoarray_in_folder(full_folder_path(sb))
     @assert consolidated isa Bool
     if ! consolidated
         @info "Could not make consolidated .tif for sheet  with folder path $(sb.pthsh). Download and unzip .tif files? Exiting."
@@ -12,12 +17,37 @@ function consolidate_elevation_data(sb)
 end
 
 """
-    consolidate_data_in_folder_to_geoarray(fofo)
+    consolidate_local_data_to_geoarray_in_folder(fofo)
     ---> Bool
+
+The folder name 'fofo' is interpreted as the external bounding box. 
+Data which fit into the box is collected from any .tif files in the folder itself, 
+but also from any .tif files in the folder above.
+
+'fofo' is intended as a working directory for one sheet in the total BitmapMap, specified 
+by a SheetBuilder, one of normally several in a SheetMatrixBuilder.
+
+# Example of folder structure
+
+If 'fofo1' and 'fofo2' is contained in 'fo', it is good practice to name 'fo' similarly.  e.g.:
+
+´´´
+fo:    homedir()/bitmapmaps/myproj 47675 6929520 50858 6938686
+fofo1:                            \1 1  47675 6929520  50858 6934103
+fofo2:                            \2 1  47675 6934103  50858 6938686
+´´´
+
+If the above structure is used, and the collected .tif data files cover a larger area than single sheets,
+drop the data files in 'fo' and let this function pull data from 'fo' into each 'fofo/Consolidated.tif`.
+
+The same procedure would regardless of the collected data file's extent (but the consolidation would take 
+more than if data files were put straight in the correct 'fofo'.). 
+
+Also see `copy_relevant_tifs_to_folder`.
 """
-function consolidate_data_in_folder_to_geoarray(fofo)
+function consolidate_local_data_to_geoarray_in_folder(fofo)
     if isfile(joinpath(fofo, CONSOLIDATED_FNAM))
-        @debug "    $CONSOLIDATED_FNAM in $fofo already exists. Exiting `consolidate_data_in_folder_to_geoarray`"
+        @debug "    $CONSOLIDATED_FNAM in $fofo already exists. Exiting `consolidate_local_data_to_geoarray_in_folder`"
         return true
     end
     # The folder fofo's name contains the geometry request made at høydedata.no or similar!
@@ -27,7 +57,8 @@ function consolidate_data_in_folder_to_geoarray(fofo)
     w = max_x - min_x
     h = max_y - min_y
     # Files to consolidate
-    fnas_source = filter(tif_full_filenames_buried_in_folder(fofo)) do ffna
+    alltifs = vcat(tif_full_filenames_buried_in_folder(fofo), tif_full_filenames_in_parent_folder(fofo))
+    fnas_source = filter(alltifs) do ffna
         splitpath(ffna)[end] !== CONSOLIDATED_FNAM
     end
     if length(fnas_source) == 0

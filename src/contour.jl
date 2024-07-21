@@ -42,6 +42,8 @@ function _elev_contours(fofo, cell_iter, cell2utm, thick_20, thick_100, thick_10
     g = readclose(joinpath(fofo, CONSOLIDATED_FNAM))
     # Prepare iterators and buffers
     ny, nx = size(cell_iter)
+    # A better way would likely be to transpose the source data.
+    # However, this works, too. 
     source_indices = (1:cell2utm:(nx  * cell2utm), 1:cell2utm:(ny * cell2utm))
     si = CartesianIndices(source_indices)
     # Store elevation in an 'image buffer'. We'll add more below.

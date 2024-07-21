@@ -92,18 +92,35 @@ end
 
 Excludes .tif files direcltly under 'metadata' folders
 """
-function tif_full_filenames_buried_in_folder(pth)
+function tif_full_filenames_buried_in_folder(pth; recurse = true)
+    @assert ispath(pth)
     tifs = String[]
-    for (root, dirs, files) in walkdir(pth)
-        if ! endswith(root, "metadata")
-            for file in files
-                if endswith(file, ".tif")
-                    fullname = joinpath(root, file)
-                    @assert isfile(fullname)
-                    push!(tifs, fullname)
+    if recurse
+        for (root, dirs, files) in walkdir(pth)
+            if ! endswith(root, "metadata")
+                for file in files
+                    if endswith(file, ".tif")
+                        fullname = joinpath(root, file)
+                        @assert isfile(fullname)
+                        push!(tifs, fullname)
+                    end
                 end
+            end
+        end
+    else
+        for file in readdir(pth)
+            if endswith(file, ".tif")
+                fullname = joinpath(pth, file)
+                @assert isfile(fullname)
+                push!(tifs, fullname)
             end
         end
     end
     tifs
+end
+
+function tif_full_filenames_in_parent_folder(pth)
+    @assert ispath(pth)
+    pth_parent = abspath(joinpath(pth, ".."))
+    tif_full_filenames_buried_in_folder(pth_parent; recurse = false)
 end
