@@ -3,8 +3,10 @@
 
 """
     topo_relief(sb::SheetBuilder)
-    topo_relief(fofo)
+    topo_relief(fofo, cell_iter, cell2utm)
+    ---> Bool
 
+Output is an RGB .png image file.
 """
 function topo_relief(sb::SheetBuilder)
     topo_relief(full_folder_path(sb), sb.cell_iter, cell_to_utm_factor(sb))
@@ -41,16 +43,18 @@ function _topo_relief(fofo, cell_iter, cell2utm)
 end
 
 function __topo_relief(za, cell_iter, cell2utm)
-    # Output image indices
-    ny, nx = size(cell_iter)
-    source_indices = (1:cell2utm:(ny * cell2utm), 1:cell2utm:(nx * cell2utm))
     # We need a 'render single output pixel function'. It changes a pixel at a time,
     # and its argument is its immediate surrounding in the source data.
     # It also needs to know more, but we're capturing that data.
     fr = func_render(generate_directional_pallette_func())
     # Now map the render function to an output image.
     @debug "    Render topo relief"
-    mapwindow(fr, za, (3, 3), indices = source_indices)
+    # Output image size
+    ny, nx = size(cell_iter)
+    # Source indices
+    indices = (1:cell2utm:(ny * cell2utm), 1:cell2utm:(nx * cell2utm))
+    # Apply
+    mapwindow(fr, za, (3, 3); indices)
 end
 
 function func_render(f_hypso)

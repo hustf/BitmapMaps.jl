@@ -5,9 +5,10 @@
 """
     water_overlay(sb::SheetBuilder)
     water_overlay(fofo)
+    ---> Bool
 
 Creates water overlay from elevation data.
-Output is image files with full transparency outside water surfaces, for manual touch-up.
+Output is an RGBA .png image file. Fully transparent outside water surfaces, for manual touch-up.
 """
 function water_overlay(sb::SheetBuilder)
     lake_steepness_max = get_config_value("Water", "Lake steepness max", Float32; nothing_if_not_found = false)
@@ -28,15 +29,15 @@ function water_overlay(fofo, cell_iter, cell2utm, lake_steepness_max)
         return true
     end
     ffna = joinpath(fofo, CONSOLIDATED_FNAM)
-    elevations = let
+    elevation = let
         g = readclose(ffna)
         # We're transposing the source data here, because
         # it makes it easier to reason about north, south, east west.
         transpose(g.A[:, :, 1])
     end
-    lm_bool = is_water_surface(elevations, cell_iter, cell2utm, lake_steepness_max)
+    lm_bool = is_water_surface(elevation, cell_iter, cell2utm, lake_steepness_max)
     ice_elevation = 1000.0 # Hardcoded that lakes above 1000m are frozen.
-    save_lakes_overlay_png(lm_bool, elevations, cell_iter, ice_elevation, fofo)
+    save_lakes_overlay_png(lm_bool, elevation, cell_iter, ice_elevation, fofo)
     true
 end
 
@@ -67,14 +68,17 @@ function save_lakes_overlay_png(lm_bool, elevations, cell_iter, ice_elevation, f
     img
 end
 
-
+"""
+    is_water_surface(elevations, cell_iter, horizontal_distance, lake_steepness_max)
+    ---> Matrix{Gray{Bool}}
+"""
 function is_water_surface(elevations, cell_iter, horizontal_distance, lake_steepness_max)
     # Hardcoded parmeter for identifying lake regions from steepness using Felzenszwalb regions
     lake_area_min = 900 # m²
     lake_pixels_min = Int(round(lake_area_min / horizontal_distance^2))
     k = 3.8
     @debug "    For water id, finding local steepness over 2 m lenghts"
-    steepness = steepness_decirad_capped(elevations, cell_iter)
+    steepness = steepness_decirad_capped(elevations, cell_iter, horizontal_distance)
     # Boolean result matrix
     @debug "    For water id, classifying areas of low steepness"
     is_lake(steepness, k, lake_steepness_max, lake_pixels_min)
@@ -82,41 +86,51 @@ end
 
 
 """
-    steepness_decirad_capped(elevations, cell_iter; cap_deg = 1.5)
-    ---> Matrix{Float64}
+    steepness_decirad_capped(elevations, cell_iter)
+    ---> Matrix{Float32}
 
-`elevations` is a matrix with grid distance 1 elevation unit.
+`elevation` is a matrix with grid distance 1 unit, same unit as elevation.
 
-Returns local stepness, a matrix of scalars in values of decirad:
+Returns local stepness around each pixel, a matrix of scalars in units of decirad:
 
     10π / 2 decirad == 90°
     10π / 180 decirad == 1°
     1 decirad == 180 / 10π ° == 5.729577951308232°
 """
-function steepness_decirad_capped(elevation, cell_iter)
-    # This will operate on the original data resolution,
+function steepness_decirad_capped(elevation, cell_iter, cell2utm)
+    # Output image size
+    ny, nx = size(cell_iter)
+    # Source indices
+    indices = (1:cell2utm:(ny * cell2utm), 1:cell2utm:(nx * cell2utm))
+    # Apply
+    mapwindow(local_steepness_capped, elevation, (3, 3); indices)
+end
+
+@inbounds function local_steepness_capped(M::Matrix)
+    # This function will operate on the original data resolution,
     # so as to be independent of output resolution, cell to utm factor.
-    @inbounds function fls(M::Matrix)
-        @assert size(M) == (3, 3)
-        # If rows in M correspond to south -> north
-        # and cols in M correspond to west -> east
-        # _ n _
-        # w z e  
-        # _ s _
-        _, w, _, n, z, s, _, e, _ = M
-        gr1 = (e - w) / 2
-        gr2 = (n - s) / 2
-        # We're capping steepness at
-        cap_deg =  1.5f0
-        # For low steepness, atan(x) == x
-        10 * min(hypot(gr1, gr2), cap_deg * π / 180)
-    end
     # This will find the local steepness around each output pixel.
-    source_indices = cell_iter.indices
-    mapwindow(fls, elevation, (3, 3), indices = source_indices)
+    @assert size(M) == (3, 3)
+    # If rows in M correspond to south -> north
+    # and cols in M correspond to west -> east
+    # _ n _
+    # w z e  
+    # _ s _
+    _, w, _, n, z, s, _, e, _ = M
+    gr1 = (e - w) / 2
+    gr2 = (n - s) / 2
+    # We're capping steepness at
+    cap_deg =  1.5f0
+    # For low steepness, atan(x) == x
+    10 * min(hypot(gr1, gr2), cap_deg * π / 180)
 end
 
 
+
+"""
+    is_lake(steepness, k, lake_steepness_max, lake_pixels_min)
+    ---> Matrix{Gray{Bool}}
+"""
 function is_lake(steepness, k, lake_steepness_max, lake_pixels_min)
     # Divide the steepness matrix into segments, based on proximity and steepness difference.
     # Note that we don't have or use a minimum cell count argument yet.
