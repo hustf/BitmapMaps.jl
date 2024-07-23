@@ -99,7 +99,11 @@ Sample values occupying the same geographical position from g_source to g_dest.
 The crs field is ignored, unlike `GeoArrays.sample_values!`.
 """
 function sample_values_larger_than_limit!(g_dest::GeoArray, fna_source::String)
-    sample_values_larger_than_limit!(g_dest, readclose(fna_source))
+    g_source = readclose(fna_source)
+    if cell_to_utm_factor(g_source) > 1
+        @warn "cell_to_utm_factor($(fna_source)) > 1"
+    end
+    sample_values_larger_than_limit!(g_dest, g_source)
 end
 
 function sample_values_larger_than_limit!(g_dest::GeoArray, g_source::GeoArray)
@@ -109,7 +113,7 @@ function sample_values_larger_than_limit!(g_dest::GeoArray, g_source::GeoArray)
     # in `g_dest` to logical coordinates in `g_source`.
     f = inv(g_source.f) ∘ g_dest.f
     for io in 1:wo, jo in 1:ho
-        i, j = Int.(f((io, jo)))
+        i, j = Int.(round.(f((io, jo))))
         # Is this logical coordinate inside the edges of g_source?
         if (1 <= i <= w) && (1 <= j <= h)
             # Loop over bands

@@ -33,13 +33,20 @@ end
 @test eltype(elevations) == Float32
 
 @test sum(iszero.(elevations)) == 155 # Southern edge zero
-# WIP TODO: Fix test
-#lm_bool = BitmapMaps.is_water_surface(elevations, 1)
-#@test sum(lm_bool) == 5205 # This lake's identified surface are is 5205m²
-#img = BitmapMaps.save_lakes_overlay_png(lm_bool, elevations, 1000, tmpdir_water)
-#@test isfile(joinpath(tmpdir_water, BitmapMaps.WATER_FNAM))
+
+cell2utm = 1
+cell_iter = CartesianIndices((1:cell2utm:155, 1:cell2utm:155))
+lm_bool = BitmapMaps.is_water_surface(elevations, cell_iter, cell2utm, 0.155)
+@test sum(lm_bool) * cell2utm^2 == 5372
+cell2utm = 2
+cell_iter = CartesianIndices((1:cell2utm:155, 1:cell2utm:155))
+lm_bool = BitmapMaps.is_water_surface(elevations, cell_iter, cell2utm, 0.155)
+@test sum(lm_bool) * cell2utm^2 == 5440 # Coarser along edges, OK
+
+img = BitmapMaps.save_lakes_overlay_png(lm_bool, elevations, cell_iter, 1000, tmpdir_water)
+@test isfile(joinpath(tmpdir_water, BitmapMaps.WATER_FNAM))
 # The output file looks good. Now cleanup, then do the same through the 'pipeline_interface'
-#rm(joinpath(tmpdir_water, BitmapMaps.WATER_FNAM))
+rm(joinpath(tmpdir_water, BitmapMaps.WATER_FNAM))
 
 # Copy the elevation file to the filename expected by the pipeline interface.
 cp(fna, joinpath(tmpdir_water, BitmapMaps.CONSOLIDATED_FNAM))

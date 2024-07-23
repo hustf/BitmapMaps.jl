@@ -8,6 +8,9 @@
 Unzip the .tif files in downloaded zip. Typically, unzipped files are
 largish, but easily compressable. See `tif_full_filenames_buried_in_folder`
 for candidates for deletion. Just keep the zip file and CONSOLIDATED_FNAM.
+
+Both the .zip files in each sheet's folder, and those in the parent's (the SheetMatrixBuilder's)
+are unpacked.
 """
 unzip_tif(sb::SheetBuilder) = unzip_tif(full_folder_path(sb))
 function unzip_tif(fofo)
@@ -15,7 +18,9 @@ function unzip_tif(fofo)
         @debug "    $CONSOLIDATED_FNAM in $fofo already exists. Exiting `unzip_tif`"
         return true
     end
-    zipfiles = filter(f-> endswith(f, ".zip"), readdir(fofo, join = true))
+    fo = abspath(joinpath(fofo, ".."))
+    allfiles = vcat(readdir(fofo, join = true), readdir(fo, join = true))
+    zipfiles = filter(f-> endswith(f, ".zip"), allfiles)
     for z in zipfiles
         _unzip_tif(z)
     end

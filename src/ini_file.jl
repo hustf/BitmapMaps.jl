@@ -61,9 +61,9 @@ function get_config_value(sect::String, key::String; nothing_if_not_found = fals
         throw(ArgumentError(msg))
     end
     if nothing_if_not_found
-        get(ini, sect, key,  nothing)
+        IniFile.get(ini, sect, key,  nothing)
     else
-        s = get(ini, sect, key,  "")
+        s = IniFile.get(ini, sect, key,  "")
         if s == ""
             throw(ArgumentError("""
                 $key not a key with value in section $sect of file $fna.

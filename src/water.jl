@@ -29,23 +29,24 @@ function water_overlay(fofo, cell_iter, cell2utm, lake_steepness_max)
     end
     ffna = joinpath(fofo, CONSOLIDATED_FNAM)
     elevations = let
-        z = readclose(ffna)
-        z.A[:, :, 1]
+        g = readclose(ffna)
+        # We're transposing the source data here, because
+        # it makes it easier to reason about north, south, east west.
+        transpose(g.A[:, :, 1])
     end
     lm_bool = is_water_surface(elevations, cell_iter, cell2utm, lake_steepness_max)
     ice_elevation = 1000.0 # Hardcoded that lakes above 1000m are frozen.
-    save_lakes_overlay_png(lm_bool, elevations, ice_elevation, fofo)
+    save_lakes_overlay_png(lm_bool, elevations, cell_iter, ice_elevation, fofo)
     true
 end
 
-function save_lakes_overlay_png(lm_bool, elevations, ice_elevation, folder)
+function save_lakes_overlay_png(lm_bool, elevations, cell_iter, ice_elevation, folder)
     # Hardcoded lake colors
     water_color = RGBA{N0f8}(0.521, 0.633, 0.764, 1.0)
     ice_color = RGBA{N0f8}(0.8, 0.8, 0.8, 1.0)
     transparent = RGBA{N0f8}(0.0, 0.0, 0.0, 0.0)
-    # Create the colourful, transparent image (in full resolution, disregarding cell_to_utm_factor)
-    # TODO Speed up, see contour.jl
-    img = transpose(map(zip(lm_bool, elevations)) do (is_lake, elevation)
+    # Create the colourful, transparent image (in full resolution, disregarding cell_to_utm_factor)    
+    img = map(zip(lm_bool, elevations[cell_iter])) do (is_lake, elevation)
         if is_lake == Gray{Bool}(true)
             if elevation > ice_elevation
                 ice_color
@@ -55,7 +56,7 @@ function save_lakes_overlay_png(lm_bool, elevations, ice_elevation, folder)
         else
             transparent
         end
-    end)
+    end
     # Feedback
     display_if_vscode(img)
     # Save
@@ -72,53 +73,56 @@ function is_water_surface(elevations, cell_iter, horizontal_distance, lake_steep
     lake_area_min = 900 # m²
     lake_pixels_min = Int(round(lake_area_min / horizontal_distance^2))
     k = 3.8
-    @debug "    Calculating steepness"
-    steep_matrix = steepness_decirad_capped(elevations, cell_iter, horizontal_distance)
+    @debug "    For water id, finding local steepness over 2 m lenghts"
+    steepness = steepness_decirad_capped(elevations, cell_iter)
     # Boolean result matrix
-    lake_matrix(steep_matrix, k, lake_steepness_max, lake_pixels_min)
+    @debug "    For water id, classifying areas of low steepness"
+    is_lake(steepness, k, lake_steepness_max, lake_pixels_min)
 end
 
 
 """
-    steepness_decirad_capped(elevations, cell_iter, horizontal_distance; cap_deg = 1.5)
+    steepness_decirad_capped(elevations, cell_iter; cap_deg = 1.5)
     ---> Matrix{Float64}
 
-`elevations` is a matrix in the same unit as scalar `horizontal_distance`.
+`elevations` is a matrix with grid distance 1 elevation unit.
 
 Returns local stepness, a matrix of scalars in values of decirad:
 
     10π / 2 decirad == 90°
     10π / 180 decirad == 1°
     1 decirad == 180 / 10π ° == 5.729577951308232°
-
-For other purposes than finding water surfaces, cap_deg = 86 ° is a practical upper limit.
 """
-function steepness_decirad_capped(elevations, cell_iter, horizontal_distance; cap_deg =  1.5)
-    # WORK IN PROGRESS.
-    # Try the same approach as in topo_relief.
-    # Transpose the data before calling this.
-    # Don't allocate g1, g1, use map or mapwindow instead.
-    z_norm = elevations ./ horizontal_distance
-    # The next line may meet memory restrictions. It calculates gradients at every sample point.
-    # If we sampled fewer points, the parameters for dealing with elevation data noise 
-    # would need adjustments.
-    # One workaround may be to split areas further, and patch together 'WATER_FNAM' manually.
-    g1, g2 = imgradients(z_norm, KernelFactors.prewitt)
-    # We limit inclination to 86 degree, as a compromise. Many above that value are artifacts.
-    # TODO speed up, see contours.jl
-    map(zip(g1, g2)) do (gr1, gr2)
-        min(10 * atan(hypot(gr1, gr2)), cap_deg * 10 * π / 180)
+function steepness_decirad_capped(elevation, cell_iter)
+    # This will operate on the original data resolution,
+    # so as to be independent of output resolution, cell to utm factor.
+    @inbounds function fls(M::Matrix)
+        @assert size(M) == (3, 3)
+        # If rows in M correspond to south -> north
+        # and cols in M correspond to west -> east
+        # _ n _
+        # w z e  
+        # _ s _
+        _, w, _, n, z, s, _, e, _ = M
+        gr1 = (e - w) / 2
+        gr2 = (n - s) / 2
+        # We're capping steepness at
+        cap_deg =  1.5f0
+        # For low steepness, atan(x) == x
+        10 * min(hypot(gr1, gr2), cap_deg * π / 180)
     end
+    # This will find the local steepness around each output pixel.
+    source_indices = cell_iter.indices
+    mapwindow(fls, elevation, (3, 3), indices = source_indices)
 end
 
 
-
-function lake_matrix(steep_matrix, k, lake_steepness_max, lake_pixels_min)
+function is_lake(steepness, k, lake_steepness_max, lake_pixels_min)
     # Divide the steepness matrix into segments, based on proximity and steepness difference.
-    # Note that we don't have or use a minimum cell count argument here. 
+    # Note that we don't have or use a minimum cell count argument yet.
     # Note: A size check might be good here because this can take > 10 minutes.
     @debug "    First steepness segmentation"
-    steep_segments = felzenszwalb(steep_matrix, k)
+    steep_segments = felzenszwalb(steepness, k)
     is_flat(i) = segment_mean(steep_segments, i) < lake_steepness_max
     is_large(i) = segment_pixel_count(steep_segments, i) >= lake_pixels_min
     # Create a black-and-white image, where we discard small and too steep segments.
@@ -145,4 +149,3 @@ function lake_matrix(steep_matrix, k, lake_steepness_max, lake_pixels_min)
         Gray{Bool}(islake)
     end
 end
-
