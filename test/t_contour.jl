@@ -14,7 +14,8 @@ using ColorBlendModes: BlendLighten
 import ImageMorphology: erode, dilate
 
 
-fofo = joinpath(homedir(), "bitmapmaps\\render\\1 1  47675 6929520  54041 6938686")
+#fofo = joinpath(homedir(), "bitmapmaps\\render\\1 1  47675 6929520  54041 6938686")
+fofo = joinpath(homedir(), raw"BitmapMaps/Hov Litlevatn\1 1  29000 6826535  31828 6830608")
 if ! ispath(joinpath(fofo))
     throw("Missing folder, cannot continue. Try to establish $fofo and \n copy_relevant_tifs_to_folder(source_folder, destination_folder) ")
 end

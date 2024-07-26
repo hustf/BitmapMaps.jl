@@ -63,7 +63,11 @@ function _elev_contours(fofo, cell_iter, cell2utm, thick_20, thick_100, thick_10
         RGBA{N0f8}(0., 0, 0, 0)
     end)
 end
-function _elev_contours!(res, source_indices, zs, bbuf, thicknesses, elevation_spacings)
+function _elev_contours!(res::T1, source_indices::T2, zs::T3, 
+        bbuf::T1, thicknesses::T4, elevation_spacings::T4) where {T1 <: Matrix{Gray{Bool}},
+            T2 <: Tuple{StepRange{Int64, Int64}, StepRange{Int64, Int64}},
+            T3 <: Matrix{GrayA{Float32}},
+            T4 <: Vector{Int64}}
     for (t, Δz) in zip(thicknesses, elevation_spacings)
         # Overwrite bbuf with pixels on contours.
         mapwindow!(func_elev_contour(Δz), bbuf, zs, (1, 1); indices = source_indices)
@@ -135,7 +139,6 @@ function func_elev_contour(vert_dista::Float32)
         end
         Gray{Bool}(false)
     end
-
 end
 function black_white_elevation_contour!(bw, z, elevation, thick_1000)
     bw

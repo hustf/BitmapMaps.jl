@@ -35,6 +35,9 @@ end
 #@testset "Test elevation contour" begin # depends on local data files
 #    include("t_contour.jl")
 #end
+@testset "Test markers" begin
+    include("t_markers.jl")
+end
 @testset "Test BitmapMaps pipeline" begin
     include("t_pipeline.jl")
 end

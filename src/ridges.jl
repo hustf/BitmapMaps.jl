@@ -124,7 +124,6 @@ end
 # determining peak prominence. Where the Gaussian
 # curvature is zero, we probably have a saddle point.
 function gaussian_curvature(z)
-    throw("Not dead")
     g1, g2 = jacobian_components((z))
     g11, g21, g12, g22 = hessian_components(g1, g2)
     # Compute the determinant of the Hessian matrix at each index
