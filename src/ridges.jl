@@ -120,6 +120,11 @@ function hessian_components(z::Matrix{T}) where T
     hessian_components(g1, g2)
 end
 
+#=
+
+DEAD code. We're instead trying to find summit prominence using 
+the MaxTree approach.
+
 # This is not plotted directly, but used in
 # determining peak prominence. Where the Gaussian
 # curvature is zero, we probably have a saddle point.
@@ -135,3 +140,4 @@ function gaussian_curvature(z)
 end
 
 gaussian_curvature_smoothed(z) = gaussian_curvature(smoothed_surface_fir(z))
+=#

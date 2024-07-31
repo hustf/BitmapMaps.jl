@@ -12,8 +12,9 @@ using Test
 tmpdir_water = mktempdir()
 let
     zfi = "../resource/eksport_800912_20240512.zip"
-    zipfi = joinpath(@__DIR__, zfi)
-    cp(zipfi, joinpath(tmpdir_water, splitdir(zipfi)[2]))
+    zipfi = abspath(joinpath(@__DIR__, zfi))
+    dest = joinpath(tmpdir_water, splitdir(zipfi)[2])
+    cp(zipfi, dest)
 end
 
 # A zip file now exists in tmpdir_water, as if downloaded by user.

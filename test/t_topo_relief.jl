@@ -24,8 +24,8 @@ tmpdir_topo_relief = mktempdir()
 
 let
     zfi = "../resource/eksport_800912_20240512.zip"
-    zipfi = joinpath(@__DIR__, zfi)
-    dest = joinpath(tmpdir_topo_relief, splitdir(zipfi)[2])
+    zipfi = abspath(joinpath(@__DIR__, zfi))
+    dest = abspath(joinpath(tmpdir_topo_relief, splitdir(zipfi)[2]))
     if ! isfile(dest)
         cp(zipfi, dest)
     end

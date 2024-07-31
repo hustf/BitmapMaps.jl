@@ -86,11 +86,11 @@ function define_builder(; kwds...)
         throw(ArgumentError("Unrecognized_keywords: $unrecognized_keywords. See file BitmapMap.ini for keywords, like: 'sheet_width_mm'"))
     end
     # Parameters from .ini file, overridden by key words.
-    southwest_corner = get_kw_or_config_value(:southwest_corner ,"Geographical position", "Southwest corner (utm easting northing)", Tuple{Int, Int}; kwds...)
-    cell_to_utm_factor = get_kw_or_config_value(:cell_to_utm_factor, "Cell to utm factor", "Utm unit distance between elevation sampling points", Int; kwds...)
+    southwest_corner = get_kw_or_config_value(:southwest_corner ,"Geographical area", "Southwest corner (utm easting northing)", Tuple{Int, Int}; kwds...)
+    cell_to_utm_factor = get_kw_or_config_value(:cell_to_utm_factor, "Geographical area", "Cell to utm factor, i.e. utm unit distance between elevation sampling points", Int; kwds...)
     sheet_width_mm = get_kw_or_config_value(:sheet_width_mm ,"Printer consistent capability", "Printable width mm", Int; kwds...)
     sheet_height_mm = get_kw_or_config_value(:sheet_height_mm ,"Printer consistent capability", "Printable height mm", Int; kwds...)
-    density_pt_m⁻¹ = get_kw_or_config_value(:density_pt_m⁻¹ ,"Output density (of 'cells' / 'dots' / 'points' or 'pixels')", "Output density, number of cells per meter", Int; kwds...)
+    density_pt_m⁻¹ = get_kw_or_config_value(:density_pt_m⁻¹ ,"Geographical area", "Output density, i.e. 'cells' / 'dots' / 'points' or 'pixels' per paper meter", Int; kwds...)
     pth = get_kw_or_config_value(:pth, "File folder", "Top folders path under homedir()", String; kwds...)
     # This value is for checking if density_pt_m⁻¹ is higher than is printable
     density_limit_pt_inch⁻¹ = get_kw_or_config_value(:density_limit_pt_inch⁻¹ ,"Printer consistent capability", "Stated density limit, dots per inch", Int; kwds...)
@@ -102,7 +102,7 @@ function define_builder(; kwds...)
     # Either nrc (number of rows and columns) or sheet_indices can be specified.
     # If nrc is specified, this overrules.
     if (:sheet_indices ∉ keys(kwds)) || (:sheet_indices ∈ keys(kwds) && :nrc ∈ keys(kwds))
-        nrc = get_kw_or_config_value(:nrc ,"Number of printable sheets", "(rows columns)", Tuple{Int, Int}; kwds...)
+        nrc = get_kw_or_config_value(:nrc ,"Geographical area", "Output paper sheets (rows columns)", Tuple{Int, Int}; kwds...)
         smb = SheetMatrixBuilder(southwest_corner, nrc, cell_to_utm_factor, sheet_width_mm, sheet_height_mm, density_pt_m⁻¹, pth)
     elseif :sheet_indices ∈ keys(kwds) && :nrc ∉ keys(kwds)
         sheet_indices = kwds[:sheet_indices]
@@ -122,15 +122,19 @@ end
 
 
 function process_job(smb, complete_sheets_first)
-    #=
-    TODO
-    Make vector graphics and text covering the full map area. You may use RouteMap.jl for this step.
-    Threading..
-    =#
-    operations_order = [establish_folder, unzip_tif, consolidate_elevation_data, water_overlay, topo_relief, contour_lines_overlay, grid_overlay, ridge_overlay, join_layers]
-    # Consider sharing an in-memory z-map and gradient map between operations.... No need to redo it.
+        operations_order = [establish_folder, 
+        unzip_tif, 
+        consolidate_elevation_data, 
+        water_overlay, 
+        topo_relief, 
+        contour_lines_overlay, 
+        grid_overlay, 
+        ridge_overlay,
+        summit_prominence_sheet_internal,
+        join_layers]
+    # 
     if complete_sheets_first
-        for sb in smb # Might do this in parallel? Though a lot will be wating for file i/o...
+        for sb in smb
             for fn in operations_order
                 call_func(fn, sb) || return false
             end
@@ -142,6 +146,19 @@ function process_job(smb, complete_sheets_first)
             end
         end
     end
+    # TODO: We did not consider cross-sheet summit prominence yet.
+    #       This can not be done before all sheets are processed. 
+    #       But the interaction depends on an initial step without
+    #       sheet interaction.
+    #       We don't want to give up the current flexibility (i.e. 
+    #       processing all sheets at once, or finish one first).
+    #       Hence, a good approach might be to require re-running
+    #       the pipeline after fully finishing. 
+    #       Interaction would only be triggered if the required 
+    #       files for interaction have been generated.
+    #       Since interaction is a SheetMatrixBuilder level operation,
+    #       which may take time and require more memory, the prerequisites 
+    #       for it should be checked AFTER join_layers, i.e. here.
     true
 end
 function call_func(fn, sb)

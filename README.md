@@ -26,7 +26,7 @@ An .ini file is generated with default argument values. User updates arguments i
 
 If an intermediate file is deleted, the corresponding step is triggered to rerun - if an output file exists, the corresponing and the previous steps are skipped.
 
-Steps in the pipeline, in sequece:
+Steps in the pipeline, in sequence:
 
 1) Define a `SheetMatrixBuilder` based on `home/BitmapMaps.ini`. Keywords overrule file values. Repl feedback for a preview of the bitmap's geographical extent and division into sheets (`define_builder`).
 2) Establish folder hierarchy for storing intermediate data (`establish_folder`).
@@ -41,7 +41,8 @@ Steps in the pipeline, in sequece:
 9) Add UTM grid (`grid_overlay`).
 10) Mark dieders and ridges (`ridge_overlay`).
 11) Make vector graphics and text covering the full map area. 
-12) Composite bitmap and vector graphics (`join_layers`).
+12) Find the prominence of summits and draw markers (`summit_prominence_sheet_internal`).
+13) Composite bitmap and vector graphics (`join_layers`).
 
 # Example
 ```
@@ -54,6 +55,10 @@ run_bitmapmap_pipeline()
 
 Code has been adapted from environments 'geoarrays' and 'tutorial_images, as well as package 'RouteMap.jl'. Step 11 is currently missing. The
 previous version used LuxorLayout for this, but the svg's are in practice uneditable. Linking bitmaps from 'self-produced' svgs may be a better option overall.
+
+Summit prominence often depends on the topography outside of the current sheet. Step 11) currently does not consider that,
+and as a result some summit markers appear once for every precipitation area that borders it. Because this is flawed, the summit markers layer is not
+layered with the others.
 
 `GeoArrays.jl` has breaking changes in  version 0.9 (we currently pin to 0.8.5). Cairo / Pango has long-standing font issues on Windows, we currently pin the version. We could use Inkscape, but it seems to be affected as well.
 
@@ -77,8 +82,7 @@ Some of the changes from scripting workflow:
 # Wishlist (after version 0.1)
 
 - Side-by-side overview of all sheets
-- Show correct grid for the area, e.g. UTM32.
-- Mark maxima, use prominence. Editable text file for peaks? Add peak labels in .svg?
+- Editable text file for peaks? Add peak labels in .svg?
 
 # Bounding box functions
 

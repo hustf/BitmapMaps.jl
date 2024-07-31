@@ -12,15 +12,18 @@ for candidates for deletion. Just keep the zip file and CONSOLIDATED_FNAM.
 Both the .zip files in each sheet's folder, and those in the parent's (the SheetMatrixBuilder's)
 are unpacked.
 """
-unzip_tif(sb::SheetBuilder) = unzip_tif(full_folder_path(sb))
-function unzip_tif(fofo)
+unzip_tif(sb::SheetBuilder) = unzip_tif(full_folder_path(sb); include_parent_folder = true)
+function unzip_tif(fofo; include_parent_folder = false)
     if isfile(joinpath(fofo, CONSOLIDATED_FNAM))
         @debug "    $CONSOLIDATED_FNAM in $fofo already exists. Exiting `unzip_tif`"
         return true
     end
-    fo = abspath(joinpath(fofo, ".."))
-    allfiles = vcat(readdir(fofo, join = true), readdir(fo, join = true))
-    zipfiles = filter(f-> endswith(f, ".zip"), allfiles)
+    allfiles = readdir(fofo, join = true)
+    if include_parent_folder
+        fo = abspath(joinpath(fofo, ".."))
+        append!(allfiles, readdir(fo, join = true))
+    end
+    zipfiles = filter(f -> endswith(f, ".zip"), allfiles)
     for z in zipfiles
         _unzip_tif(z)
     end
@@ -30,10 +33,10 @@ end
 function _unzip_tif(zipfile)
     # Copied and modified for just .tif & .tiff from sylvaticus:
     # https://discourse.julialang.org/t/how-to-extract-a-file-in-a-zip-archive-without-using-os-specific-tools/34585/5
-    @assert isfile(zipfile)
+    isfile(zipfile) || throw(ArgumentError("zipfile does not exist: $zipfile"))
     basePath = dirname(zipfile)
     outPath = basePath
-    @assert isdir(outPath)
+    isdir(outPath) || throw(ArgumentError("outPath is no directory: $outPath"))
     zarchive = ZipFile.Reader(zipfile)
     for f in zarchive.files
         fullFilePath = joinpath(outPath, f.name)

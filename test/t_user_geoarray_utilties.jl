@@ -32,7 +32,7 @@ mkpath(dfona)
 rm("$source_folder/a/1.tif")
 rm("$source_folder/b/2.tif")
 # Let's unpack a zip files from the /resource folder, which should be relevant.
-zipfi = joinpath(@__DIR__, "../resource/eksport_796345_20240420.zip")
+zipfi = abspath(joinpath(@__DIR__, "../resource/eksport_796345_20240420.zip"))
 pth = "$source_folder/a/"
 fzip = joinpath(pth, splitdir(zipfi)[2])
 cp(zipfi, fzip)

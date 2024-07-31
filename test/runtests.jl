@@ -32,9 +32,11 @@ end
 @testset "Test filter" begin
     include("t_filter.jl")
 end
-#@testset "Test elevation contour" begin # depends on local data files
-#    include("t_contour.jl")
-#end
+if ispath(joinpath(homedir(), "BitmapMaps\\Hov Litlevatn\\1 1  29000 6826535  31828 6830608"))
+    @testset "Test elevation contour" begin # depends on local data files
+        include("t_contour.jl")
+    end
+end
 @testset "Test markers" begin
     include("t_markers.jl")
 end

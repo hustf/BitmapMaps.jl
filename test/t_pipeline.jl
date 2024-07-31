@@ -39,7 +39,8 @@ let
     for zfi in ["../resource/eksport_796345_20240420.zip",
             "../resource/eksport_796340_20240420.zip",
             "../resource/eksport_826662_20240610.zip"]
-        zipfi = joinpath(@__DIR__, zfi)
+        zipfi = abspath(joinpath(@__DIR__, zfi))
+        isfile(zipfi) || throw("Can't find $zipfi")
         dest = joinpath(tmpdir_pipeline, splitdir(zipfi)[2])
         if ! isfile(dest)
             cp(zipfi, dest)

@@ -44,7 +44,7 @@ using ColorTypes: RGBA, RGB, AbstractGray, AbstractRGB, Gray, red, green, blue #
 import ImageSegmentation
 using ImageSegmentation: felzenszwalb, labels_map, segment_pixel_count, segment_mean
 import ImageMorphology
-using ImageMorphology: erode!, dilate!, dilate, GuoAlgo, thinning, strel_diamond
+using ImageMorphology: erode!, dilate!, dilate, GuoAlgo, thinning
 # Grid
 import Geodesy
 using Geodesy: LLAfromUTMZ, UTMZfromLLA, wgs84, UTMZ, UTM
@@ -53,6 +53,8 @@ using ColorTypes: GrayA, gray, alpha
 import ImageCore
 using ImageCore: channelview, scaleminmax, colorview
 using ImageFiltering: FIRTiled, Fill
+# Summit prominence
+using ImageMorphology: MaxTree
 # Overlays to composite
 import ColorBlendModes
 using ColorBlendModes: CompositeDestinationOver, BlendLighten
@@ -77,6 +79,8 @@ const WATER_FNAM = "Water.png"
 const CONTOUR_FNAM = "Contour.png"
 const GRID_FNAM = "Grid.png"
 const RIDGE_FNAM = "Ridge.png"
+const MARKERS_FNAM = "Markers.png"
+const MAX_ELEVATION_ABOVE_FNAM = "_Max_elevation_above.png"
 const COMPOSITE_FNAM = "Composite.png"
 
 include("ini_file.jl")
@@ -98,5 +102,6 @@ include("grid.jl")
 include("ridges.jl")
 include("layers.jl")
 include("mark_utils.jl")
+include("prominence_sheet_internal.jl")
 
 end

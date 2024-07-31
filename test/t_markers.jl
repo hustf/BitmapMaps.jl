@@ -37,7 +37,7 @@ mark_at!(bw, p_nw)
 # Hollow circle
 ###############
 
-f_is_filled = BitmapMaps.func_is_on_hollow_circle
+f_is_filled = BitmapMaps.func_is_on_circle
 fill!(bw, false)
 mark_at!(bw, pis; f_is_filled)
 @test sum(bw) == 18
@@ -58,7 +58,7 @@ mark_at!(bw, p_nw; f_is_filled)
 # Hollow equilateral triangle
 #############################
 
-f_is_filled = BitmapMaps.func_is_on_hollow_equilateral_triangle
+f_is_filled = BitmapMaps.func_is_on_triangle
 fill!(bw, false)
 mark_at!(bw, pis; f_is_filled)
 @test sum(bw) == 6
@@ -151,7 +151,7 @@ display_if_vscode(bw)
 # Equilateral triangle
 ######################
 
-f_is_filled = BitmapMaps.func_is_in_equilateral_triangle
+f_is_filled = BitmapMaps.func_is_in_triangle
 fill!(bw, false)
 mark_at!(bw, pis; f_is_filled)
 @test sum(bw) == 8
@@ -200,3 +200,10 @@ fill!(bw, false)
 mark_at!(bw, CartesianIndex(h ÷ 2, w ÷ 2), side = w - 1; f_is_filled)
 display_if_vscode(bw)
 @test sum(bw) == 99^2
+
+#################
+# String argument
+#################
+fill!(bw, false)
+mark_at!(bw, pis, 3, "in_square")
+@test sum(bw) == 18

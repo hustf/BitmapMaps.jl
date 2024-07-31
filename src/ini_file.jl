@@ -18,27 +18,50 @@ function _prepare_init_file_configuration(io)
         #
         """
     println(io, msg)
-    #
+    # Note, we're creating several 'IniFile' below, for sequential writing to the same file.
+    # At reading, they are of course parsed as the same Ini File.
     ini = Inifile()
     # Shorthand
     entry(section, key, val; comm = "") = set_section_key_string_comment(ini, section, key, val, comm)
-    # Entries in arbitrary order from file. Will be ordered by section.
-    entry("Geographical position", "Southwest corner (utm easting northing)", "(4873 6909048)"; comm = ":southwest_corner")
+    # Section which can be overruled by keywords to `run_bitmapmap_pipeline`
     entry("Printer consistent capability", "Printable width mm", "191"; comm = ":sheet_width_mm\r\n  #    Measured 193 mm. Allowing 2 mm  random variation.")
     entry("Printer consistent capability", "Printable height mm", "275"; comm = ":sheet_height_mm\r\n  #    Measured 277 mm. Allowing 2 mm for random variation.")
     entry("Printer consistent capability", "Stated density limit, dots per inch", "600"; comm = ":density_limit_pt_inch⁻¹\r\n  #    As advertised by Brother")
-    entry("Output density (of 'cells' / 'dots' / 'points' or 'pixels')", "Output density, number of cells per meter", "11811";
+    println(io, ini)
+    ini = Inifile()
+    entry("Geographical area", "Southwest corner (utm easting northing)", "(4873 6909048)"; comm = ":southwest_corner")
+    entry("Geographical area", "Output paper sheets (rows columns)", "(3 4)"; comm = ":nrc")
+    entry("Geographical area", "Output density, i.e. 'cells' / 'dots' / 'points' or 'pixels' per paper meter", "11811";
         comm = ":density_pt_m⁻¹\r\n  #    For reference, 300  / inch = 300 / (0.0254 m) = 11811 m⁻¹ \r\n  #    Use lower values to slightly 'zoom in', otherwise use 'cell_to_utm_factor'.")
-    entry("Number of printable sheets", "(rows columns)", "(3 4)"; comm = ":nrc")
-    entry("Cell to utm factor", "Utm unit distance between elevation sampling points", "3"; comm = ":cell_to_utm_factor\r\n  #    How many 'utm metres' does a 'cell' / 'dot' / 'point' or 'pixel' side represent?")
+    entry("Geographical area", "Cell to utm factor, i.e. utm unit distance between elevation sampling points", "3"; comm = ":cell_to_utm_factor\r\n  #    How many 'utm metres' does a 'cell' / 'dot' / 'point' or 'pixel' side represent?")
+    println(io, ini)
+    ini = Inifile()
     entry("File folder", "Top folders path under homedir()", "bitmapmaps/default"; comm = ":pth \r\n  #    Folder hierarchy will be created under homedir().\r\n  #    For copying in files, see 'copy_relevant_tifs_to_folder'")
-    entry("Line thicknesses", "Elevation contour 20m", "1  "; comm = "No keyword. \r\n  #  Values: 0, 1, 3, 5...")
-    entry("Line thicknesses", "Elevation contour 100m", "3 "; comm = "No keyword. \r\n  #  Values: 0, 1, 3, 5...")
-    entry("Line thicknesses", "Elevation contour 1000m", "5"; comm = "No keyword. \r\n  #  Values: 0, 1, 3, 5...")
-    entry("UTM grid", "Grid line thickness", "5"; comm = "No keyword.")
-    entry("UTM grid", "Grid spacing [m]", "1000"; comm = "No keyword.")
-    entry("UTM grid", "Zone for elevation data", "33"; comm = "No keyword. \r\n  #  File metadata is ignored. wgs84 datum assumed.")
-    entry("Water", "Lake steepness max", "0.075"; comm = "No keyword. \r\n  #  Values with success in different terrains: 0.075, 0.156, 0.16, 0.2")
+    println(io, ini)
+    msg = """
+        #
+        # Sections which can not be overruled by keywords to `run_bitmapmap_pipeline`
+        #
+        """
+    println(io, msg)
+    # Sections which can not be overruled by keywords to `run_bitmapmap_pipeline`
+    ini = Inifile()
+    entry("Line thicknesses", "Elevation contour 20m", "1  "; comm = "\r\n  #  Values: 0, 1, 3, 5...")
+    entry("Line thicknesses", "Elevation contour 100m", "3 "; comm = "\r\n  #  Values: 0, 1, 3, 5...")
+    entry("Line thicknesses", "Elevation contour 1000m", "5"; comm = "\r\n  #  Values: 0, 1, 3, 5...")
+    entry("UTM grid", "Grid line thickness", "5")
+    entry("UTM grid", "Grid spacing [m]", "1000")
+    entry("UTM grid", "Zone for elevation data", "33"; comm = "\r\n  #  File metadata is ignored. wgs84 datum assumed.")
+    entry("Water", "Lake steepness max", "0.075"; comm = "\r\n  #  Values with success in different terrains: 0.075, 0.156, 0.16, 0.2")
+    entry("Markers", "Prominence level [m], prominent summit", "100")
+    entry("Markers", "Prominence level [m], obscure summit", "50")
+    entry("Markers", "Symbol prominent summit", "in_triangle"; comm = "
+        # on_square, on_triangle, on_circle
+        # in_square, in_triangle, in_circle
+        # on_cross, on_xcross, on_hline, on_vline")
+    entry("Markers", "Symbol obscure summit", "on_triangle")
+    entry("Markers", "Size prominent summit symbol", "31"; comm = "\r\n  #  Length of bounding box size. Must be odd.")
+    entry("Markers", "Size obscure summit symbol", "21"; comm = "\r\n  #  Length of bounding box size. Must be odd.")
     # To file..
     println(io, ini)
 end
@@ -165,4 +188,3 @@ function delete_init_file()
         println("$fna Didn't and doesn't exist.")
     end
 end
-

@@ -1,38 +1,55 @@
 # Markers is a lightweight utility in BitmapMaps used for drawing on
 # existing images.
 
-# From Plots:
-# :+, :auto, :circle, :cross, :diamond, :dtriangle, :heptagon, :hexagon, :hline, :ltriangle, :none, :octagon, :pentagon, :pixel, :rect, :rtriangle, :star4, :star5, :star6, :star7, :star8, :utriangle, :vline, :x, :xcross
 
 """
-    mark_at!(img, inds::AbstractArray{CartesianIndex{2}}; side::Int = 3, f_is_filled = func_is_on_hollow_square)
-    mark_at!(img, I::CartesianIndex{2}; side::Int = 3, f_is_filled = func_is_on_hollow_square)
+    mark_at!(img, inds::AbstractArray{CartesianIndex{2}}, side, shapename::String)
+    mark_at!(img, inds::AbstractArray{CartesianIndex{2}}; side::Int = 3, f_is_filled = func_is_on_square)
+    mark_at!(img, I::CartesianIndex{2}; side::Int = 3, f_is_filled = func_is_on_square)
 
 Mark in-place 
 - a shape centered on cartesian index 'I'.
-- shapes centered on a collection 'inds'.
+- identical shapes centered on a collection 'inds'.
 
-# Keyword arguments
+# Arguments (including keywords)
 
-- side    defines the shape's square bounding box
+- side       defines the shape's square bounding box
+- shapename  "on_square", "in_circle", or corresponding from `f_is_filled` below
 - f_is_filled is a function generator taking the 'side' argument.
   The generated function take a tuple of indices and returns a Bool.
 
 Predefined (not exported):
 ``` 
-func_is_on_hollow_square   - default
-func_is_on_hollow_equilateral_triangle
-func_is_on_hollow_circle
-func_is_on_hline
-func_is_on_vline
+func_is_on_square
+func_is_on_triangle
+func_is_on_circle
+func_is_in_square
+func_is_in_triangle
+func_is_in_circle
 func_is_on_cross
 func_is_on_xcross
-func_is_in_equilateral_triangle
-func_is_in_circle
-func_is_in_square
+func_is_on_hline
+func_is_on_vline
 ``` 
 """
-function mark_at!(img, inds::AbstractArray{CartesianIndex{2}}; side::Int = 3, f_is_filled = func_is_on_hollow_square)
+function mark_at!(img, inds::AbstractArray{CartesianIndex{2}}, side, shapename::String)
+    dic = Dict(
+       "on_square" => func_is_on_square,
+       "on_triangle" => func_is_on_triangle,
+       "on_circle" => func_is_on_circle,
+       "in_square" => func_is_in_square,
+       "in_triangle" => func_is_in_triangle,
+       "in_circle" => func_is_in_circle,
+       "on_cross" => func_is_on_cross,
+       "on_xcross" => func_is_on_xcross,
+       "on_hline" => func_is_on_hline,
+       "on_vline" => func_is_on_vline)
+    shapename ∈ keys(dic) || throw(ArgumentError("shapename $shapename"))
+    f_is_filled = dic[shapename]
+    mark_at!(img, inds; side, f_is_filled)
+end
+
+function mark_at!(img, inds::AbstractArray{CartesianIndex{2}}; side::Int = 3, f_is_filled = func_is_on_square)
     @assert isodd(side)
     maxoff = side ÷ 2
     Ω = displacement_offset(maxoff, f_is_filled)
@@ -41,7 +58,7 @@ function mark_at!(img, inds::AbstractArray{CartesianIndex{2}}; side::Int = 3, f_
     end
     img
 end
-function mark_at!(img, I::CartesianIndex{2}; side::Int = 3, f_is_filled = func_is_on_hollow_square)
+function mark_at!(img, I::CartesianIndex{2}; side::Int = 3, f_is_filled = func_is_on_square)
     @assert isodd(side)
     maxoff = side ÷ 2
     Ω = displacement_offset(maxoff, f_is_filled)
@@ -88,9 +105,9 @@ end
 
 
 
-func_is_on_hollow_square(maxoff) = (i, j) -> abs(i) == maxoff || abs(j) == maxoff
+func_is_on_square(maxoff) = (i, j) -> abs(i) == maxoff || abs(j) == maxoff
 
-function func_is_on_hollow_equilateral_triangle(maxoff)
+function func_is_on_triangle(maxoff)
     # Circumradius from c.o.a.
     r = maxoff
     # End indices of base line
@@ -105,7 +122,7 @@ function func_is_on_hollow_equilateral_triangle(maxoff)
     (i, j) -> fAB(i, j) || fBC(i, j) || fCA(i, j)
 end
 
-function func_is_on_hollow_circle(maxoff)
+function func_is_on_circle(maxoff)
     radius = maxoff
     tol_dist = 0.5
     min_r2 = Int(round((radius - tol_dist)^2))
@@ -134,7 +151,7 @@ function func_is_on_xcross(maxoff)
     (i, j) -> fAB(i, j) || fCD(i, j)
 end
 
-function func_is_in_equilateral_triangle(maxoff)
+function func_is_in_triangle(maxoff)
     # Circumradius from c.o.a.
     r = maxoff
     # End indices of base line

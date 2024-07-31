@@ -13,7 +13,7 @@ rm(full_folder_path(smb), force = true, recursive = true)
 # Copy .tif files into homedir() / BitmapMaps / test_unzip.
 for (p, zfi) in zip([smb[1,1], smb[2,2]], ["../resource/eksport_796345_20240420.zip", "../resource/eksport_796340_20240420.zip"])
     BitmapMaps.establish_folder(p)
-    zipfi = joinpath(@__DIR__, zfi)
+    zipfi = abspath(joinpath(@__DIR__, zfi))
     dest = joinpath(full_folder_path(p), splitdir(zipfi)[2])
     if ! isfile(dest)
         cp(zipfi, dest)
@@ -90,7 +90,7 @@ smb = SheetMatrixBuilder(sw_corner, nrc, cell2utm, sheet_width_mm, sheet_height_
 # The exact same files are copied this time.
 for (p, zfi) in zip([smb[1,1], smb[2,2]], ["../resource/eksport_796345_20240420.zip", "../resource/eksport_796340_20240420.zip"])
     BitmapMaps.establish_folder(p)
-    zipfi = joinpath(@__DIR__, zfi)
+    zipfi = abspath(joinpath(@__DIR__, zfi))
     dest = joinpath(full_folder_path(p), splitdir(zipfi)[2])
     if ! isfile(dest)
         cp(zipfi, dest)

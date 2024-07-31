@@ -8,7 +8,7 @@ This calls `consolidate_local_data_to_geoarray_in_folder(sb.pthsh)`.
 See that function regarding where to place input .tif files.
 """
 function consolidate_elevation_data(sb)
-    consolidated = consolidate_local_data_to_geoarray_in_folder(full_folder_path(sb))
+    consolidated = consolidate_local_data_to_geoarray_in_folder(full_folder_path(sb); include_parent_folder = true)
     @assert consolidated isa Bool
     if ! consolidated
         @info "Could not make consolidated .tif for sheet  with folder path $(sb.pthsh). Download and unzip .tif files? Exiting."
@@ -17,12 +17,12 @@ function consolidate_elevation_data(sb)
 end
 
 """
-    consolidate_local_data_to_geoarray_in_folder(fofo)
+    consolidate_local_data_to_geoarray_in_folder(fofo; include_parent_folder = false)
     ---> Bool
 
 The folder name 'fofo' is interpreted as the external bounding box. 
-Data which fit into the box is collected from any .tif files in the folder itself, 
-but also from any .tif files in the folder above.
+Data which fit into the box is collected from any .tif files in the folder itself.
+Provided that 'include_parent_folder = true', the "sheet matrix folder" is also searched.
 
 'fofo' is intended as a working directory for one sheet in the total BitmapMap, specified 
 by a SheetBuilder, one of normally several in a SheetMatrixBuilder.
@@ -45,7 +45,7 @@ more than if data files were put straight in the correct 'fofo'.).
 
 Also see `copy_relevant_tifs_to_folder`.
 """
-function consolidate_local_data_to_geoarray_in_folder(fofo)
+function consolidate_local_data_to_geoarray_in_folder(fofo; include_parent_folder = false)
     if isfile(joinpath(fofo, CONSOLIDATED_FNAM))
         @debug "    $CONSOLIDATED_FNAM in $fofo already exists. Exiting `consolidate_local_data_to_geoarray_in_folder`"
         return true
@@ -57,7 +57,10 @@ function consolidate_local_data_to_geoarray_in_folder(fofo)
     w = max_x - min_x
     h = max_y - min_y
     # Files to consolidate
-    alltifs = vcat(tif_full_filenames_buried_in_folder(fofo), tif_full_filenames_in_parent_folder(fofo))
+    alltifs = tif_full_filenames_buried_in_folder(fofo)
+    if include_parent_folder
+        append!(alltifs, tif_full_filenames_in_parent_folder(fofo))
+    end
     fnas_source = filter(alltifs) do ffna
         splitpath(ffna)[end] !== CONSOLIDATED_FNAM
     end
