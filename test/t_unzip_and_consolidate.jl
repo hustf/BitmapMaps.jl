@@ -128,6 +128,10 @@ for p in [smb[2,2], smb[1,1] ]
     # We have full elevation data
     @test sum(iszero.(g)) == 0
     @test polygon_string(g) == polygon_string(p)
+    # 
+    @test southwest_external_corner(g) == southwest_external_corner(p)
+    @test northeast_external_corner(g) == northeast_external_corner(p)
+
 end
 
 # Cleanup

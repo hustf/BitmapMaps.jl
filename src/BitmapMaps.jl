@@ -9,7 +9,6 @@ import ImageShow
 using FileIO: load
 # For adding physical print widths to png files in png_phys.jl
 import PNGFiles
-using PNGFiles: N0f8
 using PNGFiles: _save, png_init_io, close_png, png_uint_32
 using PNGFiles: Z_BEST_SPEED, Z_RLE, PNG_FILTER_PAETH, Z_DEFAULT_STRATEGY
 using PNGFiles: Z_FIXED, Z_NO_COMPRESSION, Z_BEST_COMPRESSION
@@ -51,10 +50,12 @@ using Geodesy: LLAfromUTMZ, UTMZfromLLA, wgs84, UTMZ, UTM
 # Elevation contours, consolidate feedback
 using ColorTypes: GrayA, gray, alpha
 import ImageCore
-using ImageCore: channelview, scaleminmax, colorview
+using ImageCore: channelview, scaleminmax, colorview, N0f8
 using ImageFiltering: FIRTiled, Fill
 # Summit prominence
 using ImageMorphology: MaxTree
+import DelimitedFiles
+using DelimitedFiles: readdlm, writedlm
 # Overlays to composite
 import ColorBlendModes
 using ColorBlendModes: CompositeDestinationOver, BlendLighten
@@ -72,6 +73,8 @@ export geo_grid_centre_single, geo_centre, bbox_external_string, polygon_string,
 export geo_area, nonzero_raster_closed_polygon_string, raster_polygon_string, nonzero_raster_rect
 export copy_relevant_tifs_to_folder, tif_full_filenames_buried_in_folder, unzip_tif
 export show_derived_properties, readclose, display_if_vscode
+#
+# Not exported because it's too generic: mark_at! and line!
 
 const CONSOLIDATED_FNAM = "Consolidated.tif"
 const TOPORELIEF_FNAM = "Toporelief.png"
@@ -80,7 +83,8 @@ const CONTOUR_FNAM = "Contour.png"
 const GRID_FNAM = "Grid.png"
 const RIDGE_FNAM = "Ridge.png"
 const MARKERS_FNAM = "Markers.png"
-const MAX_ELEVATION_ABOVE_FNAM = "_Max_elevation_above.png"
+const MAX_ELEVATION_ABOVE_FNAM = "_Max_elevation_above.mat"
+const SUMMITS_FNAM = "Summits.csv"
 const COMPOSITE_FNAM = "Composite.png"
 
 include("ini_file.jl")
@@ -102,6 +106,6 @@ include("grid.jl")
 include("ridges.jl")
 include("layers.jl")
 include("mark_utils.jl")
-include("prominence_sheet_internal.jl")
+include("summit_markers.jl")
 
 end

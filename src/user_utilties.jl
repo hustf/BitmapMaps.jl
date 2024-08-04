@@ -154,3 +154,40 @@ function display_if_vscode(M::Matrix{T}) where T <: Union{RGBA{N0f8}, RGB{N0f8}}
         end
     end
 end
+
+
+
+"""
+    write_vectors_to_csv(filename::String, headers::Vector{T}, vectors, widths; delim = '\t') where T <: Union{String, Symbol}
+    ---> Nothing
+
+Make a column formatted and delimited .csv, without many dependencies. Not suitable for large files.
+
+# Example
+```
+julia> write_vectors_to_csv(filename::String, headers::Vector{String}, vectors, widths)
+```
+"""
+function write_vectors_to_csv(filename::String, headers::Vector{T}, vectors, widths; delim = '\t') where T <: Union{String, Symbol}
+    length(headers) == length(vectors) == length(widths) ||  throw(ArgumentError("NOT length(vectors) == length(headers) == length(widths)"))
+    # Check that all vectors are of the same length
+    length_of_vectors = length(vectors[1])
+    for v in vectors
+        if length(v) != length_of_vectors
+            throw(ArgumentError("All vectors must be of the same length"))
+        end
+    end
+    sh = join(rpad.(string.(headers), widths), delim)
+    open(filename, "w") do io
+        # Write header
+        write(io, sh * "\n")
+        # Write data
+        for i in 1:length_of_vectors
+            row = [vectors[j][i] for j in 1:length(vectors)]
+            s = join(rpad.(string.(row), widths), delim)
+            write(io, s * "\n")
+        end
+    end
+    nothing
+end
+

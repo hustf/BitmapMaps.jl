@@ -32,6 +32,7 @@ function _join_layers(fofo, cell_iter)
     comp = composite_image(comp, joinpath(fofo, WATER_FNAM))
     comp = composite_image(comp, joinpath(fofo, CONTOUR_FNAM))
     comp = composite_image(comp, joinpath(fofo, GRID_FNAM))
+    comp = composite_image(comp, joinpath(fofo, MARKERS_FNAM))
     return comp
 end
 

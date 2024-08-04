@@ -1,5 +1,7 @@
 # Markers is a lightweight utility in BitmapMaps used for drawing on
 # existing images.
+# 
+# See `line!` and `mark_at!`
 
 
 """
@@ -64,13 +66,38 @@ function mark_at!(img, I::CartesianIndex{2}; side::Int = 3, f_is_filled = func_i
     Ω = displacement_offset(maxoff, f_is_filled)
     _mark_at!(img, I, Ω)
 end
-function _mark_at!(img, p::CartesianIndex{2}, Ω)
+
+"""
+    line!(img, A::CartesianIndex{2}, B::CartesianIndex{2})
+
+
+Line from A to B. Not the fastest or smartest implementation, especially for long line. 
+The line at least will appear consistently wide.
+"""
+function line!(img, A::CartesianIndex{2}, B::CartesianIndex{2})
+    min_i = min(A[1], B[1])
+    min_j = min(A[2], B[2])
+    max_i = max(A[1], B[1])
+    max_j = max(A[2], B[2])
+    rngi = min_i:1:max_i
+    rngj = min_j:1:max_j
+    f = func_is_on_line(A.I, B.I)
+    Ω = [CartesianIndex((i,j)) for i in rngi, j in rngj if f(i, j)]
     R = CartesianIndices(img)
-    Ωₚ = filter(q -> in(q, R), Ref(p) .+ Ω)
-    img[Ωₚ] .= one(eltype(img))
+    Ωₚ = filter(q -> in(q, R), Ω)
+    img[Ωₚ] .= oneunit(eltype(img))
     img
 end
 
+###########
+# Internals
+###########
+function _mark_at!(img, p::CartesianIndex{2}, Ω)
+    R = CartesianIndices(img)
+    Ωₚ = filter(q -> in(q, R), Ref(p) .+ Ω)
+    img[Ωₚ] .= oneunit(eltype(img))
+    img
+end
 
 """
     displacement_offset(max_offset, f_is_filled)
@@ -81,9 +108,10 @@ function displacement_offset(max_offset, f_is_filled)
     [CartesianIndex((i,j)) for i in rng, j in rng if f(i, j)]
 end
 
-function func_is_on_line(A, B)
+function func_is_on_line(A::T, B::T) where T <: Tuple{Int64, Int64}
     s = hypot((A .- B)...)
-    length = Int(ceil(s))
+    # This 'length' is the number of stops, not the distance:
+    length = Int(ceil(s)) + 1
     ABi = range(A[1], B[1]; length)
     ABj = range(A[2], B[2]; length)
     tol_dist = √2 / 2
@@ -101,9 +129,6 @@ end
 ###################
 # Shape definitions 
 ##################
-
-
-
 
 func_is_on_square(maxoff) = (i, j) -> abs(i) == maxoff || abs(j) == maxoff
 

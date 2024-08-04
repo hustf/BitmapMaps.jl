@@ -5,7 +5,7 @@
 # Note, the interface would naturally be better using symbols (:cross, etc...)
 using Test
 using BitmapMaps
-using BitmapMaps: Gray, mark_at!
+using BitmapMaps: Gray, mark_at!, line!
 w, h = 100, 100
 bw = zeros(Gray{Bool}, h, w)
 x1, y1 = 5, 5
@@ -61,7 +61,7 @@ mark_at!(bw, p_nw; f_is_filled)
 f_is_filled = BitmapMaps.func_is_on_triangle
 fill!(bw, false)
 mark_at!(bw, pis; f_is_filled)
-@test sum(bw) == 6
+@test sum(bw) == 12
 # 
 fill!(bw, false)
 mark_at!(bw, pis, side = 9; f_is_filled)
@@ -69,11 +69,11 @@ mark_at!(bw, pis, side = 9; f_is_filled)
 #
 fill!(bw, false)
 mark_at!(bw, CartesianIndex(h ÷ 2, w ÷ 2), side = w - 1; f_is_filled)
-@test sum(bw) == 313
+@test sum(bw) == 301
 # Over the edge
 fill!(bw, false)
 mark_at!(bw, p_nw; f_is_filled)
-@test sum(bw) == 1
+@test sum(bw) == 2
 
 #################
 # Horizontal line
@@ -207,3 +207,16 @@ display_if_vscode(bw)
 fill!(bw, false)
 mark_at!(bw, pis, 3, "in_square")
 @test sum(bw) == 18
+
+
+##########
+# Line A-B
+##########
+fill!(bw, false)
+A = CartesianIndex((y1, x1))
+B = CartesianIndex((y2, x2))
+line!(bw, A, B)
+@test sum(bw) == 70
+fill!(bw, false)
+line!(bw, B, A)
+@test sum(bw) == 70

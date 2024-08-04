@@ -130,7 +130,7 @@ function process_job(smb, complete_sheets_first)
         contour_lines_overlay, 
         grid_overlay, 
         ridge_overlay,
-        summit_prominence_sheet_internal,
+        summit_markers,
         join_layers]
     # 
     if complete_sheets_first
