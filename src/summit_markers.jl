@@ -69,10 +69,10 @@ function find_prominence_and_write_max_elevation_above(z, ffna)
     # split anyway.
     maxtree = MaxTree(round.(z))
     if isfile(ffna)
-        @debug "    Find max elevation above from file"
+        @debug "    Load 'max elevation above' from file"
         mea = readdlm(ffna)
     else
-        @debug "    Find max elevation above"
+        @debug "    Find 'max elevation above'"
         mea = maximum_elevation_above(round.(z); maxtree)
             # Save
         @debug "    Saving $ffna"
@@ -81,9 +81,10 @@ function find_prominence_and_write_max_elevation_above(z, ffna)
             writedlm(io, mea)
         end
     end
+    @debug "    Identify precise summit indices "
+    summit_indices = unique_summit_indices(z, maxtree)
     @debug "    Find prominence"
-    prominence_clusters(round.(z); maxtree, mea)
-    # TODO: Remove clusters, pick in each cluster from the unrounded elevation.
+    prominence(round.(z); maxtree, mea, summit_indices)
 end
 
 function write_prominence_data_to_csv(prom, z, f_I_to_utm, cell_iter, prom_levels, filename)
@@ -132,17 +133,16 @@ function draw_summit_marks(prominence, prom_levels, symbols, symbol_sizes)
     mark_at!(img, prominent_indices_nob, si2, sy2)
 end
    
-function prominence_clusters(z; 
-    maxtree = MaxTree(z), mea = maximum_elevation_above(z; maxtree))
-    # Check argument
+function prominence(z; 
+    maxtree = MaxTree(z), mea = maximum_elevation_above(z; maxtree),
+    summit_indices = leaf_indices(maxtree))
+    #
+    # Check arguments
     maxtree.rev && throw(ArgumentError("maxtree was created with 'reverse' option."))
     # Allocate result matrix
     promin = similar(z)
     fill!(promin, NaN)
-    # Identify (part of) all summits.
-    vi = leaf_indices(maxtree)
-
-    for i in vi
+    for i in summit_indices
         summit_elevation = z[i]
         # Recursively walk down from the leaf node until meeting a dominant (taller) 
         # summit's zone. Return the meeting index.
@@ -249,3 +249,75 @@ function leaf_indices(maxtree)
     return filter(i -> i ∉ parent_set, eachindex(maxtree.parentindices))
 end
 
+"""
+We can imagine several types of summits as represented by the maxtree.
+
+Case A: 
+    A local maximum has no neigbouring elevations that are identical. This
+    will be a leaf node, e.g. '2' here:
+
+    1 1 1
+    1 2 1
+    1 1 1
+
+ B: A local maximum has neigbouring elevations that are identical, 
+    or at least identical when rounded. Some rounding avoids
+    oversegmentation and simplifies calculations. Example of values
+    before rounding which might lead to this:
+      1.0  1.0  1.0
+      1.0  2.0  2.2
+      1.0  2.1  1.0
+   After rounding and taking the maxtree, the '2.2' and '2.1' would 
+   become leaf nodes, and 2.0 a reference node.
+
+Hard case, consider TODO:
+ 21.0  19.0  19.0  16.0
+ 22.0  22.0  23.0  22.0
+ 22.0  23.0  23.0  21.0
+ 22.0  22.0  22.0  16.0
+
+From which the current function returns two indices:
+(2, 1) = 22.0
+(2, 2) = 22.0
+
+"""
+function unique_summit_indices(z, maxtree)
+    # TODO: reconsider for effectiveness. 
+    # Can we treat A and B in the same way as B?
+    # Should we add function barriers? Use append! rather than push! ?
+    #
+    # Check arguments
+    maxtree.rev && throw(ArgumentError("maxtree was created with 'reverse' option."))
+    # The numer of candidates for summits, i.e. leaf indices, is typically 
+    # in the millions for one sheet. Hence, we must avoid nested loops
+    li = leaf_indices(maxtree)
+    # Identify situation B: Which leaf nodes indices share common parents?
+    leaf_parents = maxtree.parentindices[li]
+    @assert length(leaf_parents) == length(li)
+    dic_child_count = Dict{Int, Int}()
+    # Count occurrences of each parent
+    for x in leaf_parents
+        dic_child_count[x] = get(dic_child_count, x, 0) + 1
+    end
+    # Parents that sire multiple leafs
+    unique_repeat_parents = [k for (k, v) in dic_child_count if v > 1]
+    # Parents that sire just one leaf
+    unique_single_leaf_parents = Set([k for (k, v) in dic_child_count if v == 1])
+    # First, collect all the single-child leafs (case A above)
+    summit_indices = Set([i for (i, parent_i) in zip(li, leaf_parents) if parent_i ∈ unique_single_leaf_parents]) # 0.7s
+    # Now, prepare to collect case 'B'. A brood is multiple children belonging to the same parent:
+    dic_brood = Dict{Int, Vector{Int}}()
+    for (i, parent_i) in zip(li, leaf_parents)
+        if parent_i ∉ unique_single_leaf_parents
+            dic_brood[parent_i] = push!(get( dic_brood, parent_i, Int[]), i)
+        end
+    end
+    nested_brood = values(dic_brood)
+    nested_z = [z[brood] for brood in nested_brood]
+    # We are now ready to collect from case 'B'
+    for (brood, elevations) in zip(nested_brood, nested_z)
+        tallest_child = brood[argmax(elevations)]
+        push!(summit_indices, tallest_child)
+    end
+    summit_indices
+end

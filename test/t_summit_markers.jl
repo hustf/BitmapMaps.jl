@@ -1,7 +1,7 @@
 using Test
 using BitmapMaps
 using BitmapMaps: CONSOLIDATED_FNAM, MaxTree, maximum_elevation_above, leaf_indices
-using BitmapMaps: line!, mark_at!, prominence_clusters
+using BitmapMaps: line!, mark_at!, prominence
 import ImageCore
 using ImageCore: RGB, N0f8, RGBA
 using ImageSegmentation
@@ -31,10 +31,12 @@ source_indices = (1:cell2utm:(nx  * cell2utm), 1:cell2utm:(ny * cell2utm))
 si = CartesianIndices(source_indices)
 z = transpose(round.(g.A[si]))
 
-# Extract maximum elevation above and prominence
+# Check the maxtree
 maxtree = MaxTree(z)
+@test length(filter(i -> maxtree.parentindices[i] == i, maxtree.traverse)) == 1
+# Extract maximum elevation above and prominence
 mea = maximum_elevation_above(z; maxtree)
-prom = prominence_clusters(z;maxtree, mea)
+prom = prominence(z;maxtree, mea)
 
 # Inspect height and mark maximum
 display_if_vscode(z)
@@ -123,3 +125,37 @@ save_png_with_phys(ffna, map(traces) do pix
     pix == true && return RGBA{N0f8}(0, 0, 0, 1)
     RGBA{N0f8}(0., 0, 0, 0)
 end)
+
+# Investigate why this occurs:
+# Prominence_m        	Elevation_m         	Utm                 	Sheet_indices       
+# 1432.0              	1432.0              	(49742, 6933327)    	(3315, 690)         
+# 1432.0              	1432.0              	(49745, 6933312)        (3320, 691)   
+I1 = CartesianIndex(3315, 690)
+I2 = CartesianIndex(3320, 691)
+@test z[I1] == z[I2]
+
+
+# Check that both are leaf nodes:
+parent_set = Set(maxtree.parentindices)
+@test I1 ∉ parent_set
+@test I2 ∉ parent_set
+# Are they both children of the same node?
+parent_i1 = maxtree.parentindices[I1]
+parent_i2 = maxtree.parentindices[I2]
+@test parent_i1 == parent_i2
+# This is key! We need to refine the selection method.
+# Just pick the tallest leaf among these....
+
+li = leaf_indices(maxtree)
+@test length(li) == length(unique(li))
+leaf_parents = maxtree.parentindices[li]
+counts = Dict{Int, Int}()
+# Count occurrences of each parent
+for x in leaf_parents
+    counts[x] = get(counts, x, 0) + 1
+end
+# Parents that sire multiple leafs
+repeat_parents = [k for (k, v) in counts if v > 1]
+# # Parents with only one leaf
+single_leaf_parents = setdiff(leaf_parents, repeat_parents)
+@test length(single_leaf_parents) + length(repeat_parents) < length(leaf_parents)
