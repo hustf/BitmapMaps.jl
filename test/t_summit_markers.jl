@@ -1,7 +1,8 @@
 using Test
 using BitmapMaps
 using BitmapMaps: CONSOLIDATED_FNAM, MaxTree, maximum_elevation_above, leaf_indices
-using BitmapMaps: line!, mark_at!, prominence
+using BitmapMaps: line!, mark_at!, prominence, unique_summit_indices
+using BitmapMaps: parent_of_leaf_indices, leaf_indices, core_family_dictionary
 import ImageCore
 using ImageCore: RGB, N0f8, RGBA
 using ImageSegmentation
@@ -23,20 +24,22 @@ utmcen = (utmne .+ utmsw) .÷ 2
 icen_g = length(g.A) ÷ 2
 @test Int.(g.f(CartesianIndices(g.A[:, :, 1])[icen_g].I)) .- utmcen == [0, 0]
 
-# Downsample and round off elevations to whole metres.
+# Downsample elevations z
 cell_iter = CartesianIndices((1:4583, 1:3183))
 cell2utm = 3
 ny, nx = size(cell_iter)
 source_indices = (1:cell2utm:(nx  * cell2utm), 1:cell2utm:(ny * cell2utm))
 si = CartesianIndices(source_indices)
-z = transpose(round.(g.A[si]))
+z = transpose(g.A[si])
 
 # Check the maxtree
-maxtree = MaxTree(z)
+maxtree = MaxTree(round.(z))
 @test length(filter(i -> maxtree.parentindices[i] == i, maxtree.traverse)) == 1
-# Extract maximum elevation above and prominence
+# Extract maximum elevation above
 mea = maximum_elevation_above(z; maxtree)
-prom = prominence(z;maxtree, mea)
+# Pick one index from each summit. Selection among each top region is based on unrounded elevations.
+summit_indices = unique_summit_indices(z, maxtree)
+prom = prominence(round.(z); maxtree, mea, summit_indices)
 
 # Inspect height and mark maximum
 display_if_vscode(z)
@@ -44,7 +47,7 @@ maxel, maxind = findmax(z)
 mark_at!(z, [maxind], 601, "on_circle")
 display_if_vscode(z)
 # Get rid of the marker
-z = transpose(round.(g.A[si]))
+z = transpose(g.A[si])
 
 
 ##########################################
@@ -102,12 +105,13 @@ function trace_downpath!(traces, mea, maxtree, leaf_elevation, i, child_i)
 end
 
 
-###########################################
-# Trace such path for all prominent summits
-###########################################
+#############################################
+# Trace such a path for all prominent summits
+#############################################
 
 traces = zeros(Float32, size(z)...)
 inds = map(i -> CartesianIndices(z)[i], findall(p -> ! isnan(p) && p > 100, prom))
+@test length(inds) == 32
 mark_at!(traces, inds; side = 19, f_is_filled = BitmapMaps.func_is_in_triangle)
 display_if_vscode(traces)
 fill!(mea, NaN)
@@ -126,36 +130,42 @@ save_png_with_phys(ffna, map(traces) do pix
     RGBA{N0f8}(0., 0, 0, 0)
 end)
 
-# Investigate why this occurs:
-# Prominence_m        	Elevation_m         	Utm                 	Sheet_indices       
-# 1432.0              	1432.0              	(49742, 6933327)    	(3315, 690)         
-# 1432.0              	1432.0              	(49745, 6933312)        (3320, 691)   
-I1 = CartesianIndex(3315, 690)
-I2 = CartesianIndex(3320, 691)
-@test z[I1] == z[I2]
 
-
-# Check that both are leaf nodes:
-parent_set = Set(maxtree.parentindices)
-@test I1 ∉ parent_set
-@test I2 ∉ parent_set
-# Are they both children of the same node?
-parent_i1 = maxtree.parentindices[I1]
-parent_i2 = maxtree.parentindices[I2]
-@test parent_i1 == parent_i2
-# This is key! We need to refine the selection method.
-# Just pick the tallest leaf among these....
-
-li = leaf_indices(maxtree)
-@test length(li) == length(unique(li))
-leaf_parents = maxtree.parentindices[li]
-counts = Dict{Int, Int}()
-# Count occurrences of each parent
-for x in leaf_parents
-    counts[x] = get(counts, x, 0) + 1
-end
-# Parents that sire multiple leafs
-repeat_parents = [k for (k, v) in counts if v > 1]
-# # Parents with only one leaf
-single_leaf_parents = setdiff(leaf_parents, repeat_parents)
-@test length(single_leaf_parents) + length(repeat_parents) < length(leaf_parents)
+#
+#  Case A
+#
+z_ = [1 1 1
+      1 2 1
+      1 1 1]
+maxtree_ = MaxTree(z_)
+parent_set_ = Set(maxtree_.parentindices)
+@test parent_set_ == Set(1)
+@test leaf_indices(maxtree_; parent_set = parent_set_) == 2:9
+@test parent_of_leaf_indices(maxtree_; parent_set = parent_set_) == [1]
+@test core_family_dictionary(maxtree_) == Dict(1 => [2, 3, 4, 5, 6, 7, 8, 9])
+@test unique_summit_indices(z_, maxtree_) == Set(5)
+#
+# Case B
+# 
+z_ =  [ 1.0  1.0  1.0
+        1.0  2.0  2.2
+        1.0  2.1  1.0]
+maxtree_ = MaxTree(round.(z_))
+parent_set_ = Set(maxtree_.parentindices)
+@test parent_set_ == Set([1, 5])
+@test leaf_indices(maxtree_; parent_set = parent_set_) == [2, 3, 4, 6, 7, 8, 9]
+@test parent_of_leaf_indices(maxtree_; parent_set = parent_set_) == [1, 5]
+@test core_family_dictionary(maxtree_) == Dict(5 => [6, 8])
+@test unique_summit_indices(z_, maxtree_) == Set(8)
+#
+# Case B 2
+# 
+z_ = [ 21.0  19.0  19.0  16.0
+       22.0  22.0  23.0  22.0
+       22.0  23.0  23.0  21.0
+       22.0  22.0  22.0  16.0]
+maxtree_ = MaxTree(round.(z_))
+parent_set_ = Set(maxtree_.parentindices)
+@test parent_set_ == Set([1, 2, 5, 7, 13])
+@test core_family_dictionary(maxtree_) == Dict(7 => [10, 11])
+@test unique_summit_indices(z_, maxtree_) == Set(7)  

@@ -10,6 +10,13 @@
 
 """
     summit_markers(sb::SheetBuilder)
+    summit_markers(fofo, cell_iter, cell2utm, f_I_to_utm, prom_levels, symbols, symbol_sizes)
+    --> Bool
+
+- Identify 'prominent' and 'obscure' summits.
+- Mark symbols in image MARKERS_FNAM. 
+- Summarize in .csv file for potential name tagging: SUMMITS_FNAM.
+- Also writes the intermediate matrix 'maximum elevation above' to MAX_ELEVATION_ABOVE_FNAM. 
 """
 function summit_markers(sb::SheetBuilder)
     promlev_prom = get_config_value("Markers", "Prominence level [m], prominent summit", Int; nothing_if_not_found = false)
@@ -23,7 +30,6 @@ function summit_markers(sb::SheetBuilder)
     symbol_sizes = [symbol_size_obsc, symbol_size_prom]
     summit_markers(full_folder_path(sb), sb.cell_iter, cell_to_utm_factor(sb), sb.f_I_to_utm, prom_levels, symbols, symbol_sizes)
 end
-
 function summit_markers(fofo, cell_iter, cell2utm, f_I_to_utm, prom_levels, symbols, symbol_sizes)
     if isfile(joinpath(fofo, COMPOSITE_FNAM))
         @debug "    $COMPOSITE_FNAM in $fofo already exists. Exiting `summit_markers`"
@@ -50,32 +56,49 @@ function summit_markers(fofo, cell_iter, cell2utm, f_I_to_utm, prom_levels, symb
     true
 end
 
+"""
+    _summit_markers(fofo, cell_iter, cell2utm, f_I_to_utm, prom_levels, symbols, symbol_sizes)
+    --> Image
+
+- Identify 'prominent' and 'obscure' summits.
+- Summarize in .csv file for potential name tagging: SUMMITS_FNAM.
+- Also writes the intermediate matrix 'maximum elevation above' to MAX_ELEVATION_ABOVE_FNAM. 
+- Mark symbols in output image. 
+"""
 function _summit_markers(fofo, cell_iter, cell2utm, f_I_to_utm, prom_levels, symbols, symbol_sizes)
     ny, nx = size(cell_iter)
     si = CartesianIndices((1:cell2utm:(nx  * cell2utm), 1:cell2utm:(ny * cell2utm)))
     g = readclose(joinpath(fofo, CONSOLIDATED_FNAM))
-
     z = transpose(g.A[si])
     prom = find_prominence_and_write_max_elevation_above(z, joinpath(fofo, MAX_ELEVATION_ABOVE_FNAM))
-    write_prominence_data_to_csv(prom, round.(z), f_I_to_utm, cell_iter, prom_levels, joinpath(fofo, SUMMITS_FNAM))
+    write_prominence_to_csv(prom, round.(z), f_I_to_utm, cell_iter, prom_levels, joinpath(fofo, SUMMITS_FNAM))
     @debug "    Draw summit marks"
     draw_summit_marks(prom, prom_levels, symbols, symbol_sizes)
 end
 
+
+"""
+    find_prominence_and_write_max_elevation_above(z, ffna)
+    --> Matrix
+
+The output contains prominence values pertinent to z. Where prominence is irrelevant, NaN or zero values.
+A summit is condensed to a single value, although this may fail in some cases. 
+
+Also writes the intermediate matrix 'maximum elevation above' to MAX_ELEVATION_ABOVE_FNAM. 
+"""
 function find_prominence_and_write_max_elevation_above(z, ffna)
     @debug "    Find max tree "
     # We reduce the elevation resolution to whole meters in order to avoid oversegmentation,
-    # which migt lead to many uninteresting 'twin peaks' and heavier calculations. Many peaks are actually
+    # which might lead to many uninteresting 'twin peaks' and heavier calculations. Many peaks are actually
     # split anyway.
     maxtree = MaxTree(round.(z))
     if isfile(ffna)
         @debug "    Load 'max elevation above' from file"
         mea = readdlm(ffna)
     else
-        @debug "    Find 'max elevation above'"
-        mea = maximum_elevation_above(round.(z); maxtree)
-            # Save
-        @debug "    Saving $ffna"
+        @debug "    Find and save 'max elevation above'"
+        mea = maximum_elevation_above(z; maxtree)
+        # Save
         writedlm(ffna, mea)
         open(ffna, "w") do io
             writedlm(io, mea)
@@ -87,7 +110,36 @@ function find_prominence_and_write_max_elevation_above(z, ffna)
     prominence(round.(z); maxtree, mea, summit_indices)
 end
 
-function write_prominence_data_to_csv(prom, z, f_I_to_utm, cell_iter, prom_levels, filename)
+"""
+    function prominence(z; 
+        maxtree = MaxTree(z), mea = maximum_elevation_above(z; maxtree),
+        summit_indices = leaf_indices(maxtree))
+    ---> Matrix
+
+The output contains prominence values pertinent to z, for
+the indices supplied by `summit_indices`.
+"""
+function prominence(z; 
+    maxtree = MaxTree(z), mea = maximum_elevation_above(z; maxtree),
+    summit_indices = leaf_indices(maxtree))
+    #
+    # Check arguments
+    maxtree.rev && throw(ArgumentError("maxtree was created with 'reverse' option."))
+    # Allocate result matrix
+    promin = similar(z)
+    fill!(promin, NaN)
+    for i in summit_indices
+        summit_elevation = z[i]
+        # Recursively walk down from the leaf node until meeting a dominant (taller) 
+        # summit's zone. Return the meeting index.
+        i_lp = lowest_parent_in_summit_zone(i, mea, maxtree, summit_elevation)
+        this_prominence = summit_elevation - z[i_lp]
+        promin[i] = this_prominence
+    end
+    promin
+end
+
+function write_prominence_to_csv(prom, z, f_I_to_utm, cell_iter, prom_levels, filename)
     vI = filter(cell_iter) do I
         p = prom[I]
         ! isnan(p) && p >= minimum(prom_levels)
@@ -132,37 +184,6 @@ function draw_summit_marks(prominence, prom_levels, symbols, symbol_sizes)
     mark_at!(img, obscure_indices_nob, si1, sy1)
     mark_at!(img, prominent_indices_nob, si2, sy2)
 end
-   
-function prominence(z; 
-    maxtree = MaxTree(z), mea = maximum_elevation_above(z; maxtree),
-    summit_indices = leaf_indices(maxtree))
-    #
-    # Check arguments
-    maxtree.rev && throw(ArgumentError("maxtree was created with 'reverse' option."))
-    # Allocate result matrix
-    promin = similar(z)
-    fill!(promin, NaN)
-    for i in summit_indices
-        summit_elevation = z[i]
-        # Recursively walk down from the leaf node until meeting a dominant (taller) 
-        # summit's zone. Return the meeting index.
-        i_lp = lowest_parent_in_summit_zone(i, mea, maxtree, summit_elevation)
-        this_prominence = summit_elevation - z[i_lp]
-        # Look for potential reference nodes:
-        # All summits include leaf nodes, but if 
-        # the summit is flat, one reference node is a parent 
-        # of leaf nodes on the summit. 
-        i_parent = maxtree.parentindices[i]
-        if z[i_parent] == summit_elevation
-            # Propagate leaf prominence to the reference node
-            promin[i_parent] = this_prominence
-        end
-        promin[i] = this_prominence
-        # Finished summit /leaf, found its prominence
-    end
-    promin
-end
-
 
 
 function maximum_elevation_above(z; maxtree = MaxTree(z))
@@ -180,7 +201,7 @@ function maximum_elevation_above(z; maxtree = MaxTree(z))
     for i in vi
         # The leaf is most likely the parent of a 'reference node'.
         # That 'reference node' is most likely NOT a summit.
-        leaf_elevation = z[i]
+        leaf_elevation = round(z[i])
         parent_i = maxtree.parentindices[i]
         # Call the recursive, in_place function.
         _mea!(mea, maxtree, leaf_elevation, parent_i)
@@ -241,15 +262,52 @@ function lowest_parent_in_summit_zone(i, mea, maxtree, summit_elevation)
     lowest_parent_in_summit_zone(parent_i, mea, maxtree, summit_elevation)
 end
 
-function leaf_indices(maxtree)
+function leaf_indices(maxtree; parent_set = Set(maxtree.parentindices))
     # maxtree.parentindices is a matrix with mostly 
-    # repeating parents. That is, just a few nodes are parents.
-    parent_set = Set(maxtree.parentindices)
+    # repeating parents. That means, a minority of nodes are parents.
     # Most nodes are not referred, and are thus considered leaves.
-    return filter(i -> i ∉ parent_set, eachindex(maxtree.parentindices))
+    unique(filter(i -> i ∉ parent_set, eachindex(maxtree.parentindices)))
 end
 
+function parent_of_leaf_indices(maxtree; parent_set = Set(maxtree.parentindices))
+    li = leaf_indices(maxtree; parent_set)
+    unique(maxtree.parentindices[li])
+end
+
+
 """
+    core_family_dictionary(maxtree)
+    --> Dict{Int64, Vector{Int64}}
+
+Dictionary of components where a parent (key) 
+  - has children (value) but not grandchildren.
+  - is not a root.
+"""
+function core_family_dictionary(maxtree)
+    # All the parent indices, but just one of each. 
+    parent_set = Set(maxtree.parentindices)
+    spli = Set(parent_of_leaf_indices(maxtree; parent_set))
+    # Build the family dictionary: parent => [child1, child2..]
+    dic = Dict{Int, Vector{Int}}()
+    for (i, parent_i) in enumerate(maxtree.parentindices)
+        if parent_i ∈ spli && parent_i !== i
+            dic[parent_i] = push!(get(dic, parent_i, Int[]), i)
+        end
+    end
+    # Throw out the entire families where a child is also a parent.
+    filter(dic) do (_, children)
+        isempty(intersect(parent_set, children))
+    end
+end
+
+
+"""
+    unique_summit_indices(z, maxtree)
+    -- Set{Int64}
+
+
+The maxtree has been derived from matrix z (a rounded version of it).
+
 We can imagine several types of summits as represented by the maxtree.
 
 Case A: 
@@ -260,64 +318,56 @@ Case A:
     1 2 1
     1 1 1
 
- B: A local maximum has neigbouring elevations that are identical, 
+    Case A returns Set(5), cartesian index [2, 2]
+
+
+ Case B: 
+    A local maximum has neigbouring elevations that are identical, 
     or at least identical when rounded. Some rounding avoids
     oversegmentation and simplifies calculations. Example of values
     before rounding which might lead to this:
+
       1.0  1.0  1.0
       1.0  2.0  2.2
       1.0  2.1  1.0
+
    After rounding and taking the maxtree, the '2.2' and '2.1' would 
    become leaf nodes, and 2.0 a reference node.
 
-Hard case, consider TODO:
- 21.0  19.0  19.0  16.0
- 22.0  22.0  23.0  22.0
- 22.0  23.0  23.0  21.0
- 22.0  22.0  22.0  16.0
+   `unique_summit_indices(B, MaxTree(round.(B))` 
+   --> Set(8) , i.e. cartesian [2, 3]
 
-From which the current function returns two indices:
-(2, 1) = 22.0
-(2, 2) = 22.0
+
+
+Another example of case B returns Set(7), cartesian [3, 2]:
+
+    21.0  19.0  19.0  16.0
+    22.0  22.0  23.0  22.0
+    22.0  23.0  23.0  21.0
+    22.0  22.0  22.0  16.0
 
 """
 function unique_summit_indices(z, maxtree)
-    # TODO: reconsider for effectiveness. 
-    # Can we treat A and B in the same way as B?
-    # Should we add function barriers? Use append! rather than push! ?
+    # Note:  The number of candidates for summits is typically 
+    # in the millions for one sheet. Hence, we avoid nested loops.
     #
     # Check arguments
     maxtree.rev && throw(ArgumentError("maxtree was created with 'reverse' option."))
-    # The numer of candidates for summits, i.e. leaf indices, is typically 
-    # in the millions for one sheet. Hence, we must avoid nested loops
-    li = leaf_indices(maxtree)
-    # Identify situation B: Which leaf nodes indices share common parents?
-    leaf_parents = maxtree.parentindices[li]
-    @assert length(leaf_parents) == length(li)
-    dic_child_count = Dict{Int, Int}()
-    # Count occurrences of each parent
-    for x in leaf_parents
-        dic_child_count[x] = get(dic_child_count, x, 0) + 1
-    end
-    # Parents that sire multiple leafs
-    unique_repeat_parents = [k for (k, v) in dic_child_count if v > 1]
-    # Parents that sire just one leaf
-    unique_single_leaf_parents = Set([k for (k, v) in dic_child_count if v == 1])
-    # First, collect all the single-child leafs (case A above)
-    summit_indices = Set([i for (i, parent_i) in zip(li, leaf_parents) if parent_i ∈ unique_single_leaf_parents]) # 0.7s
-    # Now, prepare to collect case 'B'. A brood is multiple children belonging to the same parent:
-    dic_brood = Dict{Int, Vector{Int}}()
-    for (i, parent_i) in zip(li, leaf_parents)
-        if parent_i ∉ unique_single_leaf_parents
-            dic_brood[parent_i] = push!(get( dic_brood, parent_i, Int[]), i)
+    # Dictionary of components where a parent has children but not grandchildren
+    dic_fam = core_family_dictionary(maxtree)
+    summits = Set{Int}()
+    # For each family, add the index of it's tallest member, 
+    # be it a parent (reference node) or child (leaf node).
+    for (parent, children) in dic_fam
+        z_parent = z[parent]
+        tallest_z, tallest_child_no = findmax(z[children])
+        if tallest_z > z_parent
+            # A child is tallest in this family.
+            push!(summits, children[tallest_child_no])
+        else
+            # The parent is tallest in this family.
+            push!(summits, parent)
         end
     end
-    nested_brood = values(dic_brood)
-    nested_z = [z[brood] for brood in nested_brood]
-    # We are now ready to collect from case 'B'
-    for (brood, elevations) in zip(nested_brood, nested_z)
-        tallest_child = brood[argmax(elevations)]
-        push!(summit_indices, tallest_child)
-    end
-    summit_indices
+    summits
 end
