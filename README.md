@@ -38,7 +38,7 @@ If the keyword `complete_sheets_first` = true, which is the default, all steps a
 4) Unzip elevation data (`unzip_tif`).
 5) Consolidate elevation data (`consolidate_elevation_data`).
 6) Identify water surfaces (`water_overlay`).
-7) Make topographic reliefs (`topo_relief`) from a hardcoded hypsometric colour pallette.
+7) Make topographic reliefs (`topo_relief`) from a hardcoded hypsometric colour palette.
 8) Make elevation contours (`contour_lines_overlay`).
 9) Add UTM grid (`grid_overlay`).
 10) Mark dieders and ridges (`ridge_overlay`).

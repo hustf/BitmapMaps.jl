@@ -71,9 +71,18 @@ function _summit_markers(fofo, cell_iter, cell2utm, f_I_to_utm, prom_levels, sym
     g = readclose(joinpath(fofo, CONSOLIDATED_FNAM))
     z = transpose(g.A[si])
     prom = find_prominence_and_write_max_elevation_above(z, joinpath(fofo, MAX_ELEVATION_ABOVE_FNAM))
-    write_prominence_to_csv(prom, round.(z), f_I_to_utm, cell_iter, prom_levels, joinpath(fofo, SUMMITS_FNAM))
-    @debug "    Draw summit marks"
-    draw_summit_marks(prom, prom_levels, symbols, symbol_sizes)
+    # Prom is a large matrix with mostly NaN values. 
+    # Let's find the relevant indices.
+    # Not interesting: 
+    #   1) is NaN
+    #   2) prominence < defined in the .ini file
+    #   3) elevation < 200, hardcoded. This removes a lot of power-line "summits", waves and other artifacts.
+    vI = filter(cell_iter) do I
+        p = prom[I]
+        ! isnan(p) && p >= minimum(prom_levels) && z[I] > 200
+    end
+    write_prominence_to_csv(prom, round.(z), f_I_to_utm, vI, joinpath(fofo, SUMMITS_FNAM))
+    draw_summit_marks(prom, vI, prom_levels, symbols, symbol_sizes)
 end
 
 
@@ -92,36 +101,52 @@ function find_prominence_and_write_max_elevation_above(z, ffna)
     # which might lead to many uninteresting 'twin peaks' and heavier calculations. Many peaks are actually
     # split anyway.
     maxtree = MaxTree(round.(z))
+    summit_indices = distinct_summit_indices(z, maxtree)
     if isfile(ffna)
         @debug "    Load 'max elevation above' from file"
-        mea = readdlm(ffna)
+        mea = eltype(z).(readdlm(ffna))
     else
-        @debug "    Find and save 'max elevation above'"
-        mea = maximum_elevation_above(z; maxtree)
+        mea = maximum_elevation_above(z; maxtree, summit_indices)
         # Save
-        writedlm(ffna, mea)
         open(ffna, "w") do io
             writedlm(io, mea)
         end
     end
-    @debug "    Identify precise summit indices "
-    summit_indices = unique_summit_indices(z, maxtree)
     @debug "    Find prominence"
-    prominence(round.(z); maxtree, mea, summit_indices)
+    prominence(z, summit_indices, mea; maxtree)
 end
 
 """
-    function prominence(z; 
-        maxtree = MaxTree(z), mea = maximum_elevation_above(z; maxtree),
-        summit_indices = leaf_indices(maxtree))
+    prominence(z, summit_indices, mea; maxtree = MaxTree(z))
     ---> Matrix
 
-The output contains prominence values pertinent to z, for
+Outputs [prominence](https://en.wikipedia.org/wiki/Topographic_prominence) values pertinent to z, for
 the indices supplied by `summit_indices`.
+
+# Example
+
+```
+julia> z = [ 0.0   1.0   0.0  -3.0   -8.0                                                                                                                                              
+            1.0   2.0   1.0  -2.0   -7.0                                                                                                                                               
+            0.0   1.0   0.0   4.0    3.0                                                                                                                                               
+           -3.0  -2.0  -3.0  -6.0  -11.0];
+
+julia> maxtree = MaxTree(round.(z));
+
+julia> summit_indices = distinct_summit_indices(z, maxtree);
+
+julia> mea = maximum_elevation_above(z; maxtree, summit_indices);
+
+julia> prominence(z, summit_indices, mea; maxtree)
+4×5 Matrix{Float64}:
+ NaN  NaN    NaN  NaN    NaN
+ NaN    2.0  NaN  NaN    NaN
+ NaN  NaN    NaN   15.0  NaN
+ NaN  NaN    NaN  NaN    NaN
+
+```
 """
-function prominence(z; 
-    maxtree = MaxTree(z), mea = maximum_elevation_above(z; maxtree),
-    summit_indices = leaf_indices(maxtree))
+function prominence(z, summit_indices, mea; maxtree = MaxTree(z))
     #
     # Check arguments
     maxtree.rev && throw(ArgumentError("maxtree was created with 'reverse' option."))
@@ -139,29 +164,35 @@ function prominence(z;
     promin
 end
 
-function write_prominence_to_csv(prom, z, f_I_to_utm, cell_iter, prom_levels, filename)
-    vI = filter(cell_iter) do I
-        p = prom[I]
-        ! isnan(p) && p >= minimum(prom_levels)
-    end
-    vpr = prom[vI]
-    vz = z[vI]
+"""
+    write_prominence_to_csv(prom, z, f_I_to_utm, cell_iter, filename)
+    ---> Nothing
+
+Writes elevation, prominence, position and index.
+"""
+function write_prominence_to_csv(prom, z, f_I_to_utm, indices, filename)
+    @debug "    Saving $filename"
+    # Interesting values
+    vpr = prom[indices]
+    vz = z[indices]
     # Utm positions
-    vutm = map(f_I_to_utm, vI)
+    vutm = map(f_I_to_utm, indices)
     # Sheet indices
-    vi = map(I -> I.I, vI)
-    # Order by prominence
-    order = sortperm(vpr; rev = true)
+    vi = map(I -> I.I, indices)
+    # Order by elevation
+    order = sortperm(vz; rev = true)
     # Nest and prepare for output
-    vectors = [vpr[order], vz[order], vutm[order], vi[order]]
-    headers = ["Prominence_m", "Elevation_m", "Utm", "Sheet_index"]
+    vectors = [vz[order], vpr[order], vutm[order], vi[order]]
+    headers = ["Elevation_m", "Prominence_m", "Utm", "Sheet_index"]
     widths = [20, 20, 20, 20]  
     write_vectors_to_csv(filename, headers, vectors, widths)
 end
 
 
-function draw_summit_marks(prominence, prom_levels, symbols, symbol_sizes)
+function draw_summit_marks(prominence, indices, prom_levels, symbols, symbol_sizes)
     length(prom_levels) == length(symbols) == length(symbol_sizes) == 2 || throw(ArgumentError("Length not 2"))
+    #
+    @debug "    Draw summit marks"
     # The prominence table is assumed oriented like an image. Equilateral triangles
     # are drawn with a horizontal line at bottom.
     #
@@ -173,8 +204,8 @@ function draw_summit_marks(prominence, prom_levels, symbols, symbol_sizes)
     sy1, sy2 = symbols
     si1, si2 = symbol_sizes
     #
-    prominent_indices = filter(i -> prominence[i] >= p2, CartesianIndices(prominence))
-    obscure_indices = filter( i -> p1 <= prominence[i] < p2, CartesianIndices(prominence))
+    prominent_indices = filter(i -> prominence[i] >= p2, indices)
+    obscure_indices = filter( i -> p1 <= prominence[i] < p2, indices)
     # <-- TEMP: Since we do not yet cross-check elevations above with the neighbouring sheets,
     # we do not trust that indicated summits on the sheet border are actual summits.
     R_internal = CartesianIndices((2:size(prominence)[1] - 1, 2:size(prominence)[2] - 1))
@@ -185,32 +216,55 @@ function draw_summit_marks(prominence, prom_levels, symbols, symbol_sizes)
     mark_at!(img, prominent_indices_nob, si2, sy2)
 end
 
+"""
+    maximum_elevation_above(z::T; 
+        maxtree = MaxTree(z), 
+        summit_indices = distinct_summit_indices(z, maxtree)) where T <: AbstractArray
+    ---> T
 
-function maximum_elevation_above(z; maxtree = MaxTree(z))
+Finding the maxtree from unrounded values of z (as is the default with no keywords supplied)
+is slow. A weak recommendation is to supply both keywords, with `maxtree = MaxTree(round.(z))`.
+
+See 'prominence'.
+"""
+function maximum_elevation_above(z::T; 
+    maxtree = MaxTree(z), 
+    summit_indices = distinct_summit_indices(z, maxtree)) where T <: AbstractArray
+    #
+    @debug "    Find 'max elevation above'"
+    # Check arguments
+    eltype(z) <: AbstractFloat || throw(ArgumentError("eltype(z) = $(eltype(z)) is not <: AbstractFloat"))
     # Allocate result matrix
-    mea = similar(z)
-    fill!(mea, NaN)
-    # We're starting with leaf nodes (i.e. the maxima)
-    # and recursively visit all parents of it with 
-    # the information about the tallness of it's tallest
+    mea = fill(eltype(z)(NaN), size(z))
+    # Visit direct and indicert parents of summits with 
+    # the information about the tallness of its tallest
     # descendants. The recursion returns when
-    #    - a  node is reached
+    #    - a root is reached
     #    - or we reach a node that already knows about a taller parent.
     # At return, we pick the next node in this loop.
-    vi = leaf_indices(maxtree)
-    for i in vi
-        # The leaf is most likely the parent of a 'reference node'.
-        # That 'reference node' is most likely NOT a summit.
-        leaf_elevation = round(z[i])
+    for i in summit_indices
+        max_elevation = z[i]
         parent_i = maxtree.parentindices[i]
         # Call the recursive, in_place function.
-        _mea!(mea, maxtree, leaf_elevation, parent_i)
+        _mea!(mea, maxtree, max_elevation, parent_i)
     end
-    # At this point, all leaf nodes still contain just NaN.
-    # Now copy the value from each leaf's reference node.
-    for i in vi
+    # At this point, summit indices and some of their potential leaf nodes still contain just NaN.
+    # Now copy the value from their parents.
+    for i in summit_indices
         parent_i = maxtree.parentindices[i]
+        isnan(mea[i]) || throw("ouch!") 
         mea[i] = mea[parent_i]
+    end
+    for i in leaf_indices(maxtree)
+        parent_i = maxtree.parentindices[i]
+        if isnan(mea[i])
+            mea[i] = mea[parent_i]
+        else
+            if mea[i] !== mea[parent_i]
+                @show mea[i] mea[parent_i]
+                throw("unexpected")
+            end
+        end
     end
     mea
 end
@@ -302,7 +356,7 @@ end
 
 
 """
-    unique_summit_indices(z, maxtree)
+    distinct_summit_indices(z, maxtree)
     -- Set{Int64}
 
 
@@ -334,7 +388,7 @@ Case A:
    After rounding and taking the maxtree, the '2.2' and '2.1' would 
    become leaf nodes, and 2.0 a reference node.
 
-   `unique_summit_indices(B, MaxTree(round.(B))` 
+   `distinct_summit_indices(B, MaxTree(round.(B))` 
    --> Set(8) , i.e. cartesian [2, 3]
 
 
@@ -347,10 +401,11 @@ Another example of case B returns Set(7), cartesian [3, 2]:
     22.0  22.0  22.0  16.0
 
 """
-function unique_summit_indices(z, maxtree)
+function distinct_summit_indices(z, maxtree)
     # Note:  The number of candidates for summits is typically 
     # in the millions for one sheet. Hence, we avoid nested loops.
     #
+    @debug "    Identify precise summit indices "
     # Check arguments
     maxtree.rev && throw(ArgumentError("maxtree was created with 'reverse' option."))
     # Dictionary of components where a parent has children but not grandchildren

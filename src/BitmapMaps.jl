@@ -90,7 +90,7 @@ const COMPOSITE_FNAM = "Composite.png"
 include("ini_file.jl")
 include("png_phys.jl")
 include("filter.jl")
-include("pallette.jl")
+include("palette.jl")
 include("builders.jl")
 include("builders_utilties.jl")
 include("geoarray_utilties.jl")

@@ -1,9 +1,9 @@
 # Used by topo_relief, a step in pipeline.
-# Elevations map into three hypsometric colour pallettes.
-# The pallettes are hard-coded so you must like them.
+# Elevations map into three hypsometric colour palettes.
+# The palettes are hard-coded so you must like them.
 
 """
-    generate_directional_pallette_func()
+    generate_directional_palette_func()
     ---> generic function (elevation, direction_no::Int64) ---> RGB
 
 These are the undiminished hue and luminosity. `relief_variable_exponent` modifies this colour based on terrain inclination.
@@ -20,7 +20,7 @@ The colours are based on 62°N early spring, a clear day with snow above a limit
 
 # Example
 ```
-julia> color_from_elevation_and_direction_no = generate_directional_pallette_func()
+julia> color_from_elevation_and_direction_no = generate_directional_palette_func()
 #11 (generic function with 1 method)
 
 julia> color_from_elevation_and_direction_no(10, 2)
@@ -28,7 +28,7 @@ RGB{N0f8}(0.494,0.494,0.431)
 
 ```
 """
-function generate_directional_pallette_func()
+function generate_directional_palette_func()
     elevation_limits = [
         1,   # Sea
         2,   # Foreshore

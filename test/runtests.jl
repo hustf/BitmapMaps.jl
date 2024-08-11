@@ -8,8 +8,8 @@ end
 @testset "Set and inspect png physical print info chunk" begin
     include("t_png_phys.jl")
 end
-@testset "Hypsometric pallette" begin
-    include("t_pallette.jl")
+@testset "Hypsometric palette" begin
+    include("t_palette.jl")
 end
 @testset "Test builders" begin
     include("t_builders.jl")
@@ -40,10 +40,8 @@ end
 @testset "Test markers" begin
     include("t_markers.jl")
 end
-if ispath(joinpath(homedir(), "BitmapMaps", "proj 47675 6929520 57224 6947852", "1 1  47675 6929520  57224 6943269"))
-    @testset "Test summit prominence" begin # depends on local data files
-        include("t_summit_markers.jl")
-    end
+@testset "Test summit prominence" begin # depends on local data files
+    include("t_summit_markers.jl")
 end
 @testset "Test BitmapMaps pipeline" begin
     include("t_pipeline.jl")

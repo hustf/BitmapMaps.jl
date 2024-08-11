@@ -1,8 +1,8 @@
-# This was used to optimize the speed of hypsometric pallette.
+# This was used to optimize the speed of hypsometric palette.
 using BitmapMaps
 using Test
-using BitmapMaps: generate_directional_pallette_func, RGB, N0f8
-foo = generate_directional_pallette_func()
+using BitmapMaps: generate_directional_palette_func, RGB, N0f8
+foo = generate_directional_palette_func()
 @test foo(100.1f0, 2) == RGB{N0f8}(0.482,0.482,0.427)
 @test foo(500.1f0, 1) == RGB{N0f8}(0.988,0.988,0.996)
 

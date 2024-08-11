@@ -168,7 +168,7 @@ function call_func(fn, sb)
         @warn "Could not finish $fn($sb) with success. Exiting"
         return false
     else
-        @debug "Finished"
+        @debug "Finished `$fn`"
     end
     true
 end

@@ -46,7 +46,7 @@ function __topo_relief(za, cell_iter, cell2utm)
     # We need a 'render single output pixel function'. It changes a pixel at a time,
     # and its argument is its immediate surrounding in the source data.
     # It also needs to know more, but we're capturing that data.
-    fr = func_render(generate_directional_pallette_func())
+    fr = func_render(generate_directional_palette_func())
     # Now map the render function to an output image.
     @debug "    Render topo relief"
     # Output image size
