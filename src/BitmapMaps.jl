@@ -107,5 +107,6 @@ include("ridges.jl")
 include("layers.jl")
 include("mark_utils.jl")
 include("summit_markers.jl")
+include("sheet_contact.jl")
 
 end

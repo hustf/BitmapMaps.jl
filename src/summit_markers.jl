@@ -1,16 +1,19 @@
 # This file concerns finding summit prominence.
-# The prominence of some summits depends
+# The prominence of some summits actually depends
 # on geography which lay outside the limits of one sheet.
 # We can't fit every sheet in memory at once, so 
-# a boundary interaction solution should be found after al the initial single sheet
+# a sheet contact solution should be found after al the initial single sheet
 # calculations are finished. 
-# This file does not concern that interaction,
-# other than it prepares and saves an intermediate step, namely
-# the 'maximum elevation above' (mea) table.
+# This file prepares for the sheet contact by:
+# - prepare and save 'maximum elevation above' (mea) table.
+# -  export the outermost row or column, depending on direction,
+#      to the neighouring sheets. We export elevation (z) and 'maximum elevation' as
+#      separate files.
+
 
 """
     summit_markers(sb::SheetBuilder)
-    summit_markers(fofo, cell_iter, cell2utm, f_I_to_utm, prom_levels, symbols, symbol_sizes)
+    summit_markers(fofo, cell_iter, cell2utm, f_I_to_utm, prom_levels, symbols, symbol_sizes, dic_neighbour)
     --> Bool
 
 - Identify 'prominent' and 'obscure' summits.
@@ -19,6 +22,7 @@
 - Also writes the intermediate matrix 'maximum elevation above' to MAX_ELEVATION_ABOVE_FNAM. 
 """
 function summit_markers(sb::SheetBuilder)
+    # Harvest info
     promlev_prom = get_config_value("Markers", "Prominence level [m], prominent summit", Int; nothing_if_not_found = false)
     promlev_obsc = get_config_value("Markers", "Prominence level [m], obscure summit", Int; nothing_if_not_found = false)
     symbol_prom = get_config_value("Markers", "Symbol prominent summit", String; nothing_if_not_found = false)
@@ -28,22 +32,30 @@ function summit_markers(sb::SheetBuilder)
     prom_levels = [promlev_obsc, promlev_prom]
     symbols = [symbol_obsc, symbol_prom]
     symbol_sizes = [symbol_size_obsc, symbol_size_prom]
-    summit_markers(full_folder_path(sb), sb.cell_iter, cell_to_utm_factor(sb), sb.f_I_to_utm, prom_levels, symbols, symbol_sizes)
+    # The neighbouring folders are perhaps being created at this point.
+    # Postponing collecting the paths to neighbours might save calculation iterations, but also increase complexity.
+    # So we do it early.
+    dic_neighbour = neighbour_folder_dict(sb)
+    summit_markers(full_folder_path(sb), sb.cell_iter, cell_to_utm_factor(sb), sb.f_I_to_utm, prom_levels, symbols, symbol_sizes, dic_neighbour)
 end
-function summit_markers(fofo, cell_iter, cell2utm, f_I_to_utm, prom_levels, symbols, symbol_sizes)
-    if isfile(joinpath(fofo, COMPOSITE_FNAM))
-        @debug "    $COMPOSITE_FNAM in $fofo already exists. Exiting `summit_markers`"
-        return true
+function summit_markers(fofo, cell_iter, cell2utm, f_I_to_utm, prom_levels, symbols, symbol_sizes, dic_neighbour)
+    # Early exits: 
+    if ! isfile(joinpath(fofo, CONSOLIDATED_FNAM))
+        @debug "    $CONSOLIDATED_FNAM in $fofo does not exist. Exiting `summit_markers`"
+        return false
     end
+
+    #= TEMP  TODO - we should have some criterion when more iteration is not necessary.
     if isfile(joinpath(fofo, MARKERS_FNAM))
         @debug "    $MARKERS_FNAM in $fofo already exists. Exiting `summit_markers`"
         return true
     end
-    if ! isfile(joinpath(fofo, CONSOLIDATED_FNAM))
-        @debug "    $CONSOLIDATED_FNAM in $fofo does not exist. Exiting `ridge_overlay`"
-        return false
+    =#
+    if isfile(joinpath(fofo, COMPOSITE_FNAM))
+        @debug "    $COMPOSITE_FNAM in $fofo is being deleted, because we iterate for sheet iteration on `summit_markers`."
+        rm(joinpath(fofo, COMPOSITE_FNAM))
     end
-    bwres = _summit_markers(fofo, cell_iter, cell2utm, f_I_to_utm, prom_levels, symbols, symbol_sizes)
+    bwres = _summit_markers(fofo, cell_iter, cell2utm, f_I_to_utm, prom_levels, symbols, symbol_sizes, dic_neighbour)
     # Feedback
     display_if_vscode(bwres)
     # Save
@@ -57,7 +69,7 @@ function summit_markers(fofo, cell_iter, cell2utm, f_I_to_utm, prom_levels, symb
 end
 
 """
-    _summit_markers(fofo, cell_iter, cell2utm, f_I_to_utm, prom_levels, symbols, symbol_sizes)
+    _summit_markers(fofo, cell_iter, cell2utm, f_I_to_utm, prom_levels, symbols, symbol_sizes, dic_neighbour)
     --> Image
 
 - Identify 'prominent' and 'obscure' summits.
@@ -65,12 +77,12 @@ end
 - Also writes the intermediate matrix 'maximum elevation above' to MAX_ELEVATION_ABOVE_FNAM. 
 - Mark symbols in output image. 
 """
-function _summit_markers(fofo, cell_iter, cell2utm, f_I_to_utm, prom_levels, symbols, symbol_sizes)
+function _summit_markers(fofo, cell_iter, cell2utm, f_I_to_utm, prom_levels, symbols, symbol_sizes, dic_neighbour)
     ny, nx = size(cell_iter)
     si = CartesianIndices((1:cell2utm:(nx  * cell2utm), 1:cell2utm:(ny * cell2utm)))
     g = readclose(joinpath(fofo, CONSOLIDATED_FNAM))
     z = transpose(g.A[si])
-    prom = find_prominence_and_write_max_elevation_above(z, joinpath(fofo, MAX_ELEVATION_ABOVE_FNAM))
+    prom = find_prominence_and_write_max_elevation_above(z, fofo; dic_neighbour)
     # Prom is a large matrix with mostly NaN values. 
     # Let's find the relevant indices.
     # Not interesting: 
@@ -87,31 +99,46 @@ end
 
 
 """
-    find_prominence_and_write_max_elevation_above(z, ffna)
+    find_prominence_and_write_max_elevation_above(z, fo; dic_neighbour = Dict{Symbol, String}())
     --> Matrix
+
+Writes the result to MAX_ELEVATION_ABOVE_FNAM.
+
+Also distributes boundary conditions, eight files with a vector each, to neighbouring sheet's folders 
+as specified in `dic_neighbour`.
 
 The output contains prominence values pertinent to z. Where prominence is irrelevant, NaN or zero values.
 A summit is condensed to a single value, although this may fail in some cases. 
 
 Also writes the intermediate matrix 'maximum elevation above' to MAX_ELEVATION_ABOVE_FNAM. 
 """
-function find_prominence_and_write_max_elevation_above(z, ffna)
+function find_prominence_and_write_max_elevation_above(z, fo; dic_neighbour = Dict{Symbol, String}())
+    @assert isdir(fo)
     @debug "    Find max tree "
     # We reduce the elevation resolution to whole meters in order to avoid oversegmentation,
     # which might lead to many uninteresting 'twin peaks' and heavier calculations. Many peaks are actually
     # split anyway.
     maxtree = MaxTree(round.(z))
+    # Find the most important indices
     summit_indices = distinct_summit_indices(z, maxtree)
-    if isfile(ffna)
-        @debug "    Load 'max elevation above' from file"
-        mea = eltype(z).(readdlm(ffna))
-    else
-        mea = maximum_elevation_above(z; maxtree, summit_indices)
+    # Retrieve boundary conditions
+    boundaries = read_boundaries_z_mea(fo, size(z, 1), size(z, 2))
+    #
+    ffna = joinpath(fo, MAX_ELEVATION_ABOVE_FNAM)
+    # Recalculate or load?
+    #if isfile(ffna)
+    #    @debug "    Load 'max elevation above' from file"
+        # TEMP consider recalculation because of changed boundary conditions
+    #    mea = eltype(z).(readdlm(ffna))
+    #else
+        mea = maximum_elevation_above(z; maxtree, summit_indices, boundaries)
         # Save
         open(ffna, "w") do io
             writedlm(io, mea)
         end
-    end
+    #end
+    @debug "    Distribute boundary conditions"
+    distribute_boundary_conditions(dic_neighbour, z, mea)
     @debug "    Find prominence"
     prominence(z, summit_indices, mea; maxtree)
 end
@@ -147,19 +174,27 @@ julia> prominence(z, summit_indices, mea; maxtree)
 ```
 """
 function prominence(z, summit_indices, mea; maxtree = MaxTree(z))
-    #
     # Check arguments
     maxtree.rev && throw(ArgumentError("maxtree was created with 'reverse' option."))
+    # Define valid regions for prominence values
+    R = CartesianIndices(z)
+    R_internal = CartesianIndices((2 : size(z, 1) - 1, 2 : size(z, 2) - 1))
     # Allocate result matrix
     promin = similar(z)
     fill!(promin, NaN)
-    for i in summit_indices
-        summit_elevation = z[i]
-        # Recursively walk down from the leaf node until meeting a dominant (taller) 
-        # summit's zone. Return the meeting index.
-        i_lp = lowest_parent_in_summit_zone(i, mea, maxtree, summit_elevation)
-        this_prominence = summit_elevation - z[i_lp]
-        promin[i] = this_prominence
+    for i in R[collect(summit_indices)]
+        if i ∈ R_internal
+            # Even though we consider boundary conditions,
+            # it requires some work to define those for the external boundaries
+            # to a collection of sheets. At the same time, a summit on the edges of 
+            # a sheet is extremely unlikely. Everything considered, we discard all such summits.
+            summit_elevation = z[i]
+            # Recursively walk down from the leaf node until meeting a dominant (taller) 
+            # summit's zone. Return the meeting index.
+            i_lp = lowest_parent_in_summit_zone(i, mea, maxtree, summit_elevation)
+            this_prominence = summit_elevation - z[i_lp]
+            promin[i] = this_prominence
+        end
     end
     promin
 end
@@ -204,16 +239,14 @@ function draw_summit_marks(prominence, indices, prom_levels, symbols, symbol_siz
     sy1, sy2 = symbols
     si1, si2 = symbol_sizes
     #
-    prominent_indices = filter(i -> prominence[i] >= p2, indices)
-    obscure_indices = filter( i -> p1 <= prominence[i] < p2, indices)
-    # <-- TEMP: Since we do not yet cross-check elevations above with the neighbouring sheets,
-    # we do not trust that indicated summits on the sheet border are actual summits.
-    R_internal = CartesianIndices((2:size(prominence)[1] - 1, 2:size(prominence)[2] - 1))
-    prominent_indices_nob = filter(I -> I ∈ R_internal, prominent_indices)
-    obscure_indices_nob = filter(I -> I ∈ R_internal, obscure_indices)
-    # TEMP -->
-    mark_at!(img, obscure_indices_nob, si1, sy1)
-    mark_at!(img, prominent_indices_nob, si2, sy2)
+    prominent_indices = filter(indices) do i
+        prominence[i] >= p2
+    end
+    obscure_indices = filter(indices) do i
+        p1 <= prominence[i] < p2 >= p2
+    end
+    mark_at!(img, obscure_indices, si1, sy1)
+    mark_at!(img, prominent_indices, si2, sy2)
 end
 
 """
@@ -229,11 +262,17 @@ See 'prominence'.
 """
 function maximum_elevation_above(z::T; 
     maxtree = MaxTree(z), 
-    summit_indices = distinct_summit_indices(z, maxtree)) where T <: AbstractArray
+    summit_indices = distinct_summit_indices(z, maxtree),
+    boundaries = nothing) where T <: AbstractArray
     #
-    @debug "    Find 'max elevation above'"
+
     # Check arguments
     eltype(z) <: AbstractFloat || throw(ArgumentError("eltype(z) = $(eltype(z)) is not <: AbstractFloat"))
+    # This algorithm should be more effective if we start with the tallest summits.
+    # Consider that summit_indices is a Set. Make a sorted vector.
+    vsummit_indices = let v = collect(summit_indices)
+        v[sortperm(z[v]; rev = true)]
+    end
     # Allocate result matrix
     mea = fill(eltype(z)(NaN), size(z))
     # Visit direct and indicert parents of summits with 
@@ -242,17 +281,31 @@ function maximum_elevation_above(z::T;
     #    - a root is reached
     #    - or we reach a node that already knows about a taller parent.
     # At return, we pick the next node in this loop.
-    for i in summit_indices
-        max_elevation = z[i]
-        parent_i = maxtree.parentindices[i]
-        # Call the recursive, in_place function.
-        _mea!(mea, maxtree, max_elevation, parent_i)
+    if isnothing(boundaries) || all(sum.(boundaries) .== 0)
+        # This will be run if none of the neighouring sheets
+        # have calculated their 'mea' matrices yet.
+        @debug "    Find 'max elevation above' for this sheet in isolation"
+        for i in vsummit_indices
+            max_elevation = z[i]
+            parent_i = maxtree.parentindices[i]
+            # Call the recursive, in_place function.
+            _mea!(mea, maxtree, max_elevation, parent_i)
+        end
+    else
+        # This takes 'mea' from neighbouring sheets into account.
+        @debug "    Find 'max elevation above', including boundary conditions from other sheets."
+        f! = func_mea_contact!(maxtree, z, boundaries)
+        for i in vsummit_indices
+            max_elevation = z[i] # TEMP. If the summit lies on a boundary, this is incorrect...
+            parent_i = maxtree.parentindices[i]
+            # Call the recursive, in_place function.
+            f!(mea, max_elevation, parent_i)
+        end
     end
     # At this point, summit indices and some of their potential leaf nodes still contain just NaN.
     # Now copy the value from their parents.
-    for i in summit_indices
+    for i in vsummit_indices
         parent_i = maxtree.parentindices[i]
-        isnan(mea[i]) || throw("ouch!") 
         mea[i] = mea[parent_i]
     end
     for i in leaf_indices(maxtree)
@@ -270,12 +323,12 @@ function maximum_elevation_above(z::T;
 end
 
 function _mea!(mea, maxtree, leaf_elevation, i)
-    previous_maximum_elevation_above = mea[i]
-    if isnan(previous_maximum_elevation_above)
+    previous_max_elevation_above = mea[i]
+    if isnan(previous_max_elevation_above)
         # Remember this leaf. Most likely, another and taller
         # leaf will overwrite this later.
         mea[i] = leaf_elevation
-    elseif previous_maximum_elevation_above >= leaf_elevation
+    elseif previous_max_elevation_above >= leaf_elevation
         # Just leave quietly. Stop the recursion here.
         return mea
     else 
@@ -295,6 +348,9 @@ function _mea!(mea, maxtree, leaf_elevation, i)
     _mea!(mea, maxtree, leaf_elevation, parent_i)
 end
 
+
+#=
+=#
 function lowest_parent_in_summit_zone(i, mea, maxtree, summit_elevation)
     ic = CartesianIndices(mea)[i].I
     max_elevation_above = mea[i]

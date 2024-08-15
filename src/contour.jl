@@ -26,7 +26,7 @@ function contour_lines_overlay(fofo, cell_iter, cell2utm, thick_20, thick_100, t
         return true
     end
     if ! isfile(joinpath(fofo, CONSOLIDATED_FNAM))
-        @debug "    $CONSOLIDATED_FNAM in $fofo does not exist. Exiting `ridge_overlay`"
+        @debug "    $CONSOLIDATED_FNAM in $fofo does not exist. Exiting `contour_lines_overlay`"
         return false
     end
     res = _elev_contours(fofo, cell_iter, cell2utm, thick_20, thick_100, thick_1000)

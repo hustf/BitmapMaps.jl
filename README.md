@@ -59,7 +59,7 @@ Step 11 is currently missing. The ancestor packages used LuxorLayout for this, b
 
 Step 12: Summit identification by name is not currently included. 
 
-Except where sheets cover an island in the sea, prominence depends on the topography outside of the current sheet. Step 12 currently does not consider that, leading to misidentification of summits on the edges of sheets. Because this is flawed, summit markers on the edges of a sheet are excluded.
+Version "0.0.36" is the first version to iterate on summit prominences. It works by generating files (*.vec) boundary conditions between sheets in the first step. In following terations, prominence is calculated using another procedure. This works well as far as tested, but unnecessarily restarts the calculation for every iteration, and there is no indication as to how many iterations are needed. We could improve this by applying the (revised) boundary conditions directly to the 'maximum_elevation_above' matrix.
 
 `GeoArrays.jl` has breaking changes in  version 0.9 (we currently pin to 0.8.5). Cairo / Pango has long-standing font issues on Windows, we currently pin the version. We could use Inkscape, but it seems to be affected as well.
 

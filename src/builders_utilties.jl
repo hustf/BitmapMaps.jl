@@ -57,12 +57,12 @@ height_adjusted_mm(sb::SheetBuilder) = 1000 * height_cell(sb) / sb.density_pt_mâ
     northeast_external_corner(p::SheetBuilder)
     ---> Tuple(Int, Int)
 
-An entire SheetMatrixBuilder is divided into sheets. Every SheetMatrixBuilder method refers to 'external' borders.
+An entire SheetMatrixBuilder is divided into sheets. Every SheetMatrixBuilder method refers to 'external' boundaries.
 A SheetBuilder is a subset of a SheetMatrixBuilder. It shares corners with neighbouring sheets.
 Each sheet is divided into cells (i.e. pixels), and each cell is represented by a single geographical position or sampling point.
 
 'external' refers to outside dimensions of the sheet or BitMap, which are larger than 'internal'.
-'internal' refers to the last sampling point within or on the border of 'external' borders.
+'internal' refers to the last sampling point within or on the 'external' boundaries.
 
 Each geographical sampling point corresponds to the top left of its cell. Hence, 'external' and 'internal'
 are indentical for the northwest corner of a sheet.

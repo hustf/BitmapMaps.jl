@@ -5,7 +5,7 @@ function _prepare_init_file_configuration(io)
         # You can modify and save the values here. To start over from 'factory settings':
         # Delete this file. A new file will be created next time values stored in the ini file is accessed.
         #
-        # This defines the UTM borders of your map, and its division into sheets of paper.
+        # This defines the UTM boundaries of your map, and its division into sheets of paper.
         # Sheets of paper will be numbered from South-West (index [1, 1] or [1]) to North-East (index [end, end] or [end]),
         # and a folder structure will be established.
         #

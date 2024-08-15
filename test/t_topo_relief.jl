@@ -148,7 +148,7 @@ let
     #
     fill!(za, 1.0f0)
     ver = mapwindow(f_verif, za, (3, 3), indices = source_indices)
-    # Normal unit vector points straight up
+    # The unit normal vector points straight up
     @test ver[1] == (0, 0, 1)
     @test all(x -> x == ver[1], ver)
     #
@@ -160,8 +160,8 @@ let
     end
     display_if_vscode(z_northslope)
     ver = mapwindow(f_verif, z_northslope, (3, 3), indices = source_indices)
-    # Normal unit vector points south and up.
-    # The normal at the edges depend on the defaul argument to mapwindow: border = "replicate"
+    # The unit normal vector points south and up.
+    # The normal at the edges depends on the default argument to mapwindow: border = "replicate"
     @test sum(abs.(ver[2] .- (0, -0.5√2, 0.5√2))) < 1e-10
     @test all(x -> x == ver[2], ver[2:(end - 2), :])
     #
@@ -173,9 +173,9 @@ let
     end
     display_if_vscode(z_eastslope)
     ver = mapwindow(f_verif, z_eastslope, (3, 3), indices = source_indices)
-    # Normal unit vector points west and up
+    # The unit normal vector points west and up
     @test sum(abs.(ver[2, 2] .- (-0.5√2, 0, 0.5√2))) < 1e-10
-    # The normal at the edges depend on the defaul argument to mapwindow: border = "replicate"
+    # The normal at the edges depends on the default argument to mapwindow: border = "replicate"
     @test all(x -> x == ver[2, 2], ver[:, 2:(end - 1)])
 end
 

@@ -106,7 +106,7 @@ si_ = distinct_summit_indices(z_, maxtree_)
 # Assembly tests
 ################
 fofo = joinpath(homedir(), "BitmapMaps", "proj 47675 6929520 57224 6947852", "1 1  47675 6929520  57224 6943269")
-if ispath(fofo)
+if isdir(fofo)
 #
 @test isfile(joinpath(fofo, CONSOLIDATED_FNAM))
 
@@ -176,10 +176,10 @@ display_if_vscode(z[I_close])
 
 let # Consistent file storage
     # If '_Max_elevation_above.mat' does not currently exist, this is a fresh calculation:
-    prom1 = BitmapMaps.find_prominence_and_write_max_elevation_above(z, joinpath(fofo, BitmapMaps.MAX_ELEVATION_ABOVE_FNAM));
+    prom1 = find_prominence_and_write_max_elevation_above(z, fofo);
     @test prom1[I] == 453.72192f0
     # '_Max_elevation_above.mat' currently exist, this makes sure the file storage doesn't affect the calculation:
-    prom2 = BitmapMaps.find_prominence_and_write_max_elevation_above(z, joinpath(fofo, BitmapMaps.MAX_ELEVATION_ABOVE_FNAM));
+    prom2 = find_prominence_and_write_max_elevation_above(z, fofo);
     @test prom2[I] == 453.72192f0
 end
 
@@ -198,6 +198,9 @@ indimg = levcols[imea]
 hw = 500
 I_close = CartesianIndices((I[1] - hw:I[1] + hw, I[2] - hw : I[2] + hw))
 display_if_vscode(indimg[I_close])
+# Save for inspection
+ffna = joinpath(fofo, "summit_regions.png")
+save_png_with_phys(ffna, indimg)
 
 ###################################################
 # Trace a path followed by algo max_elevation_above
@@ -245,11 +248,14 @@ end
 traces = zeros(Float32, size(z)...)
 inds = map(i -> CartesianIndices(z)[i], findall(p -> ! isnan(p) && p > 100, prom))
 filter!(i -> z[i] > 200, inds)
-@test length(inds) == 23
-mark_at!(traces, inds; side = 49, f_is_filled = BitmapMaps.func_is_in_triangle)
+@test length(inds) == 18
+# For efficiency, sort inds by elevation - tallest first.
+vz = z[inds]
+order = sortperm(vz; rev = true)
+mark_at!(traces, inds[order]; side = 49, f_is_filled = BitmapMaps.func_is_in_triangle)
 display_if_vscode(traces)
 fill!(mea, NaN)
-for ind in inds
+for ind in inds[order]
     el = z[ind]
     parent_i = maxtree.parentindices[ind]
     print(".") # Indicate progress. The first dots are the slowest to appear, faster towards end.
@@ -266,4 +272,4 @@ end)
 
 else
     @info "Skipping assembly tests because data is missing"
-end # after_assembly_test
+end # isdir, after_assembly_test

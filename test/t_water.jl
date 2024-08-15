@@ -21,7 +21,7 @@ end
 # Extract and inspect.
 unzip_tif(tmpdir_water)
 fna = first(tif_full_filenames_buried_in_folder(tmpdir_water))
-# The file is zero padded with 1 m on the south border
+# The file is zero padded with 1 m on the south boundary
 @test polygon_string(fna) == "POLYGON ((18294 6937562, 18449 6937562, 18449 6937717, 18294 6937717, 18294 6937562),\n                   (18294 6937563, 18449 6937563, 18449 6937717, 18294 6937717, 18294 6937563))"
 
 # This file is not 'consolidated', it is zero-valued on the southern edge. But the point here is
