@@ -88,11 +88,11 @@ function save_boundary(ffna, matr, direction)
         throw(ArgumentError("direction"))
     end
     open(ffna, "w") do io
-        writedlm(io, out)
+        writedlm(io, vec(out))
     end
 end
 
-function read_boundaries_z_mea(fo, h_cell, w_cell)
+function read_boundary_condition(fo, h_cell, w_cell)
     @assert isdir(fo) "$fo"
     z_s = read_bound(joinpath(fo, "boundary_z_s.vec"), w_cell)
     z_n = read_bound(joinpath(fo, "boundary_z_n.vec"), w_cell)
@@ -107,8 +107,9 @@ end
 
 function read_bound(ffna, n)
     if isfile(ffna)
-        v = readdlm(ffna)
+        v = vec(readdlm(ffna, Float32))
         length(v) == n || throw("Unexpected boundary length. \n    $ffna \n    Expected: $n got: $(length(v))")
+        typeof(v) <: Vector{Float32} || throw("Unexpected boundary type. \n    $ffna \n    Got: $(typeof(v)) \n    Size: $(size(v))")
     else
         v = zeros(Float32, n)
     end
@@ -122,7 +123,6 @@ function pick_mea_including_from_boundary(z_boundary, mea_boundary, z_i, elev_ab
         # The boundary lies above, and may thus carry info about a taller summit outside of
         # our boundary.
         if mea_boundary > elev_above
-            printstyled(".", color = :yellow)
             mea_boundary
         else
             elev_above
@@ -136,10 +136,10 @@ end
 
 
 
-function func_mea_contact!(maxtree, z, boundaries)
+function func_mea_contact!(maxtree, z, bcond)
     h_cell = size(z, 1)
     w_cell = size(z, 2)
-    z_s, z_n, z_w, z_e, mea_s, mea_n, mea_w, mea_e = boundaries
+    z_s, z_n, z_w, z_e, mea_s, mea_n, mea_w, mea_e = bcond
     to_cartesian(i) = Tuple(CartesianIndices((h_cell, w_cell))[i])
     @assert length(z_s) == w_cell
     @assert length(z_n) == w_cell

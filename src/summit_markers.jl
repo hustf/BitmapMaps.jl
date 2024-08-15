@@ -19,7 +19,6 @@
 - Identify 'prominent' and 'obscure' summits.
 - Mark symbols in image MARKERS_FNAM. 
 - Summarize in .csv file for potential name tagging: SUMMITS_FNAM.
-- Also writes the intermediate matrix 'maximum elevation above' to MAX_ELEVATION_ABOVE_FNAM. 
 """
 function summit_markers(sb::SheetBuilder)
     # Harvest info
@@ -44,17 +43,11 @@ function summit_markers(fofo, cell_iter, cell2utm, f_I_to_utm, prom_levels, symb
         @debug "    $CONSOLIDATED_FNAM in $fofo does not exist. Exiting `summit_markers`"
         return false
     end
-
-    #= TEMP  TODO - we should have some criterion when more iteration is not necessary.
-    if isfile(joinpath(fofo, MARKERS_FNAM))
-        @debug "    $MARKERS_FNAM in $fofo already exists. Exiting `summit_markers`"
-        return true
-    end
-    =#
     if isfile(joinpath(fofo, COMPOSITE_FNAM))
         @debug "    $COMPOSITE_FNAM in $fofo is being deleted, because we iterate for sheet iteration on `summit_markers`."
         rm(joinpath(fofo, COMPOSITE_FNAM))
     end
+    # Do the calculation, and saving of boundary conditions
     bwres = _summit_markers(fofo, cell_iter, cell2utm, f_I_to_utm, prom_levels, symbols, symbol_sizes, dic_neighbour)
     # Feedback
     display_if_vscode(bwres)
@@ -74,7 +67,6 @@ end
 
 - Identify 'prominent' and 'obscure' summits.
 - Summarize in .csv file for potential name tagging: SUMMITS_FNAM.
-- Also writes the intermediate matrix 'maximum elevation above' to MAX_ELEVATION_ABOVE_FNAM. 
 - Mark symbols in output image. 
 """
 function _summit_markers(fofo, cell_iter, cell2utm, f_I_to_utm, prom_levels, symbols, symbol_sizes, dic_neighbour)
@@ -82,7 +74,7 @@ function _summit_markers(fofo, cell_iter, cell2utm, f_I_to_utm, prom_levels, sym
     si = CartesianIndices((1:cell2utm:(nx  * cell2utm), 1:cell2utm:(ny * cell2utm)))
     g = readclose(joinpath(fofo, CONSOLIDATED_FNAM))
     z = transpose(g.A[si])
-    prom = find_prominence_and_write_max_elevation_above(z, fofo; dic_neighbour)
+    prom = find_prominence(z, fofo; dic_neighbour)
     # Prom is a large matrix with mostly NaN values. 
     # Let's find the relevant indices.
     # Not interesting: 
@@ -93,50 +85,38 @@ function _summit_markers(fofo, cell_iter, cell2utm, f_I_to_utm, prom_levels, sym
         p = prom[I]
         ! isnan(p) && p >= minimum(prom_levels) && z[I] > 200
     end
+    # TODO: Compare with previous csv files. @warn if changes, recommend several runs until no change.
     write_prominence_to_csv(prom, round.(z), f_I_to_utm, vI, joinpath(fofo, SUMMITS_FNAM))
     draw_summit_marks(prom, vI, prom_levels, symbols, symbol_sizes)
 end
 
 
 """
-    find_prominence_and_write_max_elevation_above(z, fo; dic_neighbour = Dict{Symbol, String}())
+    find_prominence(z, fofo; dic_neighbour = Dict{Symbol, String}())
     --> Matrix
-
-Writes the result to MAX_ELEVATION_ABOVE_FNAM.
 
 Also distributes boundary conditions, eight files with a vector each, to neighbouring sheet's folders 
 as specified in `dic_neighbour`.
 
 The output contains prominence values pertinent to z. Where prominence is irrelevant, NaN or zero values.
-A summit is condensed to a single value, although this may fail in some cases. 
-
-Also writes the intermediate matrix 'maximum elevation above' to MAX_ELEVATION_ABOVE_FNAM. 
+Each summit is condensed to a single value, although this may fail in some cases. 
 """
-function find_prominence_and_write_max_elevation_above(z, fo; dic_neighbour = Dict{Symbol, String}())
-    @assert isdir(fo)
+function find_prominence(z, fofo; dic_neighbour = Dict{Symbol, String}())
+    @assert isdir(fofo)
+    # Retrieve boundary conditions.
+    # This is a tuple of four vectors (from file, or zero-filled with the correct length)
+    bcond = read_boundary_condition(fofo, size(z, 1), size(z, 2))
     @debug "    Find max tree "
     # We reduce the elevation resolution to whole meters in order to avoid oversegmentation,
     # which might lead to many uninteresting 'twin peaks' and heavier calculations. Many peaks are actually
     # split anyway.
     maxtree = MaxTree(round.(z))
-    # Find the most important indices
+    # Find the most important indices.
+    @debug "    Find summits "
     summit_indices = distinct_summit_indices(z, maxtree)
-    # Retrieve boundary conditions
-    boundaries = read_boundaries_z_mea(fo, size(z, 1), size(z, 2))
-    #
-    ffna = joinpath(fo, MAX_ELEVATION_ABOVE_FNAM)
-    # Recalculate or load?
-    #if isfile(ffna)
-    #    @debug "    Load 'max elevation above' from file"
-        # TEMP consider recalculation because of changed boundary conditions
-    #    mea = eltype(z).(readdlm(ffna))
-    #else
-        mea = maximum_elevation_above(z; maxtree, summit_indices, boundaries)
-        # Save
-        open(ffna, "w") do io
-            writedlm(io, mea)
-        end
-    #end
+    # Calculate mea
+    @debug "    Find maximum elevation above"
+    mea = maximum_elevation_above(z, bcond; maxtree, summit_indices)
     @debug "    Distribute boundary conditions"
     distribute_boundary_conditions(dic_neighbour, z, mea)
     @debug "    Find prominence"
@@ -178,7 +158,7 @@ function prominence(z, summit_indices, mea; maxtree = MaxTree(z))
     maxtree.rev && throw(ArgumentError("maxtree was created with 'reverse' option."))
     # Define valid regions for prominence values
     R = CartesianIndices(z)
-    R_internal = CartesianIndices((2 : size(z, 1) - 1, 2 : size(z, 2) - 1))
+    R_internal = CartesianIndices((3 : size(z, 1) - 2, 3 : size(z, 2) - 2))
     # Allocate result matrix
     promin = similar(z)
     fill!(promin, NaN)
@@ -250,7 +230,7 @@ function draw_summit_marks(prominence, indices, prom_levels, symbols, symbol_siz
 end
 
 """
-    maximum_elevation_above(z::T; 
+    maximum_elevation_above(z::T, bcond; 
         maxtree = MaxTree(z), 
         summit_indices = distinct_summit_indices(z, maxtree)) where T <: AbstractArray
     ---> T
@@ -260,48 +240,38 @@ is slow. A weak recommendation is to supply both keywords, with `maxtree = MaxTr
 
 See 'prominence'.
 """
-function maximum_elevation_above(z::T; 
+function maximum_elevation_above(z::T, bcond; 
     maxtree = MaxTree(z), 
-    summit_indices = distinct_summit_indices(z, maxtree),
-    boundaries = nothing) where T <: AbstractArray
+    summit_indices = distinct_summit_indices(z, maxtree)) where T <: AbstractArray
     #
-
     # Check arguments
-    eltype(z) <: AbstractFloat || throw(ArgumentError("eltype(z) = $(eltype(z)) is not <: AbstractFloat"))
+    eltype(z) <: Float32 || throw(ArgumentError("eltype(z) = $(eltype(z)) is not <: Float32"))
+    typeof(bcond) <: NTuple{8, Vector{Float32}} || throw(ArgumentError("typeof(bcond) = $(typeof(bcond)) is not <: NTuple{8, Vector{<: Float32}}"))
     # This algorithm should be more effective if we start with the tallest summits.
     # Consider that summit_indices is a Set. Make a sorted vector.
     vsummit_indices = let v = collect(summit_indices)
         v[sortperm(z[v]; rev = true)]
     end
+    @assert typeof(bcond) <: NTuple{8, Vector{Float32}} "...typeof(bcond) = $(typeof(bcond))"
     # Allocate result matrix
     mea = fill(eltype(z)(NaN), size(z))
-    # Visit direct and indicert parents of summits with 
+    # This takes 'mea' from neighbouring sheets into account.
+    @debug "    Find 'max elevation above', including boundary conditions from other sheets."
+    # Let's capture these variables in a closure:
+    f! = func_mea_contact!(maxtree, z, bcond)
+    # Visit direct and indirect parents of summits with 
     # the information about the tallness of its tallest
     # descendants. The recursion returns when
     #    - a root is reached
     #    - or we reach a node that already knows about a taller parent.
     # At return, we pick the next node in this loop.
-    if isnothing(boundaries) || all(sum.(boundaries) .== 0)
-        # This will be run if none of the neighouring sheets
-        # have calculated their 'mea' matrices yet.
-        @debug "    Find 'max elevation above' for this sheet in isolation"
-        for i in vsummit_indices
-            max_elevation = z[i]
-            parent_i = maxtree.parentindices[i]
-            # Call the recursive, in_place function.
-            _mea!(mea, maxtree, max_elevation, parent_i)
-        end
-    else
-        # This takes 'mea' from neighbouring sheets into account.
-        @debug "    Find 'max elevation above', including boundary conditions from other sheets."
-        f! = func_mea_contact!(maxtree, z, boundaries)
-        for i in vsummit_indices
-            max_elevation = z[i] # TEMP. If the summit lies on a boundary, this is incorrect...
-            parent_i = maxtree.parentindices[i]
-            # Call the recursive, in_place function.
-            f!(mea, max_elevation, parent_i)
-        end
+    for i in vsummit_indices
+        max_elevation = z[i] 
+        parent_i = maxtree.parentindices[i]
+        # Call the recursive, in_place function.
+        f!(mea, max_elevation, parent_i)
     end
+
     # At this point, summit indices and some of their potential leaf nodes still contain just NaN.
     # Now copy the value from their parents.
     for i in vsummit_indices
@@ -322,35 +292,6 @@ function maximum_elevation_above(z::T;
     mea
 end
 
-function _mea!(mea, maxtree, leaf_elevation, i)
-    previous_max_elevation_above = mea[i]
-    if isnan(previous_max_elevation_above)
-        # Remember this leaf. Most likely, another and taller
-        # leaf will overwrite this later.
-        mea[i] = leaf_elevation
-    elseif previous_max_elevation_above >= leaf_elevation
-        # Just leave quietly. Stop the recursion here.
-        return mea
-    else 
-        # Forget about what we thought was the summit elevation.
-        # Remember this instead!
-        mea[i] = leaf_elevation
-    end
-    # Let's look for our parent.
-    parent_i = maxtree.parentindices[i]
-    if parent_i == i
-        # ⬆ We are our own parent, the root, lowest level in the map.
-        # Stop the recursion here.
-        return mea
-    end
-    # ⬇ Recurse: Tell current parent (which is lower down) 
-    # about the leaf's elevation. It's the actual summit above us for all we know.
-    _mea!(mea, maxtree, leaf_elevation, parent_i)
-end
-
-
-#=
-=#
 function lowest_parent_in_summit_zone(i, mea, maxtree, summit_elevation)
     ic = CartesianIndices(mea)[i].I
     max_elevation_above = mea[i]

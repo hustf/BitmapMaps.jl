@@ -1,6 +1,6 @@
 using BitmapMaps
 using BitmapMaps: define_builder, neighbour_folder, neighbour_folder_dict, cell_to_utm_factor, full_folder_path
-using BitmapMaps: read_boundaries_z_mea, CONSOLIDATED_FNAM, MaxTree, distinct_summit_indices, maximum_elevation_above
+using BitmapMaps: read_boundary_condition, CONSOLIDATED_FNAM, MaxTree, distinct_summit_indices, maximum_elevation_above
 using Test
 smb = BitmapMaps.define_builder(;pth = "BitmapMaps/test")
 sb = smb[1]
@@ -35,7 +35,7 @@ Cell to utm factor, i.e. utm unit distance between elevation sampling points=2 #
 Top folders path under homedir()=bitmapmaps/proj 47675 6929520 57224 6947852 # :pth 
 =#
 
-# Establish 3x3 sheetfolder structure.
+# Establish 3x3 sheetfolder structure (or make a full iteration)
 smb = run_bitmapmap_pipeline(; cell_to_utm_factor = 1, nrc = (3, 3))
 
 
@@ -56,27 +56,15 @@ si = CartesianIndices((1:cell_to_utm_factor(sb):(nx  * cell_to_utm_factor(sb)), 
 fofo = full_folder_path(sb)
 g = readclose(joinpath(fofo, CONSOLIDATED_FNAM))
 z = transpose(g.A[si])
+# Retrieve boundary conditions
+bcond = read_boundary_condition(fofo, size(z, 1), size(z, 2))
 maxtree = MaxTree(round.(z))
 # Find the most important indices
 summit_indices = distinct_summit_indices(z, maxtree)
-# Retrieve boundary conditions
-boundaries = read_boundaries_z_mea(fofo, size(z, 1), size(z, 2))
-mea = maximum_elevation_above(z; maxtree, summit_indices, boundaries)
+  # Retrieve boundary conditions.
+  # This is a tuple of four vectors (from file, or zero-filled with the correct length)
+  bcond = read_boundary_condition(fofo, size(z, 1), size(z, 2))
+mea = maximum_elevation_above(z, bcond; maxtree, summit_indices)
 imea = Int.(round.(mea))
 indimg = levcols[imea] # levcols defined in `t_summit_markers`
 @test mea[1] == 1432.3724f0 # Value from sheet (1, 1) has flooded all the way here, as it should.
-# Compare with non-contacting version...
-mea_unconnected = maximum_elevation_above(z; maxtree, summit_indices)
-levcols[Int.(round.(mea_unconnected))]
-
-
-
-
-
-
-
-
-
-prom = find_prominence_and_write_max_elevation_above(z, fofo; dic_neighbour)
-
-mea = maximum_elevation_above(z; maxtree, summit_indices)

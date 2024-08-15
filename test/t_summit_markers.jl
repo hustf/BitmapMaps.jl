@@ -3,7 +3,7 @@ using BitmapMaps
 using BitmapMaps: CONSOLIDATED_FNAM, MaxTree, maximum_elevation_above, leaf_indices
 using BitmapMaps: line!, mark_at!, prominence, distinct_summit_indices
 using BitmapMaps: parent_of_leaf_indices, core_family_dictionary
-using BitmapMaps: find_prominence_and_write_max_elevation_above
+using BitmapMaps: find_prominence
 import ImageCore
 using ImageCore: RGB, N0f8, RGBA
 import Random
@@ -18,87 +18,114 @@ z_ = [1 1 1
       1 1 1]
 maxtree_ = MaxTree(z_)
 parent_set_ = Set(maxtree_.parentindices)
+bcond_ = Tuple(collect(Iterators.repeated(zeros(Float32, size(z_, 1)), 8)))
 @test parent_set_ == Set(1)
 @test leaf_indices(maxtree_; parent_set = parent_set_) == 2:9
 @test parent_of_leaf_indices(maxtree_; parent_set = parent_set_) == [1]
 @test core_family_dictionary(maxtree_) == Dict(1 => [2, 3, 4, 5, 6, 7, 8, 9])
 si_ = distinct_summit_indices(z_, maxtree_)
 @test si_  == Set(5)
-@test_throws ArgumentError maximum_elevation_above(z_, maxtree = maxtree_, summit_indices = si_)
+# We can't do this with Int64
+@test_throws ArgumentError maximum_elevation_above(z_, bcond_, maxtree = maxtree_, summit_indices = si_)
 #
 # Case B
 # 
-z_ =  [ 1.0  1.0  1.0
+z_ =  Float32[ 1.0  1.0  1.0
         1.0  2.0  2.2
         1.0  2.1  1.0]
 maxtree_ = MaxTree(round.(z_))
 parent_set_ = Set(maxtree_.parentindices)
 @test parent_set_ == Set([1, 5])
+bcond_ = Tuple(collect(Iterators.repeated(zeros(Float32, size(z_, 1)), 8)))
 @test leaf_indices(maxtree_; parent_set = parent_set_) == [2, 3, 4, 6, 7, 8, 9]
 @test parent_of_leaf_indices(maxtree_; parent_set = parent_set_) == [1, 5]
 @test core_family_dictionary(maxtree_) == Dict(5 => [6, 8])
 si_ = distinct_summit_indices(z_, maxtree_)
 @test si_  == Set(8)
-@test ! any(isnan, maximum_elevation_above(z_, maxtree = maxtree_, summit_indices = si_))
+@test ! any(isnan, maximum_elevation_above(z_, bcond_; maxtree = maxtree_, summit_indices = si_))
 
 #
 # Case 
 # 
-z_ = [ 21.0  19.0  19.0  16.0
+z_ = Float32[ 21.0  19.0  19.0  16.0
        22.0  22.0  23.0  22.0
        22.0  23.0  23.0  21.0
        22.0  22.0  22.0  16.0]
 maxtree_ = MaxTree(round.(z_))
 parent_set_ = Set(maxtree_.parentindices)
 @test parent_set_ == Set([1, 2, 5, 7, 13])
+bcond_ = Tuple(collect(Iterators.repeated(zeros(Float32, size(z_, 1)), 8)))
 @test core_family_dictionary(maxtree_) == Dict(7 => [10, 11])
 si_ = distinct_summit_indices(z_, maxtree_)
 @test si_   == Set(7)
-@test ! any(isnan, maximum_elevation_above(z_, maxtree = maxtree_, summit_indices = si_))
+@test ! any(isnan, maximum_elevation_above(z_, bcond_; maxtree = maxtree_, summit_indices = si_))
 
 #
 # Case 
 # 
-z_ =  [ 1.0  1.0  1.0  2.2
+z_ =  Float32[ 1.0  1.0  1.0  2.2
         1.0  2.0  1.2  3.0
         1.0  2.1  1.0  1.0]
 maxtree_ = MaxTree(round.(z_))
 parent_set_ = Set(maxtree_.parentindices)
 @test parent_set_ == Set([1, 5, 10])
+bcond_ = Tuple(collect(Iterators.repeated(zeros(Float32, size(z_, 1)), 8)))
 @test sort(leaf_indices(maxtree_; parent_set = parent_set_)) == [2, 3, 4, 6, 7, 8, 9, 11, 12]
 @test parent_of_leaf_indices(maxtree_; parent_set = parent_set_) == [1, 5, 10]
 @test core_family_dictionary(maxtree_) == Dict(5 => [6], 10 => [11]) 
 si_ = distinct_summit_indices(z_, maxtree_)
 @test si_  == Set([6, 11])
-@test ! any(isnan, maximum_elevation_above(z_, maxtree = maxtree_, summit_indices = si_))
+@test ! any(isnan, maximum_elevation_above(z_, bcond_; maxtree = maxtree_, summit_indices = si_))
 
 # Case 
 # Peaks: 7 and 15
-z_ = [  0.0   1.0   0.0  -3.0   -8.0
-        1.0   2.0   1.0   2.5   -7.0
-        0.0   2.1   0.0  10.0   -8.0
-       -3.0  -2.0  -3.0  -6.0  -11.0]
+z_ = Float32[  0.0   1.0   0.0  -3.0   -8.0
+                1.0   2.0   1.0   2.5   -7.0
+                0.0   2.1   0.0  10.0   -8.0
+              -3.0  -2.0  -3.0  -6.0  -11.0]
 maxtree_ = MaxTree(round.(z_))
 @test length(filter(i -> maxtree_.parentindices[i] == i, maxtree_.traverse)) == 1
 parent_set_ = Set(maxtree_.parentindices)
+# Boundary conditions must match the non-square z
+bcond_ = (
+    zeros(Float32, size(z_, 2)),
+    zeros(Float32, size(z_, 2)),
+    zeros(Float32, size(z_, 1)),
+    zeros(Float32, size(z_, 1)),
+    zeros(Float32, size(z_, 2)),
+    zeros(Float32, size(z_, 2)),
+    zeros(Float32, size(z_, 1)),
+    zeros(Float32, size(z_, 1)),
+)
 @test core_family_dictionary(maxtree_) == Dict(6 => [7], 14 => [15])
 si_ = distinct_summit_indices(z_, maxtree_)
 @test si_  == Set([7, 15])
-@test ! any(isnan, maximum_elevation_above(z_, maxtree = maxtree_, summit_indices = si_))
+@test ! any(isnan, maximum_elevation_above(z_, bcond_; maxtree = maxtree_, summit_indices = si_))
 
 
 # Case 
 # Peaks: 6 and 15
-z_ = [  0.0   1.0   0.0  -3.0   -8.0
-        1.0   2.0   1.0  -2.0   -7.0
-        0.0   1.0   0.0   4.0    3.0
-       -3.0  -2.0  -3.0  -6.0  -11.0]
+z_ = Float32[  0.0   1.0   0.0  -3.0   -8.0
+               1.0   2.0   1.0  -2.0   -7.0
+               0.0   1.0   0.0   4.0    3.0
+              -3.0  -2.0  -3.0  -6.0  -11.0]
 maxtree_ = MaxTree(round.(z_))
 parent_set_ = Set(maxtree_.parentindices)
+# Boundary conditions must match the non-square z
+bcond_ = (
+    zeros(Float32, size(z_, 2)),
+    zeros(Float32, size(z_, 2)),
+    zeros(Float32, size(z_, 1)),
+    zeros(Float32, size(z_, 1)),
+    zeros(Float32, size(z_, 2)),
+    zeros(Float32, size(z_, 2)),
+    zeros(Float32, size(z_, 1)),
+    zeros(Float32, size(z_, 1)),
+)
 @test core_family_dictionary(maxtree_) == Dict(2 => [5, 6, 7, 10], 19 => [15])
 si_ = distinct_summit_indices(z_, maxtree_)
 @test si_  == Set([6, 15])
-@test ! any(isnan, maximum_elevation_above(z_, maxtree = maxtree_, summit_indices = si_))
+@test ! any(isnan, maximum_elevation_above(z_, bcond_; maxtree = maxtree_, summit_indices = si_))
 
 
 
@@ -133,8 +160,19 @@ maxtree = MaxTree(round.(z))
 @test length(filter(i -> maxtree.parentindices[i] == i, maxtree.traverse)) == 1
 # Find the tallest index from each summit.
 summit_indices = distinct_summit_indices(z, maxtree)
+# Boundary conditions must match the non-square z
+bcond = (
+    zeros(Float32, size(z, 2)),
+    zeros(Float32, size(z, 2)),
+    zeros(Float32, size(z, 1)),
+    zeros(Float32, size(z, 1)),
+    zeros(Float32, size(z, 2)),
+    zeros(Float32, size(z, 2)),
+    zeros(Float32, size(z, 1)),
+    zeros(Float32, size(z, 1)),
+)
 # Find and check maximum elevation above
-mea = maximum_elevation_above(z; maxtree, summit_indices)
+mea = maximum_elevation_above(z, bcond; maxtree, summit_indices)
 @test ! any(isnan, mea)
 # Find and check prominence. Since we don't consider neighbouring sheets,
 # and the minimum elevation in this sheet is zero, the prominence of the tallest peak equates
@@ -174,14 +212,6 @@ hw = 5
 I_close = CartesianIndices((I[1] - hw:I[1] + hw, I[2] - hw : I[2] + hw))
 display_if_vscode(z[I_close])
 
-let # Consistent file storage
-    # If '_Max_elevation_above.mat' does not currently exist, this is a fresh calculation:
-    prom1 = find_prominence_and_write_max_elevation_above(z, fofo);
-    @test prom1[I] == 453.72192f0
-    # '_Max_elevation_above.mat' currently exist, this makes sure the file storage doesn't affect the calculation:
-    prom2 = find_prominence_and_write_max_elevation_above(z, fofo);
-    @test prom2[I] == 453.72192f0
-end
 
 ##########################################
 # Distinguish clearly between summit zones

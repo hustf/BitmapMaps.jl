@@ -83,7 +83,6 @@ const CONTOUR_FNAM = "Contour.png"
 const GRID_FNAM = "Grid.png"
 const RIDGE_FNAM = "Ridge.png"
 const MARKERS_FNAM = "Markers.png"
-const MAX_ELEVATION_ABOVE_FNAM = "_Max_elevation_above.mat"
 const SUMMITS_FNAM = "Summits.csv"
 const COMPOSITE_FNAM = "Composite.png"
 
