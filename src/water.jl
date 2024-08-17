@@ -16,10 +16,10 @@ function water_overlay(sb::SheetBuilder)
     water_overlay(full_folder_path(sb), sb.cell_iter, cell_to_utm_factor(sb), lake_steepness_max)
 end
 function water_overlay(fofo, cell_iter, cell2utm, lake_steepness_max)
-    if isfile(joinpath(fofo, COMPOSITE_FNAM))
-        @debug "    $COMPOSITE_FNAM in $fofo already exists. Exiting `water_overlay`"
-        return true
-    end
+    #if isfile(joinpath(fofo, COMPOSITE_FNAM))
+    #    @debug "    $COMPOSITE_FNAM in $fofo already exists. Exiting `water_overlay`"
+    #    return true
+    # end
     if ! isfile(joinpath(fofo, CONSOLIDATED_FNAM))
         @debug "    $CONSOLIDATED_FNAM in $fofo does not exist. Exiting `water_overlay`"
         return false

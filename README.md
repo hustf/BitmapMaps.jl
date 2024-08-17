@@ -26,7 +26,6 @@ If needed, the pipeline establishes an .ini file with default argument values. U
 - Step 3: `run_bitmapmap_pipeline()` => User inspects rendered images.
 
 If an intermediate image file is deleted, the corresponding step is triggered to rerun.
-If the 'Composite.png' image file exists, all steps for that sheet are skipped.
 
 If the keyword `complete_sheets_first` = true, which is the default, all steps are completed before the next sheet starts processing. Steps in the pipeline are:
 
@@ -59,17 +58,15 @@ Step 11 is currently missing. The ancestor packages used LuxorLayout for this, b
 
 Step 12: Summit identification by name is not currently included. 
 
-Version "0.0.36" is the first version to iterate on summit prominences. It works by generating files (*.vec) boundary conditions between sheets in the first step. 
-
-Prominence is calculated using boundary conditions (valued zero for the first run and first sheet). Run the pipeline until "no changes" is reported in 'info' log messages. Tall power lines are sometimes indicated to be obscure summits. Manually edit the 'Markers.png' file to remove, then delete 'Composite.png' and re-run the pipeline.
+Summit prominences are calculated taking boundary conditions between sheets into account. But boundary conditions are not available until the neighbour sheet is calculated. Hence some summits are appointed lower prominence after some iteration.  Run the pipeline until "no changes" is reported in 'info' log messages for all sheets. Tall power lines are sometimes marked as obscure summits. Manually edit the 'Markers.png' file to remove, then re-run the pipeline.
 
 `GeoArrays.jl` has breaking changes in  version 0.9 (we currently pin to 0.8.5). Cairo / Pango has long-standing font issues on Windows, we currently pin the version. We could use Inkscape, but it seems to be affected as well.
 
 Some nice to know:
 
 - Metadata for printing is made and stored in .png files. Settings are respected by e.g. `Gimp`, `MS Paint`, and `IrFanview`.
-- Water surfaces often requires manual touch-up. Try doing sea-level touch up in 'Consolidated.tif'. High elevations can also be 
-  shown (reduced to 256 intensities in Gimp) by adding a temporary 'multiplication layer'.
+- Water surfaces often require manual touch-up. Try doing sea-level touch up in 'Consolidated.tif'. High elevations can also be 
+  shown (reduced to 256 intensities in Gimp) by adding a temporary 'multiplication layer' in `Gimp`.
 - The pipeline can reuse `SheetMatrixBuilder` and modify it by steps, using keywords.
 - The UTM grid is the correct one for the local utm zone, even though data is from a country-wide zone.
 - Sheet numbering starts in the SW corner. See figure:

@@ -58,7 +58,7 @@ import DelimitedFiles
 using DelimitedFiles: readdlm, writedlm
 # Overlays to composite
 import ColorBlendModes
-using ColorBlendModes: CompositeDestinationOver, BlendLighten
+using ColorBlendModes: CompositeDestinationOver, BlendLighten, BlendMultiply
 # Exports
 export save_png_with_phys
 export run_bitmapmap_pipeline

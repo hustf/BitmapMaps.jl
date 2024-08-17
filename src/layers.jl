@@ -7,55 +7,50 @@
     join_layers(fofo)
 
 """
-join_layers(sb::SheetBuilder) = join_layers(full_folder_path(sb), sb.cell_iter, sb.density_pt_m⁻¹)
-function join_layers(fofo, cell_iter, density_pt_m⁻¹)
-    if isfile(joinpath(fofo, COMPOSITE_FNAM))
-        @debug "    $COMPOSITE_FNAM in $fofo already exists. Exiting `join_layers`"
-        return true
+join_layers(sb::SheetBuilder) = join_layers(full_folder_path(sb), sb.density_pt_m⁻¹)
+function join_layers(fofo, density_pt_m⁻¹)
+    ffna = joinpath(homedir(), fofo, COMPOSITE_FNAM)
+    layerstack  = [TOPORELIEF_FNAM    Nothing
+                   CONTOUR_FNAM      CompositeDestinationOver
+                   RIDGE_FNAM        BlendMultiply
+                   WATER_FNAM        CompositeDestinationOver
+                   GRID_FNAM         CompositeDestinationOver
+                   MARKERS_FNAM      CompositeDestinationOver]
+    layerfnas = joinpath.(homedir(), fofo, layerstack[:, 1])
+    if isfile(ffna)
+        # Do all layer files exist?
+        if ! all(isfile.(layerfnas))
+            @debug "    $COMPOSITE_FNAM in $fofo already exists (not all layer files, though). Exiting `join_layers`"
+            return true # We should continue with other sheets, no prob here
+        end
+        layermodtimes = mtime.(layerfnas)
+        compmodtime = mtime(ffna)
+        if ! any(layermodtimes .> compmodtime)
+            @debug "    $COMPOSITE_FNAM in $fofo already exists and was created after all layers. Exiting `join_layers`"
+            return true
+        end
     end
-    if ! isfile(joinpath(fofo, TOPORELIEF_FNAM))
-        @debug "    $TOPORELIEF_FNAM in $fofo does not exist. Exiting `join_layers`"
+    if ! all(isfile.(layerfnas))
+        @debug "    Layers missing. Exiting `join_layers`"
         return false
     end
-    res = _join_layers(fofo, cell_iter)
+    res = load(joinpath(homedir(), fofo, layerstack[1, 1]))
+    # Iterate through the rest of the layer stack
+    for rw in 2:size(layerstack, 1)
+        layer = load(joinpath(homedir(), fofo, layerstack[rw, 1]))
+        modefunc = layerstack[rw, 2]
+        composite_on_top!(res, layer, modefunc)
+    end
     # Feedback
     display_if_vscode(res)
     # Save file
-    ffna = joinpath(fofo, COMPOSITE_FNAM)
     @debug "    Saving $ffna"
     save_png_with_phys(ffna, res; density_pt_m⁻¹)
     true
 end
-function _join_layers(fofo, cell_iter)
-    # Note, an in-place version would be faster.
-    comp = composite_image(joinpath(fofo, TOPORELIEF_FNAM), joinpath(fofo, RIDGE_FNAM); blendmode = ColorBlendModes.BlendMultiply)
-    comp = composite_image(comp, joinpath(fofo, WATER_FNAM))
-    comp = composite_image(comp, joinpath(fofo, CONTOUR_FNAM))
-    comp = composite_image(comp, joinpath(fofo, GRID_FNAM))
-    comp = composite_image(comp, joinpath(fofo, MARKERS_FNAM))
-    return comp
-end
-
-
-function composite_image(fna_s::String, fna_d::String; blendmode = CompositeDestinationOver)
-    s = load(fna_s)
-    d = load(fna_d)
-    composite_image(s, d; blendmode)
-end
-
-function composite_image(s, fna_d::String; blendmode = CompositeDestinationOver)
-    d = load(fna_d)
-    composite_image(s, d; blendmode)
-end
-function composite_image(s, d; blendmode = CompositeDestinationOver)
-    if size(s) == size(d)
-        map(blendmode, d, s)
-    else
-        ny, nx = size(s)
-        # Will error if s is larger than d
-        cell2utm = Int(size(d)[1] / ny)
-        source_indices = CartesianIndices((1:cell2utm:(ny * cell2utm), 1:cell2utm:(nx * cell2utm)))
-        shrunk_d = map(I -> d[I], source_indices)
-        map(blendmode, shrunk_d, s)
-    end
+function composite_on_top!(res, layer, modefunc)
+    @assert size(res) == size(layer)
+    R = CartesianIndices(res)
+    res[R] = modefunc.(layer[R], res[R])
+    res
 end

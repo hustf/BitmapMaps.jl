@@ -252,8 +252,12 @@ function draw_summit_marks(prominence, indices, prom_levels, symbols, symbol_siz
     obscure_indices = filter(indices) do i
         p1 <= prominence[i] < p2 >= p2
     end
-    mark_at!(img, obscure_indices, si1, sy1)
     mark_at!(img, prominent_indices, si2, sy2)
+    # Single-pixel-width symbols (like a hollow triangle)
+    # does not show up very clearly. We double it to increase 'line thicness'
+    mark_at!(img, obscure_indices, si1, sy1)
+    mark_at!(img, obscure_indices .+ CartesianIndex((1, 1)), si1, sy1)
+    mark_at!(img, obscure_indices .+ CartesianIndex((-1, 1)), si1, sy1)
 end
 
 """

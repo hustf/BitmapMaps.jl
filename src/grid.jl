@@ -15,10 +15,10 @@ function grid_overlay(sb::SheetBuilder)
     grid_overlay(full_folder_path(sb), sb.cell_iter, sb.f_I_to_utm, thick_grid, spacing_grid, zone_no)
 end
 function grid_overlay(fofo, cell_iter, f_I_to_utm, thick_grid, spacing_grid, zone_no)
-    if isfile(joinpath(fofo, COMPOSITE_FNAM))
-        @debug "    $COMPOSITE_FNAM in $fofo already exists. Exiting `grid_overlay`"
-        return true
-    end
+    #if isfile(joinpath(fofo, COMPOSITE_FNAM))
+    #    @debug "    $COMPOSITE_FNAM in $fofo already exists. Exiting `grid_overlay`"
+    #    return true
+    #end
     if isfile(joinpath(fofo, GRID_FNAM))
         @debug "    $GRID_FNAM in $fofo already exists. Exiting `grid_overlay`"
         return true
@@ -32,11 +32,11 @@ function grid_overlay(fofo, cell_iter, f_I_to_utm, thick_grid, spacing_grid, zon
 end
 
 function _grid_utm(cell_iter, f_I_to_utm, thick_grid, spacing_grid, zone_no)
-    # Establish output image matrix
     linecol = RGBA{N0f8}(1.0, 0.843, 0.0, 0.651)
     transpcol = RGBA{N0f8}(0, 0, 0, 0)
     @debug "    Render grid lines"
     fg = func_grid_utm(linecol, transpcol, f_I_to_utm, thick_grid, spacing_grid, zone_no)
+    # Slow, but no matter
     map(fg, cell_iter)
 end
 

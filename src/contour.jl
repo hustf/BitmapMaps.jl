@@ -17,10 +17,10 @@ function contour_lines_overlay(sb::SheetBuilder)
     contour_lines_overlay(full_folder_path(sb), sb.cell_iter, cell_to_utm_factor(sb), thick_20, thick_100, thick_1000)
 end
 function contour_lines_overlay(fofo, cell_iter, cell2utm, thick_20, thick_100, thick_1000)
-    if isfile(joinpath(fofo, COMPOSITE_FNAM))
-        @debug "    $COMPOSITE_FNAM in $fofo already exists. Exiting `contour_lines_overlay`"
-        return true
-    end
+    #if isfile(joinpath(fofo, COMPOSITE_FNAM))
+    #    @debug "    $COMPOSITE_FNAM in $fofo already exists. Exiting `contour_lines_overlay`"
+    #    return true
+    #end
     if isfile(joinpath(fofo, CONTOUR_FNAM))
         @debug "    $CONTOUR_FNAM in $fofo already exists. Exiting `contour_lines_overlay`"
         return true
@@ -63,7 +63,7 @@ function _elev_contours(fofo, cell_iter, cell2utm, thick_20, thick_100, thick_10
     _elev_contours!(res, source_indices, zs, bbuf, [thick_20, thick_100, thick_1000], [20, 100, 1000])
     # Go from black-and-white to defined colours. Flip axes to image-like.
     transpose(map(res) do pix
-        pix == true && return RGBA{N0f8}(0.173, 0.192, 0.255, 1)
+        pix == true && return RGBA{N0f8}(0.714, 0.333, 0.0, 1) # WAS RGBA{N0f8}(0.173, 0.192, 0.255, 1)
         RGBA{N0f8}(0., 0, 0, 0)
     end)
 end
@@ -143,9 +143,6 @@ function func_elev_contour(vert_dista::Float32)
         end
         Gray{Bool}(false)
     end
-end
-function black_white_elevation_contour!(bw, z, elevation, thick_1000)
-    bw
 end
 
 function remove_isolated_pixels!(img::Array{Gray{Bool},2})

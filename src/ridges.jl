@@ -46,8 +46,8 @@ function _ridge(fofo, cell_iter, cell2utm)
     bbuf = Array{Gray{Bool}}(undef, size(si)...)
     # Add lines to 'result', different colors for different criteria.
     let 
-        colo_corner = RGBA{N0f8}(tuple(easter_map_shadow_colors()[end])..., 0.85)
-        colo_dieder = RGBA{N0f8}(tuple(easter_map_shadow_colors()[1])..., 0.7)
+        colo_corner = RGBA{N0f8}(0.118, 0.102, 0.141, 0.85) # WAS RGBA{N0f8}(tuple(easter_map_shadow_colors()[end])..., 0.85)
+        colo_dieder = RGBA{N0f8}(0.0, 0.64, 1.0, 0.7)  # WAS (0.02, 0.0, 0.075, 0.7) # WAS (tuple(easter_map_shadow_colors()[1])..., 0.7)
         criterion_functions = [<(-0.05f0), >(0.2f0)]
         thicknesses = [3, 5]
         _corners_and_dieders!(result, bbuf, laplacian, source_indices, criterion_functions, [colo_corner, colo_dieder], thicknesses)
