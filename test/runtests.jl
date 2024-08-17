@@ -43,6 +43,9 @@ end
 @testset "Test summit prominence" begin # depends on local data files
     include("t_summit_markers.jl")
 end
+@testset "Test summit prominence" begin # depends on local data files
+    include("t_sheet_contact.jl")
+end
 @testset "Test BitmapMaps pipeline" begin
     include("t_pipeline.jl")
 end

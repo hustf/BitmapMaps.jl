@@ -31,6 +31,7 @@ function water_overlay(fofo, cell_iter, cell2utm, lake_steepness_max)
     ffna = joinpath(fofo, CONSOLIDATED_FNAM)
     elevation = let
         g = readclose(ffna)
+        eltype(g) == Float32 || throw(TypeError(:g, "unexpected .tif image eltype", GeoArrays.GeoArray{Float32, Array{Float32, 3}}, typeof(g)))
         # We're transposing the source data here, because
         # it makes it easier to reason about north, south, east west.
         transpose(g.A[:, :, 1])

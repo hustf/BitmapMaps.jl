@@ -146,19 +146,6 @@ function process_job(smb, complete_sheets_first)
             end
         end
     end
-    # TODO: We did not consider cross-sheet summit prominence yet.
-    #       This can not be done before all sheets are processed. 
-    #       But the interaction depends on an initial step without
-    #       sheet interaction.
-    #       We don't want to give up the current flexibility (i.e. 
-    #       processing all sheets at once, or finish one first).
-    #       Hence, a good approach might be to require re-running
-    #       the pipeline after fully finishing. 
-    #       Interaction would only be triggered if the required 
-    #       files for interaction have been generated.
-    #       Since interaction is a SheetMatrixBuilder level operation,
-    #       which may take time and require more memory, the prerequisites 
-    #       for it should be checked AFTER join_layers, i.e. here.
     true
 end
 function call_func(fn, sb)

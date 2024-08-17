@@ -61,8 +61,7 @@ Step 12: Summit identification by name is not currently included.
 
 Version "0.0.36" is the first version to iterate on summit prominences. It works by generating files (*.vec) boundary conditions between sheets in the first step. 
 
-From version "0.0.37", prominence is calculated using boundary conditions (valued zero for the first run). This works well as far as tested, but there is still no feedback regarding
-whether the pipeline should be re-run. This could be based on comparing `summits.csv`. No changes => No reruns recommended.
+Prominence is calculated using boundary conditions (valued zero for the first run and first sheet). Run the pipeline until "no changes" is reported in 'info' log messages. Tall power lines are sometimes indicated to be obscure summits. Manually edit the 'Markers.png' file to remove, then delete 'Composite.png' and re-run the pipeline.
 
 `GeoArrays.jl` has breaking changes in  version 0.9 (we currently pin to 0.8.5). Cairo / Pango has long-standing font issues on Windows, we currently pin the version. We could use Inkscape, but it seems to be affected as well.
 

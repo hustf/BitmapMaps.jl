@@ -116,6 +116,12 @@ function read_bound(ffna, n)
     v
 end
 
+boundary_cond_zero(z) = boundary_cond_zero(eltype(z), size(z)...)
+function boundary_cond_zero(numtype, h_cell, w_cell)
+    horiz = zeros(numtype, w_cell)
+    vert = zeros(numtype, h_cell)
+    Tuple(repeat([horiz, horiz, vert, vert], 2))
+end
 
 
 function pick_mea_including_from_boundary(z_boundary, mea_boundary, z_i, elev_above)
@@ -154,16 +160,12 @@ function func_mea_contact!(maxtree, z, bcond)
     function pick_relevant_value(i, elev_above)
         m, n = to_cartesian(i)
         if m == 1
-            #@debug "North boundary: i = $i  n = $n" maxlog = 3
             pick_mea_including_from_boundary(z_n[n], mea_n[n], z[i], elev_above)
         elseif m == h_cell
-            #@debug "South boundary: i = $i  n = $n" maxlog = 3
             pick_mea_including_from_boundary(z_s[n], mea_s[n], z[i], elev_above)
         elseif n == 1
-            #@debug "West boundary: i = $i  n = $n" maxlog = 3
             pick_mea_including_from_boundary(z_w[m], mea_w[m], z[i], elev_above)
         elseif n == w_cell
-            #@debug "East boundary: i = $i  n = $n" maxlog = 3
             pick_mea_including_from_boundary(z_e[m], mea_e[m], z[i], elev_above)
         else
             elev_above

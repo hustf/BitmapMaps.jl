@@ -43,21 +43,8 @@ function summit_markers(fofo, cell_iter, cell2utm, f_I_to_utm, prom_levels, symb
         @debug "    $CONSOLIDATED_FNAM in $fofo does not exist. Exiting `summit_markers`"
         return false
     end
-    if isfile(joinpath(fofo, COMPOSITE_FNAM))
-        @debug "    $COMPOSITE_FNAM in $fofo is being deleted, because we iterate for sheet iteration on `summit_markers`."
-        rm(joinpath(fofo, COMPOSITE_FNAM))
-    end
     # Do the calculation, and saving of boundary conditions
-    bwres = _summit_markers(fofo, cell_iter, cell2utm, f_I_to_utm, prom_levels, symbols, symbol_sizes, dic_neighbour)
-    # Feedback
-    display_if_vscode(bwres)
-    # Save
-    ffna = joinpath(fofo, MARKERS_FNAM)
-    @debug "    Saving $ffna"
-    save_png_with_phys(ffna, map(bwres) do pix
-        pix == true && return RGBA{N0f8}(0, 0, 0, 1)
-        RGBA{N0f8}(0., 0, 0, 0)
-    end)
+    _summit_markers(fofo, cell_iter, cell2utm, f_I_to_utm, prom_levels, symbols, symbol_sizes, dic_neighbour)
     true
 end
 
@@ -85,9 +72,23 @@ function _summit_markers(fofo, cell_iter, cell2utm, f_I_to_utm, prom_levels, sym
         p = prom[I]
         ! isnan(p) && p >= minimum(prom_levels) && z[I] > 200
     end
-    # TODO: Compare with previous csv files. @warn if changes, recommend several runs until no change.
-    write_prominence_to_csv(prom, round.(z), f_I_to_utm, vI, joinpath(fofo, SUMMITS_FNAM))
-    draw_summit_marks(prom, vI, prom_levels, symbols, symbol_sizes)
+    waschanged = write_prominence_to_csv(prom, round.(z), f_I_to_utm, vI, joinpath(fofo, SUMMITS_FNAM))
+    # Save markers image
+    ffna = joinpath(fofo, MARKERS_FNAM)
+    if waschanged || ! isfile(ffna)
+        bwres = draw_summit_marks(prom, vI, prom_levels, symbols, symbol_sizes)
+            # Feedback
+        display_if_vscode(bwres)
+        @debug "    Saving $ffna"
+        save_png_with_phys(ffna, map(bwres) do pix
+            pix == true && return RGBA{N0f8}(0, 0, 0, 1)
+            RGBA{N0f8}(0., 0, 0, 0)
+        end)
+        if isfile(joinpath(fofo, COMPOSITE_FNAM))
+            @debug "    $COMPOSITE_FNAM in $fofo is being deleted, because $(MARKERS_FNAM) was updated."
+            rm(joinpath(fofo, COMPOSITE_FNAM))
+        end
+    end
 end
 
 
@@ -181,12 +182,14 @@ end
 
 """
     write_prominence_to_csv(prom, z, f_I_to_utm, cell_iter, filename)
-    ---> Nothing
+    ---> Bool
 
 Writes elevation, prominence, position and index.
+
+Return 'true' if the file was saved.
+Return 'false' if the file would have the same elevation and prominence as previously.
 """
 function write_prominence_to_csv(prom, z, f_I_to_utm, indices, filename)
-    @debug "    Saving $filename"
     # Interesting values
     vpr = prom[indices]
     vz = z[indices]
@@ -196,13 +199,37 @@ function write_prominence_to_csv(prom, z, f_I_to_utm, indices, filename)
     vi = map(I -> I.I, indices)
     # Order by elevation
     order = sortperm(vz; rev = true)
-    # Nest and prepare for output
-    vectors = [vz[order], vpr[order], vutm[order], vi[order]]
-    headers = ["Elevation_m", "Prominence_m", "Utm", "Sheet_index"]
-    widths = [20, 20, 20, 20]  
-    write_vectors_to_csv(filename, headers, vectors, widths)
+    # 
+    # Prior to saving, look for changes compared to existing file.
+    #
+    if any_changes_from_existing_csv_file(filename, vz[order], vpr[order])
+        @debug "    Saving $filename"
+        # Nest and prepare for output
+        vectors = [vz[order], vpr[order], vutm[order], vi[order]]
+        headers = ["Elevation_m", "Prominence_m", "Utm", "Sheet_index"]
+        widths = [20, 20, 20, 20]
+        write_vectors_to_csv(filename, headers, vectors, widths)
+        return true
+    else
+        @info "No changes to $filename, skipping save."
+        return false
+    end
 end
 
+function any_changes_from_existing_csv_file(filename, vz, vpr)
+    if isfile(filename) 
+        old_data = readdlm(filename, '\t'; skipstart=1)
+        if size(old_data, 1) == length(vz)
+            old_z, old_pr = old_data[:, 1], old_data[:, 2]
+            if Float32.(old_z) == vz
+                if Float32.(old_pr) == vpr
+                    return false
+                end
+            end
+        end
+    end
+    true
+end
 
 function draw_summit_marks(prominence, indices, prom_levels, symbols, symbol_sizes)
     length(prom_levels) == length(symbols) == length(symbol_sizes) == 2 || throw(ArgumentError("Length not 2"))
@@ -230,16 +257,26 @@ function draw_summit_marks(prominence, indices, prom_levels, symbols, symbol_siz
 end
 
 """
-    maximum_elevation_above(z::T, bcond; 
+    maximum_elevation_above(z::Array; 
         maxtree = MaxTree(z), 
-        summit_indices = distinct_summit_indices(z, maxtree)) where T <: AbstractArray
-    ---> T
+        summit_indices = distinct_summit_indices(z, maxtree))
 
-Finding the maxtree from unrounded values of z (as is the default with no keywords supplied)
-is slow. A weak recommendation is to supply both keywords, with `maxtree = MaxTree(round.(z))`.
+    maximum_elevation_above(z::Array, bcond; 
+        maxtree = MaxTree(z), 
+        summit_indices = distinct_summit_indices(z, maxtree))
+    ---> similar(z)
 
-See 'prominence'.
+Fill every summit's elevation region with its peak value.
+If boundary conditions are supplied, regions may be dominated by boundary conditions.
+
+We recommed rounding off and supply the keyword `maxtree = MaxTree(round.(z))`.
+
+Also see 'prominence'.
 """
+function maximum_elevation_above(z; maxtree = MaxTree(z), summit_indices = distinct_summit_indices(z, maxtree))
+    bcond = boundary_cond_zero(z)
+    maximum_elevation_above(z, bcond; maxtree, summit_indices)
+end
 function maximum_elevation_above(z::T, bcond; 
     maxtree = MaxTree(z), 
     summit_indices = distinct_summit_indices(z, maxtree)) where T <: AbstractArray
@@ -256,7 +293,6 @@ function maximum_elevation_above(z::T, bcond;
     # Allocate result matrix
     mea = fill(eltype(z)(NaN), size(z))
     # This takes 'mea' from neighbouring sheets into account.
-    @debug "    Find 'max elevation above', including boundary conditions from other sheets."
     # Let's capture these variables in a closure:
     f! = func_mea_contact!(maxtree, z, bcond)
     # Visit direct and indirect parents of summits with 
@@ -271,7 +307,6 @@ function maximum_elevation_above(z::T, bcond;
         # Call the recursive, in_place function.
         f!(mea, max_elevation, parent_i)
     end
-
     # At this point, summit indices and some of their potential leaf nodes still contain just NaN.
     # Now copy the value from their parents.
     for i in vsummit_indices
@@ -402,7 +437,6 @@ function distinct_summit_indices(z, maxtree)
     # Note:  The number of candidates for summits is typically 
     # in the millions for one sheet. Hence, we avoid nested loops.
     #
-    @debug "    Identify precise summit indices "
     # Check arguments
     maxtree.rev && throw(ArgumentError("maxtree was created with 'reverse' option."))
     # Dictionary of components where a parent has children but not grandchildren

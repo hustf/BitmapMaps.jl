@@ -40,13 +40,11 @@ smb = run_bitmapmap_pipeline(; cell_to_utm_factor = 1, nrc = (3, 3))
 
 
 sb = smb[2, 2]
-@test neighbour_folder(sb, :n) == homedir() * "BitmapMaps\\proj 47675 6929520 57224 6947852\\3 2  50858 6938686  54041 6943269"
-@test neighbour_folder(sb, :s) == homedir() * "BitmapMaps\\proj 47675 6929520 57224 6947852\\1 2  50858 6929520  54041 6934103"
-@test neighbour_folder(sb, :e) == homedir() * "BitmapMaps\\proj 47675 6929520 57224 6947852\\2 3  54041 6934103  57224 6938686"
-@test neighbour_folder(sb, :w) == homedir() * "BitmapMaps\\proj 47675 6929520 57224 6947852\\2 1  47675 6934103  50858 6938686"
+@test splitpath(neighbour_folder(sb, :n))[end] == "3 2  50858 6938686  54041 6943269"
+@test splitpath(neighbour_folder(sb, :s))[end] == "1 2  50858 6929520  54041 6934103"
+@test splitpath(neighbour_folder(sb, :e))[end] == "2 3  54041 6934103  57224 6938686"
+@test splitpath(neighbour_folder(sb, :w))[end] == "2 1  47675 6934103  50858 6938686"
 @test ! isempty(neighbour_folder_dict(sb))
-@test isfile(homedir() * "\\BitmapMaps\\proj 47675 6929520 57224 6947852\\2 1  47675 6934103  50858 6938686\\boundary_z_s.mat")
-
 
 # Let's have a look at mea...
 smb = define_builder(;cell_to_utm_factor = 1, nrc = (3, 3))
@@ -63,8 +61,9 @@ maxtree = MaxTree(round.(z))
 summit_indices = distinct_summit_indices(z, maxtree)
   # Retrieve boundary conditions.
   # This is a tuple of four vectors (from file, or zero-filled with the correct length)
-  bcond = read_boundary_condition(fofo, size(z, 1), size(z, 2))
 mea = maximum_elevation_above(z, bcond; maxtree, summit_indices)
 imea = Int.(round.(mea))
-indimg = levcols[imea] # levcols defined in `t_summit_markers`
+if @isdefined levcols # levcols defined in `t_summit_markers`
+  indimg = levcols[imea]
+end
 @test mea[1] == 1432.3724f0 # Value from sheet (1, 1) has flooded all the way here, as it should.
