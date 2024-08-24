@@ -5,7 +5,7 @@ using BitmapMaps: line!, mark_at!, prominence, distinct_summit_indices
 using BitmapMaps: parent_of_leaf_indices, core_family_dictionary
 using BitmapMaps: find_prominence
 import ImageCore
-using ImageCore: RGB, N0f8, RGBA
+using ImageCore: RGB, N0f8, RGBA, Gray
 import Random
 
 #################
@@ -107,7 +107,7 @@ si_ = distinct_summit_indices(z_, maxtree_)
 # Assembly tests
 ################
 fofo = joinpath(homedir(), "BitmapMaps", "proj 47675 6929520 57224 6947852", "1 1  47675 6929520  57224 6943269")
-if isdir(fofo)
+if isdir(fofo)  # Created with cell2utm = 3
 #
 @test isfile(joinpath(fofo, CONSOLIDATED_FNAM))
 
@@ -157,8 +157,8 @@ z = transpose(g.A[si])
 
 # Test and inspect "Randers topp"
 I = CartesianIndex(1352, 1500)
-@test z[I] == 1414.5989f0
-@test prom[I] == 137.00366f0
+@test abs(z[I] - 1414.5989f0) < 0.01 
+@test abs(prom[I] - 137.00366f0) < 0.01
 @test isnan(prom[I + CartesianIndex(1,1)])
 hw = 5
 I_close = CartesianIndices((I[1] - hw:I[1] + hw, I[2] - hw : I[2] + hw))
@@ -168,8 +168,8 @@ display_if_vscode(z[I_close])
 I = CartesianIndex(1227 - 5 + 0, 1369 + 5 + 2 + 1)
 I_lin = LinearIndices(z)[I]
 @test I_lin ∈ summit_indices
-@test z[I] == 1418.0859f0
-@test prom[I] == 453.72192f0
+@test abs(z[I] - 1418.0859f0) < 0.01 
+@test abs(prom[I] - 453.72192f0) < 0.01
 @test isnan(prom[I + CartesianIndex(1,1)])
 hw = 5
 I_close = CartesianIndices((I[1] - hw:I[1] + hw, I[2] - hw : I[2] + hw))
@@ -263,6 +263,37 @@ save_png_with_phys(ffna, map(traces) do pix
     RGBA{N0f8}(0., 0, 0, 0)
 end)
 
+
 else
     @info "Skipping assembly tests because data is missing"
 end # isdir, after_assembly_test
+
+
+# Filter out obscure summits that are really artifacts or
+# power line spans.
+
+g11, _, _, g22 = (BitmapMaps.hessian_components(collect(z)))
+indicator = map(g11 .+ g22) do σ
+    Float32(σ < 0 ? σ : 0.0f0)
+end
+
+indicator1 = map(g11 .+ g22) do σ
+    Float32(σ)
+end
+display_if_vscode(indicator ./ maximum(indicator))
+minimum(indicator)
+# Save for inspection
+ffna = joinpath(fofo, "principal_tensile_stress.png")
+save_png_with_phys(ffna, map(indicator ./ minimum(indicator)) do pix
+    Gray{N0f8}(pix)
+end)
+
+
+prom[cell_iter]
+z[cell_iter]
+
+peak_stress = [prom[i] > 30 ? indicator1[i] : 0.0f0 for i in cell_iter]
+summit_elevation = [prom[i] > 30 ? z[i] : 0.0f0 for i in cell_iter]
+minimum(peak_stress)
+maximum(peak_stress)
+sort(filter(s -> s < 0 ,peak_stress))

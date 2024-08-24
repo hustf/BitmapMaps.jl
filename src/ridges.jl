@@ -107,6 +107,8 @@ g1, g2 are intended to be matrices containing orthogonal gradient components.
 
 Output is matrices of the same form, representing second order derivatives.
 These are based on the Prewitt algorithm, i.e. they are 'smoothed sideways'.
+
+Each point [0,0] is affected by region [-2:2, 2:2].
 """
 function hessian_components(g1, g2)
     # Hessian matrix elements (g12 and g21 are supposedly equal)

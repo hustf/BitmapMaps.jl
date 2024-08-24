@@ -56,9 +56,17 @@ run_bitmapmap_pipeline()
 
 Step 11 is currently missing. The ancestor packages used LuxorLayout for this, but the svg's from that solution are in practice uneditable. Linking bitmaps from 'self-produced' svgs may be a better option overall, especially considering that allows stylesheets and interaction.
 
-Step 12: Summit identification by name is not currently included. 
+## Step 12, summits:
 
-Summit prominences are calculated taking boundary conditions between sheets into account. But boundary conditions are not available until the neighbour sheet is calculated. Hence some summits are appointed lower prominence after some iteration.  Run the pipeline until "no changes" is reported in 'info' log messages for all sheets. Tall power lines are sometimes marked as obscure summits. Manually edit the 'Markers.png' file to remove, then re-run the pipeline.
+Summit identification by name is first implemented in v0.0.40. Names are fetched via 'Stadnamn.jl' and added as a column to 'summits.csv'. A future
+modfication would include overriding with user defined names in the .ini file, as a dictionary of "utm location" => "users own name".
+
+Summit prominences are calculated taking boundary conditions between sheets into account. Since all boundary conditions are not available until the neighbouring sheets are calculated, this introduces iteration. Hence some summits will be appointed a lower prominence after re-running the pipeline.  
+
+☛ Look for [ Info: No changes 
+    to determine if more iteration is needed to find exact prominence values for summits.
+
+Tall power lines are sometimes marked as obscure summits. Version v0.0.40 introduces a configurable filter, 'Markers / Mininum stress level' for filtering out unwanted summits. Stress is also reported in 'Summits.csv'. If some actual summits are missing, try to set the minimum stress level to 0 and iterate.
 
 `GeoArrays.jl` has breaking changes in  version 0.9 (we currently pin to 0.8.5). Cairo / Pango has long-standing font issues on Windows, we currently pin the version. We could use Inkscape, but it seems to be affected as well.
 

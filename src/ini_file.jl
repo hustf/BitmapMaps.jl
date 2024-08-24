@@ -62,6 +62,7 @@ function _prepare_init_file_configuration(io)
     entry("Markers", "Symbol obscure summit", "on_triangle")
     entry("Markers", "Size prominent summit symbol", "31"; comm = "\r\n  #  Length of bounding box size. Must be odd.")
     entry("Markers", "Size obscure summit symbol", "21"; comm = "\r\n  #  Length of bounding box size. Must be odd.")
+    entry("Markers", "Minimum stress level", "-14"; comm = "\r\n  #  Summits with even lower stress values are discarded as power lines / artifacts")
     # To file..
     println(io, ini)
 end

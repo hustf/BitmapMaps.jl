@@ -52,16 +52,22 @@ using ColorTypes: GrayA, gray, alpha
 import ImageCore
 using ImageCore: channelview, scaleminmax, colorview, N0f8
 using ImageFiltering: FIRTiled, Fill
-# Summit prominence
-using ImageMorphology: MaxTree
+# Summit prominence and names
+using ImageMorphology: MaxTree, strel
 import DelimitedFiles
 using DelimitedFiles: readdlm, writedlm
+import Stadnamn
+using Stadnamn: get_stadnamn_data
+# 
 # Overlays to composite
 import ColorBlendModes
 using ColorBlendModes: CompositeDestinationOver, BlendLighten, BlendMultiply
+
+#
 # Exports
+#
 export save_png_with_phys
-export run_bitmapmap_pipeline
+export run_bitmapmap_pipeline, define_builder
 # Export of builders and and utilties
 export SheetBuilder, SheetMatrixBuilder, full_folder_path
 export northeast_corner, northeast_external_corner, northeast_internal_corner

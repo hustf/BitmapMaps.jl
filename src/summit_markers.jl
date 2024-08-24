@@ -1,9 +1,9 @@
 # This file concerns finding summit prominence.
 # The prominence of some summits actually depends
 # on geography which lay outside the limits of one sheet.
-# We can't fit every sheet in memory at once, so 
+# We can't fit every sheet in memory at once, so
 # a sheet contact solution should be found after al the initial single sheet
-# calculations are finished. 
+# calculations are finished.
 # This file prepares for the sheet contact by:
 # - prepare and save 'maximum elevation above' (mea) table.
 # -  export the outermost row or column, depending on direction,
@@ -13,11 +13,11 @@
 
 """
     summit_markers(sb::SheetBuilder)
-    summit_markers(fofo, cell_iter, cell2utm, f_I_to_utm, prom_levels, symbols, symbol_sizes, dic_neighbour)
+    summit_markers(fofo, cell_iter, cell2utm, f_I_to_utm, prom_levels, symbols, symbol_sizes, min_stress, dic_neighbour)
     --> Bool
 
 - Identify 'prominent' and 'obscure' summits.
-- Mark symbols in image MARKERS_FNAM. 
+- Mark symbols in image MARKERS_FNAM.
 - Summarize in .csv file for potential name tagging: SUMMITS_FNAM.
 """
 function summit_markers(sb::SheetBuilder)
@@ -28,6 +28,7 @@ function summit_markers(sb::SheetBuilder)
     symbol_obsc = get_config_value("Markers", "Symbol obscure summit", String; nothing_if_not_found = false)
     symbol_size_prom = get_config_value("Markers", "Size prominent summit symbol", Int; nothing_if_not_found = false)
     symbol_size_obsc = get_config_value("Markers", "Size obscure summit symbol", Int; nothing_if_not_found = false)
+    min_stress = get_config_value("Markers", "Minimum stress level", Int; nothing_if_not_found = false)
     prom_levels = [promlev_obsc, promlev_prom]
     symbols = [symbol_obsc, symbol_prom]
     symbol_sizes = [symbol_size_obsc, symbol_size_prom]
@@ -35,16 +36,16 @@ function summit_markers(sb::SheetBuilder)
     # Postponing collecting the paths to neighbours might save calculation iterations, but also increase complexity.
     # So we do it early.
     dic_neighbour = neighbour_folder_dict(sb)
-    summit_markers(full_folder_path(sb), sb.cell_iter, cell_to_utm_factor(sb), sb.f_I_to_utm, prom_levels, symbols, symbol_sizes, dic_neighbour)
+    summit_markers(full_folder_path(sb), sb.cell_iter, cell_to_utm_factor(sb), sb.f_I_to_utm, prom_levels, symbols, symbol_sizes, min_stress, dic_neighbour)
 end
-function summit_markers(fofo, cell_iter, cell2utm, f_I_to_utm, prom_levels, symbols, symbol_sizes, dic_neighbour)
-    # Early exits: 
+function summit_markers(fofo, cell_iter, cell2utm, f_I_to_utm, prom_levels, symbols, symbol_sizes, min_stress, dic_neighbour)
+    # Early exits:
     if ! isfile(joinpath(fofo, CONSOLIDATED_FNAM))
         @debug "    $CONSOLIDATED_FNAM in $fofo does not exist. Exiting `summit_markers`"
         return false
     end
     # Do the calculation, and saving of boundary conditions
-    _summit_markers(fofo, cell_iter, cell2utm, f_I_to_utm, prom_levels, symbols, symbol_sizes, dic_neighbour)
+    _summit_markers(fofo, cell_iter, cell2utm, f_I_to_utm, prom_levels, symbols, symbol_sizes, min_stress, dic_neighbour)
     true
 end
 
@@ -53,41 +54,72 @@ end
     --> Image
 
 - Identify 'prominent' and 'obscure' summits.
-- Summarize in .csv file for potential name tagging: SUMMITS_FNAM.
-- Mark symbols in output image. 
+- Summarize in .csv file: SUMMITS_FNAM.
+- Mark symbols in output image.
+- Modify .csv files, add name column from online lookup.
 """
-function _summit_markers(fofo, cell_iter, cell2utm, f_I_to_utm, prom_levels, symbols, symbol_sizes, dic_neighbour)
+function _summit_markers(fofo, cell_iter, cell2utm, f_I_to_utm, prom_levels, symbols, symbol_sizes, min_stress, dic_neighbour)
     ny, nx = size(cell_iter)
     si = CartesianIndices((1:cell2utm:(nx  * cell2utm), 1:cell2utm:(ny * cell2utm)))
     g = readclose(joinpath(fofo, CONSOLIDATED_FNAM))
-    z = transpose(g.A[si])
+    z = transpose(g.A[si])    
     prom = find_prominence(z, fofo; dic_neighbour)
-    # Prom is a large matrix with mostly NaN values. 
+    # Prom is a large matrix with mostly NaN values.
     # Let's find the relevant indices.
-    # Not interesting: 
+    # Not interesting:
     #   1) is NaN
     #   2) prominence < defined in the .ini file
     #   3) elevation < 200, hardcoded. This removes a lot of power-line "summits", waves and other artifacts.
+    #   4) Artifacts > 200 (we'll do this after calculating the tensile stress equivalent.)
+    minprocrit = minimum(prom_levels)
     vI = filter(cell_iter) do I
         p = prom[I]
-        ! isnan(p) && p >= minimum(prom_levels) && z[I] > 200
+        isnan(p) && return false
+        p < minprocrit && return false
+        z[I] < 200 && return false
+        true
     end
-    waschanged = write_prominence_to_csv(prom, round.(z), f_I_to_utm, vI, joinpath(fofo, SUMMITS_FNAM))
-    # Save markers image
+    #
+    # Calculate the tensile stress equvalent for summit indices
+    #
+    R = CartesianIndices(g.A[:,:,1])
+    # Note that the Hessian components at each sample cell [0,0] is affected by region [-2:2, 2:2]
+    Ω = strel(CartesianIndices((-2:2, -2:2)))
+    vσ = map(vI) do I
+        # Now we'd like to extract the principal tensile stress at this I. But
+        # we want the stress to be consistent, disregarding downsampling.
+        # So we'll take the stress level from the non-downsampled z matrix.
+        # We also skip transposing it here, for assumed speed gain.
+        J = CartesianIndex{2}((1 + (I.I[2] - 1) * cell2utm, (1 + (I.I[1] - 1) * cell2utm)))
+        # The vincinity needed for the Hessian
+        Ωⱼ = Ref(J) .+ Ω
+        # If we stray outside of the entire R (unlikely), return zero as a simplification.
+        any(q -> q ∉ R, Ωⱼ) && return 0.0
+        #
+        # The Hessian components are used to determine the principal tensile stress equivalent
+        g11, _, _, g22 = hessian_components(g.A[Ωⱼ])
+        # Throw away all but the central cell, return something akin to the principal tensile stress
+        g11[3, 3] + g22[3,3]
+    end
+    #
+    # We'll remove some more false peaks from this user-adjustable criterion:
+    #   4) Very steep on all sides of the tallest cell, i.e. very large amplitude Hessian components.
+    σII = [vσ[i] for i in 1:length(vσ) if vσ[i] >= min_stress]
+    vII = [vI[i] for i in 1:length(vI) if vσ[i] >= min_stress]
+    # Store the results
+    waschanged = write_prominence_to_csv(prom[vII], round.(z[vII]), map(f_I_to_utm, vII), vII, σII, joinpath(fofo, SUMMITS_FNAM))
+    # Add names to summits file, also save markers image
     ffna = joinpath(fofo, MARKERS_FNAM)
     if waschanged || ! isfile(ffna)
-        bwres = draw_summit_marks(prom, vI, prom_levels, symbols, symbol_sizes)
-            # Feedback
+        add_names_to_csv(joinpath(fofo, SUMMITS_FNAM))
+        bwres = draw_summit_marks(prom, vII, prom_levels, symbols, symbol_sizes)
+        # Feedback
         display_if_vscode(bwres)
         @debug "    Saving $ffna"
         save_png_with_phys(ffna, map(bwres) do pix
             pix == true && return RGBA{N0f8}(0, 0, 0, 1)
             RGBA{N0f8}(0., 0, 0, 0)
         end)
-        if isfile(joinpath(fofo, COMPOSITE_FNAM))
-            @debug "    $COMPOSITE_FNAM in $fofo is being deleted, because $(MARKERS_FNAM) was updated."
-            rm(joinpath(fofo, COMPOSITE_FNAM))
-        end
     end
 end
 
@@ -96,11 +128,11 @@ end
     find_prominence(z, fofo; dic_neighbour = Dict{Symbol, String}())
     --> Matrix
 
-Also distributes boundary conditions, eight files with a vector each, to neighbouring sheet's folders 
+Also distributes boundary conditions, eight files with a vector each, to neighbouring sheet's folders
 as specified in `dic_neighbour`.
 
 The output contains prominence values pertinent to z. Where prominence is irrelevant, NaN or zero values.
-Each summit is condensed to a single value, although this may fail in some cases. 
+Each summit is condensed to a single value, although this may fail in some cases.
 """
 function find_prominence(z, fofo; dic_neighbour = Dict{Symbol, String}())
     @assert isdir(fofo)
@@ -134,9 +166,9 @@ the indices supplied by `summit_indices`.
 # Example
 
 ```
-julia> z = [ 0.0   1.0   0.0  -3.0   -8.0                                                                                                                                              
-            1.0   2.0   1.0  -2.0   -7.0                                                                                                                                               
-            0.0   1.0   0.0   4.0    3.0                                                                                                                                               
+julia> z = [ 0.0   1.0   0.0  -3.0   -8.0
+            1.0   2.0   1.0  -2.0   -7.0
+            0.0   1.0   0.0   4.0    3.0
            -3.0  -2.0  -3.0  -6.0  -11.0];
 
 julia> maxtree = MaxTree(round.(z));
@@ -167,10 +199,10 @@ function prominence(z, summit_indices, mea; maxtree = MaxTree(z))
         if i ∈ R_internal
             # Even though we consider boundary conditions,
             # it requires some work to define those for the external boundaries
-            # to a collection of sheets. At the same time, a summit on the edges of 
+            # to a collection of sheets. At the same time, a summit on the edges of
             # a sheet is extremely unlikely. Everything considered, we discard all such summits.
             summit_elevation = z[i]
-            # Recursively walk down from the leaf node until meeting a dominant (taller) 
+            # Recursively walk down from the leaf node until meeting a dominant (taller)
             # summit's zone. Return the meeting index.
             i_lp = lowest_parent_in_summit_zone(i, mea, maxtree, summit_elevation)
             this_prominence = summit_elevation - z[i_lp]
@@ -181,7 +213,7 @@ function prominence(z, summit_indices, mea; maxtree = MaxTree(z))
 end
 
 """
-    write_prominence_to_csv(prom, z, f_I_to_utm, cell_iter, filename)
+    write_prominence_to_csv(prom, z, f_I_to_utm, indices, σ_indices, ffnam)
     ---> Bool
 
 Writes elevation, prominence, position and index.
@@ -189,36 +221,45 @@ Writes elevation, prominence, position and index.
 Return 'true' if the file was saved.
 Return 'false' if the file would have the same elevation and prominence as previously.
 """
-function write_prominence_to_csv(prom, z, f_I_to_utm, indices, filename)
-    # Interesting values
-    vpr = prom[indices]
-    vz = z[indices]
-    # Utm positions
-    vutm = map(f_I_to_utm, indices)
+function write_prominence_to_csv(vpr, vz, vutm, indices, σ, ffnam)
     # Sheet indices
     vi = map(I -> I.I, indices)
+    # We want to sort by
+    #  1) prominence 'obscure' or  'prominent'
+    #  2) elevation
+    promlev_prom = get_config_value("Markers", "Prominence level [m], prominent summit", Int; nothing_if_not_found = false)
+    sortval = [z + (p > promlev_prom ? 10000 : 0) for (z, p) in zip(vz, vpr)]
     # Order by elevation
-    order = sortperm(vz; rev = true)
-    # 
+    order = sortperm(sortval; rev = true)
+    #
     # Prior to saving, look for changes compared to existing file.
     #
-    if any_changes_from_existing_csv_file(filename, vz[order], vpr[order])
-        @debug "    Saving $filename"
-        # Nest and prepare for output
-        vectors = [vz[order], vpr[order], vutm[order], vi[order]]
-        headers = ["Elevation_m", "Prominence_m", "Utm", "Sheet_index"]
-        widths = [20, 20, 20, 20]
-        write_vectors_to_csv(filename, headers, vectors, widths)
+    if any_prominence_change_from_existing_csv_file(ffnam, vz[order], vpr[order])
+        @debug "    Saving $ffnam"
+        # Nest and prepare for output.
+        # NOTE: The column order ought to remain the same as in
+        # `add_names_to_csv`.
+        vectors = [vz[order], vpr[order], vutm[order], vi[order], σ[order]]
+        headers = ["Elevation_m", "Prominence_m", "Utm", "Sheet_index", "Stress"]
+        widths = [20, 20, 20, 20, 20]
+        write_vectors_to_csv(ffnam, headers, vectors, widths)
         return true
     else
-        @info "No changes to $filename, skipping save."
+        @info "No changes to $ffnam, skipping save."
         return false
     end
 end
 
-function any_changes_from_existing_csv_file(filename, vz, vpr)
-    if isfile(filename) 
-        old_data = readdlm(filename, '\t'; skipstart=1)
+function any_prominence_change_from_existing_csv_file(ffnam, vz, vpr)
+    if isfile(ffnam)
+        old_data = readdlm(ffnam, '\t')[2:end,:]
+        if isempty(old_data)
+            if isempty(vz)
+                return false
+            else
+                return true
+            end
+        end
         if size(old_data, 1) == length(vz)
             old_z, old_pr = old_data[:, 1], old_data[:, 2]
             if Float32.(old_z) == vz
@@ -261,12 +302,12 @@ function draw_summit_marks(prominence, indices, prom_levels, symbols, symbol_siz
 end
 
 """
-    maximum_elevation_above(z::Array; 
-        maxtree = MaxTree(z), 
+    maximum_elevation_above(z::Array;
+        maxtree = MaxTree(z),
         summit_indices = distinct_summit_indices(z, maxtree))
 
-    maximum_elevation_above(z::Array, bcond; 
-        maxtree = MaxTree(z), 
+    maximum_elevation_above(z::Array, bcond;
+        maxtree = MaxTree(z),
         summit_indices = distinct_summit_indices(z, maxtree))
     ---> similar(z)
 
@@ -281,8 +322,8 @@ function maximum_elevation_above(z; maxtree = MaxTree(z), summit_indices = disti
     bcond = boundary_cond_zero(z)
     maximum_elevation_above(z, bcond; maxtree, summit_indices)
 end
-function maximum_elevation_above(z::T, bcond; 
-    maxtree = MaxTree(z), 
+function maximum_elevation_above(z::T, bcond;
+    maxtree = MaxTree(z),
     summit_indices = distinct_summit_indices(z, maxtree)) where T <: AbstractArray
     #
     # Check arguments
@@ -299,14 +340,14 @@ function maximum_elevation_above(z::T, bcond;
     # This takes 'mea' from neighbouring sheets into account.
     # Let's capture these variables in a closure:
     f! = func_mea_contact!(maxtree, z, bcond)
-    # Visit direct and indirect parents of summits with 
+    # Visit direct and indirect parents of summits with
     # the information about the tallness of its tallest
     # descendants. The recursion returns when
     #    - a root is reached
     #    - or we reach a node that already knows about a taller parent.
     # At return, we pick the next node in this loop.
     for i in vsummit_indices
-        max_elevation = z[i] 
+        max_elevation = z[i]
         parent_i = maxtree.parentindices[i]
         # Call the recursive, in_place function.
         f!(mea, max_elevation, parent_i)
@@ -353,7 +394,7 @@ function lowest_parent_in_summit_zone(i, mea, maxtree, summit_elevation)
 end
 
 function leaf_indices(maxtree; parent_set = Set(maxtree.parentindices))
-    # maxtree.parentindices is a matrix with mostly 
+    # maxtree.parentindices is a matrix with mostly
     # repeating parents. That means, a minority of nodes are parents.
     # Most nodes are not referred, and are thus considered leaves.
     unique(filter(i -> i ∉ parent_set, eachindex(maxtree.parentindices)))
@@ -369,12 +410,12 @@ end
     core_family_dictionary(maxtree)
     --> Dict{Int64, Vector{Int64}}
 
-Dictionary of components where a parent (key) 
+Dictionary of components where a parent (key)
   - has children (value) but not grandchildren.
   - is not a root.
 """
 function core_family_dictionary(maxtree)
-    # All the parent indices, but just one of each. 
+    # All the parent indices, but just one of each.
     parent_set = Set(maxtree.parentindices)
     spli = Set(parent_of_leaf_indices(maxtree; parent_set))
     # Build the family dictionary: parent => [child1, child2..]
@@ -400,7 +441,7 @@ The maxtree has been derived from matrix z (a rounded version of it).
 
 We can imagine several types of summits as represented by the maxtree.
 
-Case A: 
+Case A:
     A local maximum has no neigbouring elevations that are identical. This
     will be a leaf node, e.g. '2' here:
 
@@ -411,8 +452,8 @@ Case A:
     Case A returns Set(5), cartesian index [2, 2]
 
 
- Case B: 
-    A local maximum has neigbouring elevations that are identical, 
+ Case B:
+    A local maximum has neigbouring elevations that are identical,
     or at least identical when rounded. Some rounding avoids
     oversegmentation and simplifies calculations. Example of values
     before rounding which might lead to this:
@@ -421,10 +462,10 @@ Case A:
       1.0  2.0  2.2
       1.0  2.1  1.0
 
-   After rounding and taking the maxtree, the '2.2' and '2.1' would 
+   After rounding and taking the maxtree, the '2.2' and '2.1' would
    become leaf nodes, and 2.0 a reference node.
 
-   `distinct_summit_indices(B, MaxTree(round.(B))` 
+   `distinct_summit_indices(B, MaxTree(round.(B))`
    --> Set(8) , i.e. cartesian [2, 3]
 
 
@@ -438,7 +479,7 @@ Another example of case B returns Set(7), cartesian [3, 2]:
 
 """
 function distinct_summit_indices(z, maxtree)
-    # Note:  The number of candidates for summits is typically 
+    # Note:  The number of candidates for summits is typically
     # in the millions for one sheet. Hence, we avoid nested loops.
     #
     # Check arguments
@@ -446,7 +487,7 @@ function distinct_summit_indices(z, maxtree)
     # Dictionary of components where a parent has children but not grandchildren
     dic_fam = core_family_dictionary(maxtree)
     summits = Set{Int}()
-    # For each family, add the index of it's tallest member, 
+    # For each family, add the index of it's tallest member,
     # be it a parent (reference node) or child (leaf node).
     for (parent, children) in dic_fam
         z_parent = z[parent]
@@ -460,4 +501,91 @@ function distinct_summit_indices(z, maxtree)
         end
     end
     summits
+end
+
+"""
+    add_names_to_csv(ffnam)
+
+Lookup online, keep names in a sheet unique. Save as last column.
+"""
+function add_names_to_csv(ffnam)
+    isfile(ffnam) || throw(ArgumentError("Does not exist: $ffnam"))
+    old_data = readdlm(ffnam, '\t')[2:end,:]
+    if isempty(old_data)
+        @debug "    No summits in file => no names to add."
+        return String[]
+    end
+    if size(old_data, 2) > 5
+        @debug "    Names already exist => keep those unchanged."
+        return String.(old_data[:, 6])
+    end
+    # utm positions as a vector of strings like "3,233"
+    vsutm = map(s -> replace(s, ' ' => "", '(' => "", ')' => ""), old_data[:, 3])
+    #
+    endpoint = "/punkt"
+    names = String[]
+    for sutm in vsutm
+        params = Dict(:koordsys => 25833,
+            :utkoordsys => 25833,
+            :nord => split(sutm, ',')[2],
+            :ost => split(sutm, ',')[1],
+            :radius => 150,
+            :filtrer => "navn.stedsnavn,navn.meterFraPunkt")
+        jsono = get_stadnamn_data(endpoint, params)
+        if isempty(jsono)
+            # Something went wrong. Don't write anything to file,
+            # but return whatever we got so far.
+            return names
+        end
+        lv1 = jsono.navn
+        if isempty(lv1)
+            push!(names, "")
+        else
+            if length(lv1) == 1
+                lv2 = get(lv1[1], :stedsnavn)
+            else
+                # Take the closest place name. This
+                # may not be the best choice always,
+                # because e.g. the region name or anything
+                # on a higher level might be assigned a closer coordinate
+                # for arbitrary reasons.
+                # NOTE, we could probably improve on this by checking navneobjekttype == "Fjell"
+                closest_index = argmin(get.(lv1, "meterFraPunkt"))
+                lv2 = get(lv1[closest_index], :stedsnavn)
+            end
+            if isempty(lv2)
+                throw(ErrorException("Unexpected name, empty lv2, utm $sutm"))
+            else
+                if length(lv2) == 1
+                    name = lv2[1].skrivemåte
+                    if name ∈ names
+                        @debug "    Encountered duplicate name $name without alternatives, utm $sutm. Name set to \"\""
+                        push!(names, "")
+                    else
+                        push!(names, name)
+                    end
+                else
+                    candidates = get.(lv2, :skrivemåte)
+                    unique_candidates = filter(n-> n ∉ names, candidates)
+                    if length(unique_candidates) == 1
+                        push!(names, first(unique_candidates))
+                    else
+                        name = first(unique_candidates)
+                        @debug "    Picked name \"$name\", at $sutm as the first in list: $(unique_candidates)."
+                        push!(names, first(unique_candidates))
+                    end
+                end
+            end
+        end
+    end
+    length(names) == length(vsutm) || throw(ErrorException("Some names were not assigned. length $(length(names)) $(length(vsutm))"))
+    @debug "    Saving names: $ffnam"
+    # NOTE: The column order ought to remain the same as in
+    # `write_prominence_to_csv`.
+    vz, vpr, vutm, vi, vstress = old_data[:, 1], old_data[:, 2], old_data[:, 3], old_data[:, 4], old_data[:, 5]
+    vectors = [vz, vpr, vutm, vi, vstress, names]
+    headers = ["Elevation_m", "Prominence_m", "Utm", "Sheet_index", "Stress", "Name"]
+    widths = [20, 20, 20, 20, 20, 20]
+    write_vectors_to_csv(ffnam, headers, vectors, widths)
+    names
 end
