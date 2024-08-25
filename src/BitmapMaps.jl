@@ -20,8 +20,6 @@ using PNGFiles: png_get_color_type, png_get_bit_depth, png_color_16p, png_get_bK
 using PNGFiles: PNG_COLOR_TYPE_GRAY, png_destroy_read_struct, close_png
 using PNGFiles: PNG_INFO_pHYs, png_get_pHYs
 # For sheet builders
-import LuxorLayout
-using LuxorLayout: Point # Maybe no need, but we won't discard compatibility easily.
 import Base: show
 # ZipFile and comparing file hashes:
 import ZipFile

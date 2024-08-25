@@ -1,0 +1,28 @@
+<?xml version="1.0" standalone="no"?>
+<?xml-stylesheet type="text/css" href="Composite.css"?>
+<svg
+   xmlns="http://www.w3.org/2000/svg"
+   width="180mm"
+   height="170mm"
+   viewBox="1 1 2999 2832"
+   preserveAspectRatio="xMidYMid meet"
+>
+<defs>
+    <filter id="composite" >
+        <!--
+        VSCode 'Svg Preview' extension won't display the image.
+        'xlink:href' is deprecated and dropped.
+        Firefox won't accept links to other directories. 
+        Ensure the image fills the rectangle and is positioned correctly.
+        The template values correspond to an image, Compisite.png with 
+        (w, h) = (3000, 2833) pixels. 
+        -->
+        <feImage href="Composite.png" x="0.5" y="0.5" width="2999" height="2832"/>
+        <feMerge>
+            <feMergeNode in="img"/>
+        </feMerge>
+    </filter>
+</defs>
+<rect x="0" y="0" width="100%" height="100%" style="filter:url(#composite);" />
+<text class="fjell" y="1838" x="1400">Fjell</text>
+</svg>

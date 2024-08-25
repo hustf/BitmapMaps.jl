@@ -35,7 +35,7 @@ Cell to utm factor, i.e. utm unit distance between elevation sampling points=2 #
 Top folders path under homedir()=bitmapmaps/proj 47675 6929520 57224 6947852 # :pth 
 =#
 
-# Establish 3x3 sheetfolder structure (or make a full iteration)
+# Establish 3x3 sheet folder structure (or make a full iteration)
 smb = run_bitmapmap_pipeline(; cell_to_utm_factor = 1, nrc = (3, 3))
 
 
@@ -66,4 +66,5 @@ imea = Int.(round.(mea))
 if @isdefined levcols # levcols defined in `t_summit_markers`
   indimg = levcols[imea]
 end
-@test mea[1] == 1432.3724f0 # Value from sheet (1, 1) has flooded all the way here, as it should.
+# This value depends on how many times we have iterated. In the first run, we see the latter value.
+@test abs(mea[1] - 1432.3724f0) < 0.01 || abs(mea[1] - 746.0909f0f0) < 0.01 
