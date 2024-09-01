@@ -12,16 +12,12 @@ function topo_relief(sb::SheetBuilder)
     topo_relief(full_folder_path(sb), sb.cell_iter, cell_to_utm_factor(sb))
 end
 function topo_relief(fofo, cell_iter, cell2utm)
-    #if isfile(joinpath(fofo, COMPOSITE_FNAM))
-    #    @debug "    $COMPOSITE_FNAM in $fofo already exists. Exiting `topo_relief`"
-    #    return true
-    #end
     if isfile(joinpath(fofo, TOPORELIEF_FNAM))
-        @debug "    $TOPORELIEF_FNAM in $fofo already exists. Exiting `topo_relief`"
+        @debug "    $TOPORELIEF_FNAM in $fofo\n           already exists. Exiting `topo_relief`"
         return true
      end
     if ! isfile(joinpath(fofo, CONSOLIDATED_FNAM))
-        @debug "    $CONSOLIDATED_FNAM in $fofo does not exist. Exiting `topo_relief`"
+        @debug "    $CONSOLIDATED_FNAM in $fofo\n           does not exist. Exiting `topo_relief`"
         return false
     end
     res = _topo_relief(fofo, cell_iter, cell2utm)

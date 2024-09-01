@@ -8,19 +8,15 @@
 
 """
 function grid_overlay(sb::SheetBuilder)
-    thick_grid = cell_to_utm_factor(sb) * get_config_value("UTM grid", "Grid line thickness", Int; nothing_if_not_found = false)
-    spacing_grid = get_config_value("UTM grid", "Grid spacing [m]", Int; nothing_if_not_found = false)
-    zone_no = get_config_value("UTM grid", "Zone for elevation data", Int; nothing_if_not_found = false)
+    thick_grid = cell_to_utm_factor(sb) * get_config_value("UTM grid", "Grid line thickness", Int)
+    spacing_grid = get_config_value("UTM grid", "Grid spacing [m]", Int)
+    zone_no = get_config_value("UTM grid", "Zone for elevation data", Int)
     # And maybe one for wgs84?? 
     grid_overlay(full_folder_path(sb), sb.cell_iter, sb.f_I_to_utm, thick_grid, spacing_grid, zone_no)
 end
 function grid_overlay(fofo, cell_iter, f_I_to_utm, thick_grid, spacing_grid, zone_no)
-    #if isfile(joinpath(fofo, COMPOSITE_FNAM))
-    #    @debug "    $COMPOSITE_FNAM in $fofo already exists. Exiting `grid_overlay`"
-    #    return true
-    #end
     if isfile(joinpath(fofo, GRID_FNAM))
-        @debug "    $GRID_FNAM in $fofo already exists. Exiting `grid_overlay`"
+        @debug "    $GRID_FNAM in $fofo \n           already exists. Exiting `grid_overlay`"
         return true
     end
     res = _grid_utm(cell_iter, f_I_to_utm, thick_grid, spacing_grid, zone_no)

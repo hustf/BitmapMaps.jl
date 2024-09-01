@@ -43,7 +43,7 @@ If the keyword `complete_sheets_first` = true, which is the default, all steps a
 10) Mark dieders and ridges (`ridge_overlay`).
 11) Find the prominence of summits and draw markers (`summit_markers`). Also writes an .csv file with matched geographical names.
 12) Make a composite bitmap (`join_layers`).
-13) Establish an .svg file, including bitmap and text elements (`make_vector_graphics`).
+13) Establish an .svg file and stylesheet, including bitmap and text elements (`make_vector_graphics`).
  
 # Example
 ```
@@ -54,9 +54,10 @@ run_bitmapmap_pipeline()
 ```
 # Current state
 
-Step 13, .svg file, is being added in version 0.1.0. We drop the 'Luxor' dependency, and add EzXML instead.
+Steps 1-13 is fully working: summit text has been refined to render well in all browsers and close to sheet edges. Style can be modified in the .ini file.
 
-currently missing. The ancestor packages used LuxorLayout for this, but the svg's from that solution are in practice uneditable. Linking bitmaps from 'self-produced' svgs may be a better option overall, especially considering that allows stylesheets and interaction.
+## Step 13, vector graphics:
+Version 0.1.1 is fully working: summit text has been refined to render well in all browsers and close to sheet edges. Style can be modified in the .ini file.
 
 ## Step 11, summits:
 
@@ -70,6 +71,7 @@ Summit prominences are calculated taking boundary conditions between sheets into
 
 Tall power lines are sometimes marked as obscure summits. Version v0.0.40 introduces a configurable filter, 'Markers / Mininum stress level' for filtering out unwanted summits. Stress is also reported in 'Summits.csv'. If some actual summits are missing, try to set the minimum stress level to 0 and iterate.
 
+## General
 `GeoArrays.jl` has breaking changes in  version 0.9 (we currently pin to 0.8.5). 
 
 Some nice to know:
@@ -78,7 +80,8 @@ Some nice to know:
 - Water surfaces often require manual touch-up. Try doing sea-level touch up in 'Consolidated.tif'. High elevations can also be 
   shown (reduced to 256 intensities in Gimp) by adding a temporary 'multiplication layer' in `Gimp`.
 - The pipeline can reuse `SheetMatrixBuilder` and modify it by steps, using keywords.
-- The UTM grid is the correct one for the local utm zone, even though data is from a country-wide zone.
+- The UTM grid is the correct one for the local utm zone, even though data is from a country-wide zone. We might in the future add local UTM grid coordinates to
+  summits as a tooltip (the <title> element).
 - Sheet numbering starts in the SW corner. See figure:
 
 <img src="resource/matrix_sheet_cell_utm.svg" alt = "resource/matrix_sheet_cell_utm.svg" style="display: inline-block; margin: 0 auto; max-width: 640px">
@@ -87,7 +90,7 @@ Some nice to know:
 # Wishlist
 
 - Side-by-side overview of all sheets
-- Change the colour for contour lines.
+- Decrease the variation of contour lines with scaling.
 - Add increasing warm tint to snow on higher elevations.
 
 # Bounding box functions

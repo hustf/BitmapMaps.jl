@@ -11,7 +11,7 @@ function consolidate_elevation_data(sb)
     consolidated = consolidate_local_data_to_geoarray_in_folder(full_folder_path(sb); include_parent_folder = true)
     @assert consolidated isa Bool
     if ! consolidated
-        @info "Could not make consolidated .tif for sheet  with folder path $(sb.pthsh). Download and unzip .tif files? Exiting."
+        @info "Could not make $CONSOLIDATED_FNAM for sheet  with folder path $(sb.pthsh). Download and unzip .tif files? Exiting."
     end
     return consolidated
 end
@@ -47,7 +47,7 @@ Also see `copy_relevant_tifs_to_folder`.
 """
 function consolidate_local_data_to_geoarray_in_folder(fofo; include_parent_folder = false)
     if isfile(joinpath(fofo, CONSOLIDATED_FNAM))
-        @debug "    $CONSOLIDATED_FNAM in $fofo already exists. Exiting `consolidate_local_data_to_geoarray_in_folder`"
+        @debug "    $CONSOLIDATED_FNAM in $fofo \n           already exists. Exiting `consolidate_local_data_to_geoarray_in_folder`"
         return true
     end
     # The folder fofo's name contains the geometry request made at høydedata.no or similar!

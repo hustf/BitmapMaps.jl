@@ -11,22 +11,18 @@ function contour_lines_overlay(sb::SheetBuilder)
     # Line thickness definitions are not part of the SheetBuilderMatrix.
     # Instead, we read those directly from the .ini file. (This may
     # possibly stand in the way of parallelisation for large matrices.)
-    thick_20 = get_config_value("Line thicknesses", "Elevation contour 20m", Int; nothing_if_not_found = false)
-    thick_100 = get_config_value("Line thicknesses", "Elevation contour 100m", Int; nothing_if_not_found = false)
-    thick_1000 = get_config_value("Line thicknesses", "Elevation contour 1000m", Int; nothing_if_not_found = false)
+    thick_20 = get_config_value("Line thicknesses", "Elevation contour 20m", Int)
+    thick_100 = get_config_value("Line thicknesses", "Elevation contour 100m", Int)
+    thick_1000 = get_config_value("Line thicknesses", "Elevation contour 1000m", Int)
     contour_lines_overlay(full_folder_path(sb), sb.cell_iter, cell_to_utm_factor(sb), thick_20, thick_100, thick_1000)
 end
 function contour_lines_overlay(fofo, cell_iter, cell2utm, thick_20, thick_100, thick_1000)
-    #if isfile(joinpath(fofo, COMPOSITE_FNAM))
-    #    @debug "    $COMPOSITE_FNAM in $fofo already exists. Exiting `contour_lines_overlay`"
-    #    return true
-    #end
     if isfile(joinpath(fofo, CONTOUR_FNAM))
-        @debug "    $CONTOUR_FNAM in $fofo already exists. Exiting `contour_lines_overlay`"
+        @debug "    $CONTOUR_FNAM in $fofo \n           already exists. Exiting `contour_lines_overlay`"
         return true
     end
     if ! isfile(joinpath(fofo, CONSOLIDATED_FNAM))
-        @debug "    $CONSOLIDATED_FNAM in $fofo does not exist. Exiting `contour_lines_overlay`"
+        @debug "    $CONSOLIDATED_FNAM in $fofo\n           does not exist. Exiting `contour_lines_overlay`"
         return false
     end
     res = _elev_contours(fofo, cell_iter, cell2utm, thick_20, thick_100, thick_1000)

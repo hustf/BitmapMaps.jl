@@ -60,6 +60,10 @@ using Stadnamn: get_stadnamn_data
 # Overlays to composite
 import ColorBlendModes
 using ColorBlendModes: CompositeDestinationOver, BlendLighten, BlendMultiply
+# Vector graphics (this .svg is .xml)
+import EzXML
+using EzXML: readxml, write, Document, findfirst, setnodecontent! #prettyprint, 
+using EzXML: TextNode, AttributeNode, ElementNode, link!, unlink!
 
 #
 # Exports
@@ -111,5 +115,6 @@ include("layers.jl")
 include("mark_utils.jl")
 include("summit_markers.jl")
 include("sheet_contact.jl")
+include("vector_graphics.jl")
 
 end

@@ -184,6 +184,28 @@ function geo_area(p)
     (n - s) * (e - w)
 end
 
+"""
+    geo_width_height(p)
+    ---> Int
+
+# Example
+```
+julia> geo_width_height(smb)
+(27060, 29232)
+
+julia> geo_width_height(smb[1,1])
+(6765, 9744)
+```
+"""
+function geo_width_height(p)
+    s, w = southwest_external_corner(p)
+    n, e = northeast_external_corner(p)
+    (n - s, e - w)
+end
+
+
+
+
 
 """
     closed_polygon_string(smb::SheetMatrixBuilder)
@@ -337,8 +359,10 @@ function show_derived_properties(p)
     printstyled(tb1, "Derived properties: \n", color = :green)
     areaint = Int(round(geo_area(pt) / 1e6))
     if areaint > 3
+        println(tb2, rpad("Geographical (width, height) [km]", 35), "= ", round.(geo_width_height(pt) ./ 1000, digits = 1))
         println(tb2, rpad("Geographical area [km²]", 35), "= ", areaint)
     else
+        println(tb2, rpad("Geographical (width, height) [m]", 35), "= ", geo_width_height(pt))
         println(tb2, rpad("Geographical area [m²]", 35), "= ", Int(round(geo_area(pt))))
     end
     if pt isa SheetMatrixBuilder
@@ -351,11 +375,12 @@ function show_derived_properties(p)
     end
     #
     if pt isa SheetMatrixBuilder || pt isa SheetBuilder
-        w, h = round(width_adjusted_mm(pt), digits = 1), round(height_adjusted_mm(pt), digits = 1)
-        println(tb2, rpad("Adj. paper (width, height) [mm]", 35), "= ", "($w, $h)")
+        w_mm, h_mm = round(width_adjusted_mm(pt), digits = 1), round(height_adjusted_mm(pt), digits = 1)
+        w_cm, h_cm = round(w_mm / 10, digits = 1), round(h_mm / 10, digits = 1)
+        println(tb2, rpad("Sheets total (width, height) [cm]", 35), "= ", "($(w_cm), $(h_cm))")
         if pt isa SheetMatrixBuilder
             sw, sh = round(width_adjusted_mm(pt) / ncols(pt), digits = 1), round(height_adjusted_mm(pt)  / nrows(pt), digits = 1)
-            println(tb3, "Per sheet [mm] (width, height) = ($sw, $sh)")
+            println(tb3, "Per sheet [mm] (w, h) = ($sw, $sh)")
         end
     end
     #

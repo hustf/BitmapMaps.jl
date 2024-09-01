@@ -1,3 +1,4 @@
+# Step in pipeline.
 # This file concerns finding summit prominence.
 # The prominence of some summits actually depends
 # on geography which lay outside the limits of one sheet.
@@ -22,13 +23,13 @@
 """
 function summit_markers(sb::SheetBuilder)
     # Harvest info
-    promlev_prom = get_config_value("Markers", "Prominence level [m], prominent summit", Int; nothing_if_not_found = false)
-    promlev_obsc = get_config_value("Markers", "Prominence level [m], obscure summit", Int; nothing_if_not_found = false)
-    symbol_prom = get_config_value("Markers", "Symbol prominent summit", String; nothing_if_not_found = false)
-    symbol_obsc = get_config_value("Markers", "Symbol obscure summit", String; nothing_if_not_found = false)
-    symbol_size_prom = get_config_value("Markers", "Size prominent summit symbol", Int; nothing_if_not_found = false)
-    symbol_size_obsc = get_config_value("Markers", "Size obscure summit symbol", Int; nothing_if_not_found = false)
-    min_stress = get_config_value("Markers", "Minimum stress level", Int; nothing_if_not_found = false)
+    promlev_prom = get_config_value("Markers", "Prominence level [m], prominent summit", Int)
+    promlev_obsc = get_config_value("Markers", "Prominence level [m], obscure summit", Int)
+    symbol_prom = get_config_value("Markers", "Symbol prominent summit", String)
+    symbol_obsc = get_config_value("Markers", "Symbol obscure summit", String)
+    symbol_size_prom = get_config_value("Markers", "Size prominent summit symbol", Int)
+    symbol_size_obsc = get_config_value("Markers", "Size obscure summit symbol", Int)
+    min_stress = get_config_value("Markers", "Minimum stress level", Int)
     prom_levels = [promlev_obsc, promlev_prom]
     symbols = [symbol_obsc, symbol_prom]
     symbol_sizes = [symbol_size_obsc, symbol_size_prom]
@@ -41,7 +42,7 @@ end
 function summit_markers(fofo, cell_iter, cell2utm, f_I_to_utm, prom_levels, symbols, symbol_sizes, min_stress, dic_neighbour)
     # Early exits:
     if ! isfile(joinpath(fofo, CONSOLIDATED_FNAM))
-        @debug "    $CONSOLIDATED_FNAM in $fofo does not exist. Exiting `summit_markers`"
+        @debug "    $CONSOLIDATED_FNAM in $fofo\n           does not exist. Exiting `summit_markers`"
         return false
     end
     # Do the calculation, and saving of boundary conditions
@@ -227,7 +228,7 @@ function write_prominence_to_csv(vpr, vz, vutm, indices, σ, ffnam)
     # We want to sort by
     #  1) prominence 'obscure' or  'prominent'
     #  2) elevation
-    promlev_prom = get_config_value("Markers", "Prominence level [m], prominent summit", Int; nothing_if_not_found = false)
+    promlev_prom = get_config_value("Markers", "Prominence level [m], prominent summit", Int)
     sortval = [z + (p > promlev_prom ? 10000 : 0) for (z, p) in zip(vz, vpr)]
     # Order by elevation
     order = sortperm(sortval; rev = true)
@@ -581,7 +582,7 @@ function add_names_to_csv(ffnam)
     length(names) == length(vsutm) || throw(ErrorException("Some names were not assigned. length $(length(names)) $(length(vsutm))"))
     @debug "    Saving names: $ffnam"
     # NOTE: The column order ought to remain the same as in
-    # `write_prominence_to_csv`.
+    # `write_prominence_to_csv` and as used in `_make_vector_graphics`
     vz, vpr, vutm, vi, vstress = old_data[:, 1], old_data[:, 2], old_data[:, 3], old_data[:, 4], old_data[:, 5]
     vectors = [vz, vpr, vutm, vi, vstress, names]
     headers = ["Elevation_m", "Prominence_m", "Utm", "Sheet_index", "Stress", "Name"]

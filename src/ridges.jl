@@ -10,11 +10,11 @@ function ridge_overlay(sb::SheetBuilder)
 end
 function ridge_overlay(fofo, cell_iter, cell2utm)
     if isfile(joinpath(fofo, RIDGE_FNAM))
-        @debug "    $RIDGE_FNAM in $fofo already exists. Exiting `ridge_overlay`"
+        @debug "    $RIDGE_FNAM in $fofo \n           already exists. Exiting `ridge_overlay`"
         return true
      end
     if ! isfile(joinpath(fofo, CONSOLIDATED_FNAM))
-        @debug "    $CONSOLIDATED_FNAM in $fofo does not exist. Exiting `ridge_overlay`"
+        @debug "    $CONSOLIDATED_FNAM in $fofo\n           does not exist. Exiting `ridge_overlay`"
         return false
     end
     res = _ridge(fofo, cell_iter, cell2utm)

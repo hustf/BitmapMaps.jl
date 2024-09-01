@@ -131,7 +131,8 @@ function process_job(smb, complete_sheets_first)
         grid_overlay, 
         ridge_overlay,
         summit_markers,
-        join_layers]
+        join_layers,
+        make_vector_graphics]
     # 
     if complete_sheets_first
         for sb in smb

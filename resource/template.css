@@ -1,8 +1,20 @@
+:root {
+  --fontsize: 78px; /* Calculated as round(fontsize_pt * 0.3528 mm / pt * density_pt_m⁻¹ / 1000 ) */
+  --shadow-offset-x: calc(var(--fontsize) * 0.0641); /* 5px for 78px fontsize */
+  --shadow-offset-y: calc(var(--fontsize) * 0.0641); /* 5px for 78px fontsize */
+  --shadow-blur: calc(var(--fontsize) * 0.0513); /* 4px for 78px fontsize */
+  --shadow-opacity: 0.8; /* Opacity remains constant */
+}
+
 html,
 body,
 svg {
-  .fjell {
-    font: italic 80px serif;
-    fill: blue;    
-  }
+  print-color-adjust: exact;
+}
+
+.fjell {
+  font: bold var(--fontsize) serif;
+  fill: black;
+  dominant-baseline: alphabetic;
+  filter: drop-shadow(var(--shadow-offset-x) var(--shadow-offset-y) var(--shadow-blur) rgba(193, 231, 255, var(--shadow-opacity)));
 }

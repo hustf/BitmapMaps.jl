@@ -19,6 +19,8 @@ function _prepare_init_file_configuration(io)
         """
     println(io, msg)
     # Note, we're creating several 'IniFile' below, for sequential writing to the same file.
+    # The sequence keeps the order of heading consistent as planned. We want all those variables 
+    # that can't be overruled last.
     # At reading, they are of course parsed as the same Ini File.
     ini = Inifile()
     # Shorthand
@@ -29,7 +31,7 @@ function _prepare_init_file_configuration(io)
     entry("Printer consistent capability", "Stated density limit, dots per inch", "600"; comm = ":density_limit_pt_inch⁻¹\r\n  #    As advertised by Brother")
     println(io, ini)
     ini = Inifile()
-    entry("Geographical area", "Southwest corner (utm easting northing)", "(4873 6909048)"; comm = ":southwest_corner")
+    entry("Geographical area", "Southwest corner (utm easting northing)", "(35425 6920995)"; comm = ":southwest_corner")
     entry("Geographical area", "Output paper sheets (rows columns)", "(3 4)"; comm = ":nrc")
     entry("Geographical area", "Output density, i.e. 'cells' / 'dots' / 'points' or 'pixels' per paper meter", "11811";
         comm = ":density_pt_m⁻¹\r\n  #    For reference, 300  / inch = 300 / (0.0254 m) = 11811 m⁻¹ \r\n  #    Use lower values to slightly 'zoom in', otherwise use 'cell_to_utm_factor'.")
@@ -63,6 +65,8 @@ function _prepare_init_file_configuration(io)
     entry("Markers", "Size prominent summit symbol", "31"; comm = "\r\n  #  Length of bounding box size. Must be odd.")
     entry("Markers", "Size obscure summit symbol", "21"; comm = "\r\n  #  Length of bounding box size. Must be odd.")
     entry("Markers", "Minimum stress level", "-14"; comm = "\r\n  #  Summits with even lower stress values are discarded as power lines / artifacts")
+    entry("Text", "Font size [pt]", "10.0"; comm = "\r\n  #  Unit is postscript points, used in e.g. Office Word\r\n  # pt = inch / 72 = 0.3528 mm")
+    entry("Text", "Flip text side at width fraction", "0.85"; comm = "\r\n  #  Set text to the left of summits when summit is further to the right")
     # To file..
     println(io, ini)
 end

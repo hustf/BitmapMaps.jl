@@ -15,7 +15,7 @@ are unpacked.
 unzip_tif(sb::SheetBuilder) = unzip_tif(full_folder_path(sb); include_parent_folder = true)
 function unzip_tif(fofo; include_parent_folder = false)
     if isfile(joinpath(fofo, CONSOLIDATED_FNAM))
-        @debug "    $CONSOLIDATED_FNAM in $fofo already exists. Exiting `unzip_tif`"
+        @debug "    $CONSOLIDATED_FNAM in $fofo\n           already exists. Exiting `unzip_tif`"
         return true
     end
     allfiles = readdir(fofo, join = true)

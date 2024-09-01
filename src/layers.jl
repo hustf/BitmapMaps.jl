@@ -20,13 +20,13 @@ function join_layers(fofo, density_pt_m⁻¹)
     if isfile(ffna)
         # Do all layer files exist?
         if ! all(isfile.(layerfnas))
-            @debug "    $COMPOSITE_FNAM in $fofo already exists (not all layer files, though). Exiting `join_layers`"
+            @debug "    $COMPOSITE_FNAM in $fofo\n           already exists (not all layer files, though). Exiting `join_layers`"
             return true # We should continue with other sheets, no prob here
         end
         layermodtimes = mtime.(layerfnas)
         compmodtime = mtime(ffna)
         if ! any(layermodtimes .> compmodtime)
-            @debug "    $COMPOSITE_FNAM in $fofo already exists and was created after all layers. Exiting `join_layers`"
+            @debug "    $COMPOSITE_FNAM in $fofo\n           already exists and is newer than layers. Exiting `join_layers`"
             return true
         end
     end
