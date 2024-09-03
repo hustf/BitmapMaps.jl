@@ -10,21 +10,20 @@ for fo in ["test_pipeline1", "test_pipeline2", "test_pipeline3"]
 end
 
 # First some impossible jobs to finish.
-@test_logs(
-    (:info, r"Pipeline running."),
-    (:info, r"Since geographical area per sheet is  > 16km²"),
-    (:info, r"No .tif files"),
-    (:info, r"Could not make consolidated"),
-    (:warn, r"Could not finish consolidate_elevation_data"),
+@test_logs(                                                                                                                                                                                                                      
+    (:info, r"Pipeline running."),                                                                                                                                                                                           
+    (:info, r"Since geographical area per sheet is  > 16km²"),                                                                                                                                                       
+    (:info, r"No .tif files"),                                                                                                                                                                                               
+    (:info, r"Could not make Consolidated"),                                                                                                                                                                                 
+    (:warn, r"Could not finish consolidate_elevation_data"),                                                                                                                                                         
     run_bitmapmap_pipeline(;pth = "BitmapMaps\\test_pipeline1"))
-
 
 @test ispath(joinpath(homedir(), "BitmapMaps", "test_pipeline1"))
 
 @test_logs(
     (:info, r"Pipeline running."),
     (:info, r"No .tif files"),
-    (:info, r"Could not make consolidated"),
+    (:info, r"Could not make Consolidated"),
     (:warn, r"Could not finish consolidate_elevation_data"),
     #match_mode = :any,
     run_bitmapmap_pipeline(;nrc = (1, 1), cell_to_utm_factor = 1, pth = "BitmapMaps\\test_pipeline2"))
@@ -88,7 +87,7 @@ density_pt_m⁻¹ = Int(ceil(1000 * sh_width_cell / sheet_width_mm ))
 smb = @test_logs(
     (:info, r"Pipeline running."),
     (:info, r"No .tif files"),
-    (:info, r"Could not make consolidated"),
+    (:info, r"Could not make Consolidated"),
     (:warn, r"Could not finish consolidate_elevation_data"),
     run_bitmapmap_pipeline(;nrc, cell_to_utm_factor = cell2utm, pth, southwest_corner = southwest_c, density_pt_m⁻¹, sheet_width_mm,
        complete_sheets_first = false))

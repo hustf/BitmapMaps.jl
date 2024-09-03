@@ -158,7 +158,7 @@ function add_two_line_text_element(parent, text1, text2, class, x, y, lineheight
             link!(tsp2, AttributeNode("y", y))
             link!(tsp2, AttributeNode("dy", "$lineheight_px"))
             if text_on_left
-7                link!(tsp2, AttributeNode("dx", string(-dx)))
+                link!(tsp2, AttributeNode("dx", string(-dx)))
                 link!(tsp2, AttributeNode("text-anchor", "end"))
             else
                 link!(tsp2, AttributeNode("dx", string(dx)))

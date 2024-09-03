@@ -11,9 +11,9 @@ sb = smb[1]
 @test neighbour_folder(sb, :w) == ""
 
 fofo = joinpath(homedir(), "BitmapMaps", "proj 47675 6929520 57224 6947852", "1 1  47675 6929520  50858 6934103")
-#if ispath(fofo)
+if ispath(fofo)
 
-#= The following relies on the folder and data existing, and the following definitions in the .ini file:
+#= The following keywords should replicate the the following definitions in the .ini file:
 
 [Printer consistent capability]
 Printable width mm=191 # :sheet_width_mm
@@ -36,7 +36,10 @@ Top folders path under homedir()=bitmapmaps/proj 47675 6929520 57224 6947852 # :
 =#
 
 # Establish 3x3 sheet folder structure (or make a full iteration)
-smb = run_bitmapmap_pipeline(; cell_to_utm_factor = 1, nrc = (3, 3))
+smb = define_builder(cell_to_utm_factor = 1, nrc = (3, 3), southwest_corner = (47675, 6929520), 
+    density_pt_m⁻¹ = 16667, pth = "bitmapmaps/proj 47675 6929520 57224 6947852")
+@test smb.southwest_corner == (47675, 6929520)
+smb = run_bitmapmap_pipeline(smb)
 
 
 sb = smb[2, 2]
@@ -47,11 +50,11 @@ sb = smb[2, 2]
 @test ! isempty(neighbour_folder_dict(sb))
 
 # Let's have a look at mea...
-smb = define_builder(;cell_to_utm_factor = 1, nrc = (3, 3))
 sb = smb[3, 3]
 ny, nx = size(sb.cell_iter)
 si = CartesianIndices((1:cell_to_utm_factor(sb):(nx  * cell_to_utm_factor(sb)), 1:cell_to_utm_factor(sb):(ny * cell_to_utm_factor(sb))))
 fofo = full_folder_path(sb)
+@test isfile(joinpath(fofo, CONSOLIDATED_FNAM))
 g = readclose(joinpath(fofo, CONSOLIDATED_FNAM))
 z = transpose(g.A[si])
 # Retrieve boundary conditions
@@ -68,3 +71,5 @@ if @isdefined levcols # levcols defined in `t_summit_markers`
 end
 # This value depends on how many times we have iterated. In the first run, we see the latter value.
 @test abs(mea[1] - 1432.3724f0) < 0.01 || abs(mea[1] - 746.0909f0f0) < 0.01 
+
+end # if ispath(fofo)
