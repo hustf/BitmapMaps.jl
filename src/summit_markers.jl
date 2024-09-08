@@ -230,7 +230,7 @@ function write_prominence_to_csv(vpr, vz, vutm, indices, σ, ffnam)
     #  2) elevation
     promlev_prom = get_config_value("Markers", "Prominence level [m], prominent summit", Int)
     sortval = [z + (p > promlev_prom ? 10000 : 0) for (z, p) in zip(vz, vpr)]
-    # Order by elevation
+    # Order 
     order = sortperm(sortval; rev = true)
     #
     # Prior to saving, look for changes compared to existing file.

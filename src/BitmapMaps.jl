@@ -39,7 +39,7 @@ import ColorTypes
 using ColorTypes: RGBA, RGB, AbstractGray, AbstractRGB, Gray, red, green, blue # Todo clean
 # Identify water
 import ImageSegmentation
-using ImageSegmentation: felzenszwalb, labels_map, segment_pixel_count, segment_mean
+using ImageSegmentation: felzenszwalb, labels_map, segment_pixel_count, segment_mean, SegmentedImage
 import ImageMorphology
 using ImageMorphology: erode!, dilate!, dilate, GuoAlgo, thinning
 # Grid

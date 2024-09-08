@@ -1,5 +1,6 @@
 :root {
   --fontsize: 78px; /* Calculated as round(fontsize_pt * 0.3528 mm / pt * density_pt_m⁻¹ / 1000 ) */
+  --fontsize-small: calc(var(--fontsize) * 0.67); /* 52.3px for 78px fontsize */
   --shadow-offset-x: calc(var(--fontsize) * 0.0641); /* 5px for 78px fontsize */
   --shadow-offset-y: calc(var(--fontsize) * 0.0641); /* 5px for 78px fontsize */
   --shadow-blur: calc(var(--fontsize) * 0.0513); /* 4px for 78px fontsize */
@@ -17,4 +18,9 @@ svg {
   fill: black;
   dominant-baseline: alphabetic;
   filter: drop-shadow(var(--shadow-offset-x) var(--shadow-offset-y) var(--shadow-blur) rgba(193, 231, 255, var(--shadow-opacity)));
+}
+
+.sjø {
+  font: bold var(--fontsize-small) serif;
+  fill: darkblue;
 }
