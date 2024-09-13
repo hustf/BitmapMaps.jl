@@ -60,7 +60,7 @@ function _corners_and_dieders!(result, bbuf, source, source_indices, criterion_f
         # Overwrite bbuf with pixels on corners
         mapwindow!(M -> Gray{Bool}(criterion_function(first(M))), bbuf, source, (1, 1); indices = source_indices)
         # Our very clever thinning, despeckling and thickening:
-        bbuf .= strokeify(bbuf, t)
+        bbuf .= strokeify(bbuf, t, 5) # Minimum length of a line is hardcoded as 5.
         # Treat 'false' as transparent. Overlay bbuf on result and write in-place to result.
         map!((outcol, bol) -> bol == true ? colo : outcol, result, result, bbuf)
     end

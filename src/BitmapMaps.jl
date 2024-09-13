@@ -93,6 +93,7 @@ const RIDGE_FNAM = "Ridge.png"
 const MARKERS_FNAM = "Markers.png"
 const SUMMITS_FNAM = "Summits.csv"
 const COMPOSITE_FNAM = "Composite.png"
+const PARSEABLE_FNAM = "Parse_builder.jl"
 
 include("ini_file.jl")
 include("png_phys.jl")

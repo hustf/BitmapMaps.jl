@@ -1,11 +1,19 @@
 # Step in pipeline.
 """
 establish_folder(p::SheetBuilder) ---> Bool
+
+This also saves a Julia parseable file with the sheet's definitition.
 """
 function establish_folder(p::SheetBuilder)
     fullpth = full_folder_path(p)
     if ! ispath(fullpth)
         mkpath(fullpth)
+    end
+    #
+    filename = joinpath(fullpth, PARSEABLE_FNAM)
+    #
+    open(filename, "w") do io
+        show(io, MIME"text/plain"(), p)
     end
     ispath(fullpth)
 end

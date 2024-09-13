@@ -7,7 +7,7 @@
 
 # Move the .tif file from /resource to a temporary directory.
 using BitmapMaps
-using BitmapMaps: WATER_FNAM
+using BitmapMaps: WATER_FNAM, write_lake_to_csv
 using Test
 import ImageSegmentation
 using ImageSegmentation: segment_pixel_count

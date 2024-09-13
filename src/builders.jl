@@ -69,26 +69,44 @@ julia> show_derived_properties(smb[2, 2]) # Let's see more human-readable detail
     pthsh::String
 end
 
+
+function func_I_to_utm(sheet_lower_left_utm, ny, cell_to_utm_factor)
+    f = let ny = ny, cell2utm = cell_to_utm_factor, utm_left = sheet_lower_left_utm[1], utm_lower = sheet_lower_left_utm[2]
+        I::CartesianIndex -> (
+            (I[2] - 1) * cell2utm + utm_left, 
+                         (ny - I[1] + 1) * cell_to_utm_factor + utm_lower
+        )
+    end
+    f
+end
+
+
 function SheetBuilder(pixel_origin_ref_to_bitmapmap, cell_iter, sheet_lower_left_utm, cell_to_utm_factor, sheet_number, density_pt_m⁻¹, pthsh)
     ny = size(cell_iter)[1]
-    function f_I_to_utm(I::CartesianIndex)
-        easting_offset =   (I[2] - 1) * cell_to_utm_factor
-        northing_offset =  (ny - I[1] + 1) * cell_to_utm_factor
-        (easting_offset, northing_offset) .+ sheet_lower_left_utm
-    end
+    #function f_I_to_utm(I::CartesianIndex)
+    #    easting_offset =   (I[2] - 1) * cell_to_utm_factor
+    #    northing_offset =  (ny - I[1] + 1) * cell_to_utm_factor
+    #    (easting_offset, northing_offset) .+ sheet_lower_left_utm
+    #end
+    f_I_to_utm = func_I_to_utm(sheet_lower_left_utm, ny, cell_to_utm_factor)
     SheetBuilder(;pixel_origin_ref_to_bitmapmap, cell_iter, f_I_to_utm, sheet_number, density_pt_m⁻¹, pthsh)
 end
 
 function Base.show(io::IO, ::MIME"text/plain", sb::SheetBuilder)
+    # Parseable print
     print(io, "SheetBuilder(;")
     for sy in fieldnames(SheetBuilder)
         va = getfield(sb, sy)
         colwi = sy == :pixel_origin_ref_to_bitmapmap ? 9 : 34
         print(io, lpad("$sy", colwi), " = ")
         if sy == :f_I_to_utm
-            I = first(sb.cell_iter)
-            print(io, sb.f_I_to_utm(I))
-            print(io, "@", "$(getfield(I, :I))")
+            ny = size(sb.cell_iter)[1]
+            cell2utm = cell_to_utm_factor(sb)
+            sheet_lower_left_utm = southwest_external_corner(sb)
+            print(io, "func_I_to_utm(")
+            print(io, "$sheet_lower_left_utm,")
+            print(io, " $ny,")
+            print(io, " $cell2utm)")
         else
             print(io, repr(va))
         end

@@ -54,10 +54,14 @@ run_bitmapmap_pipeline()
 ```
 # Current state
 
-Steps 1-13 is fully working: summit text and lake elevations is included. Style can be modified in the .ini file.
+Steps 1-13 is fully working
+
+Version 0.1.4 makes slight improvements to elevation contour lines. User can now modify the minimum length of "countour dashes", and the algorithm scales better when zoomed out.
+
+: summit text and lake elevations is included. Style can be modified in the .ini file.
 
 ## Step 13, vector graphics:
-Version 0.1.1 is fully working: summit text has been refined to render well in all browsers and close to sheet edges. Style can be modified in the .ini file.
+Version 0.1.3: summit and lakes text has been refined to render well in all browsers and close to sheet edges. Style can be modified in the .ini file, text contents can be modified in .csv files.
 
 ## Step 11, summits:
 
