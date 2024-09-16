@@ -36,7 +36,7 @@ using ImageFiltering: imgradients, KernelFactors, mapwindow, mapwindow!, Kernel,
 # Pick color from lightness
 import Colors
 import ColorTypes
-using ColorTypes: RGBA, RGB, AbstractGray, AbstractRGB, Gray, red, green, blue # Todo clean
+using ColorTypes: RGBA, RGB, XYZ, AbstractGray, AbstractRGB, Gray, red, green, blue # Todo clean
 # Identify water
 import ImageSegmentation
 using ImageSegmentation: felzenszwalb, labels_map, segment_pixel_count, segment_mean, SegmentedImage

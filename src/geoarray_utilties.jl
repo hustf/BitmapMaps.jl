@@ -12,16 +12,41 @@ function readclose(fna)::GeoArray # Type annotation for the compiler, just like 
 end
 
 # Docstring in builders_utilties
-closed_polygon_string(fnas::Vector{String}) = join(closed_polygon_string.(readclose.(fnas)), ",\n" * repeat(' ', 19))
-closed_polygon_string(fna::String) = closed_polygon_string(readclose(fna))
+function closed_polygon_string(fnas::Vector{String})
+    s = ""
+    n = length(fnas)
+    # Let's avoid taking several g into memory simultaneously
+    for (i, fna) in enumerate(fnas)
+        @debug "Finding extents of $fna"
+        g = readclose(fna)
+        s *= closed_polygon_string(g)
+        if i < n
+            s *= ",\n" * repeat(' ', 19)
+        end
+    end
+    s
+end
+function closed_polygon_string(fna::String)
+    # This does not normally occur in the pipeline, rather while preparing input.
+    @debug "Finding extents of $fna"
+    closed_polygon_string(readclose(fna))
+end
 function closed_polygon_string(g::GeoArray)
     bbo = bbox(g)
     bbi = nonzero_raster_rect(g)
     so = "$(closed_box_string(bbo))"
-    si = "$(closed_box_string(bbi))"
-    if so == si
-        si
+    if bbi == (min_x = 0, min_y = 0, max_x = 0, max_y = 0)
+        # This file is all zero-valued or missing-valued.
+        # We indicate that visually with a diagonal line across the outer
+        # rectangle.
+        si = "$(diagonal_string(bbo))"
+        so * ",\n" * repeat(' ', 19) * si
+    elseif bbi == bbo
+        # This file has non-zero data filling the outer boundaries.
+        so
     else
+        # The inner rectangle will indicate where non-zero data occurs.
+        si = "$(closed_box_string(bbi))"
         so * ",\n" * repeat(' ', 19) * si
     end
 end
@@ -114,8 +139,6 @@ julia> M[Irng]
 function unpadded_indices(matrix)
     # Get the number of rows and columns
     m, n = size(matrix)
-    # Function to check if a row or column is all zeros
-    is_all_zeros = vec -> all(x -> x == 0, vec)
     # Determine the first and last non-zero row
     first_row = findfirst(!is_all_zeros, eachrow(matrix))
     last_row = findlast(!is_all_zeros, eachrow(matrix))
@@ -135,6 +158,10 @@ function unpadded_indices(g::GeoArray)
     @assert js !== nothing
     CartesianIndices((is, js))
 end
+
+# Function to check if a row or column is all zeros
+is_all_zeros(vec::SubArray{Float32}) = all(x -> x == 0, vec)
+is_all_zeros(vec::SubArray{T}) where T <: Union{Missing, Float32} = all(x -> ismissing(x) || x == 0, vec)
 
 "ref. southwest_corner"
 northwest_corner(g::GeoArray) = g.f((0, 0))

@@ -245,10 +245,10 @@ julia> bb = (;min_x = 0, min_y = 0, max_x = 1, max_y = 1);
 julia> bbf = (;min_x = 0, min_y = 0, max_x = 1, max_y = 1);
 
 julia> BitmapMaps.closed_box_string(bb)
-"(0 0, 1 0, 1 1, 0 1, 0 0)"
+"((0 0, 1 0, 1 1, 0 1, 0 0))"
 
 julia> BitmapMaps.closed_box_string(bbf)
-"(0 0, 1 0, 1 1, 0 1, 0 0)"
+"((0 0, 1 0, 1 1, 0 1, 0 0))"
 ```
 """
 function closed_box_string(bb::NamedTuple{(:min_x, :min_y, :max_x, :max_y)})
@@ -258,7 +258,29 @@ function closed_box_string(bb::NamedTuple{(:min_x, :min_y, :max_x, :max_y)})
     y3 = Int(bb.max_y)
     x2, y2 = x3, y1
     x4, y4 = x1, y3
-    "($x1 $y1, $x2 $y2, $x3 $y3, $x4 $y4, $x1 $y1)"
+    "(($x1 $y1, $x2 $y2, $x3 $y3, $x4 $y4, $x1 $y1))"
+end
+
+"""
+    diagonal_string(bb::NamedTuple{(:min_x, :min_y, :max_x, :max_y)})
+    ---> String
+
+# Example
+```
+julia> diagonal_string((; min_x = 0, min_y = 0, max_x = 100, max_y = 200))
+"((0 0, 1 0, 99 200, 100 200, 0 0))"
+```
+"""
+function diagonal_string(bb::NamedTuple{(:min_x, :min_y, :max_x, :max_y)})
+    x1 = Int(bb.min_x)
+    y1 = Int(bb.min_y)
+    x3 = Int(bb.max_x) - 1
+    y3 = Int(bb.max_y)
+    x2 = x1 + 1
+    y2 = y1
+    x4 = x3 + 1
+    y4 = y3
+    "(($x1 $y1, $x2 $y2, $x3 $y3, $x4 $y4, $x1 $y1))"
 end
 
 
@@ -270,32 +292,35 @@ end
     polygon_string(g::GeoArray)
     ---> String
 
-Paste WKS output in e.g. https://nvdb-vegdata.github.io/nvdb-visrute/STM.
+Paste WKS output in e.g. https://nvdb- ->ZXCVBNM;:_.github.io/nvdb-visrute/STM.
 
 # Example
 ```
 julia> polygon_string(smb[1])
-"POLYGON ((4873 6909048, 11638 6909048, 11638 6918792, 4873 6918792, 4873 6909048))"
+"MULTIPOLYGON (\n                   ((35425 6920995, 42190 6920995, 42190 6930739, 35425 6930739, 35425 6920995)))"
 
 julia> polygon_string(smb) |> println
-POLYGON ((4873 6909048, 11638 6909048, 11638 6918792, 4873 6918792, 4873 6909048),
-                (4873 6918792, 11638 6918792, 11638 6928536, 4873 6928536, 4873 6918792),
-                (4873 6928536, 11638 6928536, 11638 6938280, 4873 6938280, 4873 6928536),
-                (11638 6909048, 18403 6909048, 18403 6918792, 11638 6918792, 11638 6909048),
-                (11638 6918792, 18403 6918792, 18403 6928536, 11638 6928536, 11638 6918792),
-                (11638 6928536, 18403 6928536, 18403 6938280, 11638 6938280, 11638 6928536),
-                (18403 6909048, 25168 6909048, 25168 6918792, 18403 6918792, 18403 6909048),
-                (18403 6918792, 25168 6918792, 25168 6928536, 18403 6928536, 18403 6918792),
-                (18403 6928536, 25168 6928536, 25168 6938280, 18403 6938280, 18403 6928536),
-                (25168 6909048, 31933 6909048, 31933 6918792, 25168 6918792, 25168 6909048),
-                (25168 6918792, 31933 6918792, 31933 6928536, 25168 6928536, 25168 6918792),
-                (25168 6928536, 31933 6928536, 31933 6938280, 25168 6938280, 25168 6928536))
+MULTIPOLYGON (
+                   ((35425 6920995, 42190 6920995, 42190 6930739, 35425 6930739, 35425 6920995)),
+                   ((35425 6930739, 42190 6930739, 42190 6940483, 35425 6940483, 35425 6930739)),
+                   ((35425 6940483, 42190 6940483, 42190 6950227, 35425 6950227, 35425 6940483)),
+                   ((42190 6920995, 48955 6920995, 48955 6930739, 42190 6930739, 42190 6920995)),
+                   ((42190 6930739, 48955 6930739, 48955 6940483, 42190 6940483, 42190 6930739)),
+                   ((42190 6940483, 48955 6940483, 48955 6950227, 42190 6950227, 42190 6940483)),
+                   ((48955 6920995, 55720 6920995, 55720 6930739, 48955 6930739, 48955 6920995)),
+                   ((48955 6930739, 55720 6930739, 55720 6940483, 48955 6940483, 48955 6930739)),
+                   ((48955 6940483, 55720 6940483, 55720 6950227, 48955 6950227, 48955 6940483)),
+                   ((55720 6920995, 62485 6920995, 62485 6930739, 55720 6930739, 55720 6920995)),
+                   ((55720 6930739, 62485 6930739, 62485 6940483, 55720 6940483, 55720 6930739)),
+                   ((55720 6940483, 62485 6940483, 62485 6950227, 55720 6950227, 55720 6940483)))
 
-julia> polygon_string(fna)
-"POLYGON ((44000 6909048, 44005 6909048, 44005 6909055, 44000 6909055, 44000 6909048))"
+julia> polygon_string(fna) |> println  # This file contains only zero values, which is indicated by a diagonal:
+MULTIPOLYGON (
+                   ((-54575 6890995, -39565 6890995, -39565 6906005, -54575 6906005, -54575 6890995)),
+                   ((-54575 6890995, -54574 6890995, -39566 6906005, -39565 6906005, -54575 6890995)))
 ```
 """
-polygon_string(p) = "POLYGON ($(closed_polygon_string(p)))"
+polygon_string(p) = "MULTIPOLYGON (\n" * repeat(' ', 18) * " $(closed_polygon_string(p)))"
 
 
 """
@@ -325,18 +350,20 @@ Prints to stdout, used by `run_bitmapmap_pipeline` > `define_builder` > `show_au
 # Example
 ```
 julia> show_derived_properties(smb[2,2])
-
+        
         [easting, northing] derived properties:
-          Bounding Box (BB) SE-NW            = (11638 6918792)-(18403 6928536)
-          Northeast internal corner          = (18400, 6928536) - most northeastern sample point
-          Geo centre                         = (15020.5, 6.923664e6)
-          Grid centre single                 = (15020, 6923665)
+          Bounding Box (BB) SE-NW            = (42190 6930739)-(48955 6940483)
+          Northeast internal corner          = (48952, 6940483) - most northeastern sample point
+          Geo centre                         = (45572.5, 6.935611e6)
+          Grid centre single                 = (45572, 6935612)
         Derived properties:
+          Geographical (width, height) [km]  = (6.8, 9.7)
           Geographical area [km²]            = 66
-          Adj. paper (width, height) [mm]    = (190.9, 275.0)
+          Sheets total (width, height) [cm]  = (19.1, 27.5)
           Map scale                          = 1 : 35433 = 1 : (cell_to_utm_factor * density_pt_m⁻¹)
-        External boundary box as Well Known Text (paste in e.g. https://nvdb-vegdata.github.io/nvdb-visrute/STM ):
-          POLYGON ((11638 6918792, 18403 6918792, 18403 6928536, 11638 6928536, 11638 6918792))
+        External and zero-padded boundary box as Well Known Text (paste in wktmap.com or nvdb-vegdata.github.io/nvdb-visrute/STM ):
+          MULTIPOLYGON (
+                   ((42190 6930739, 48955 6930739, 48955 6940483, 42190 6940483, 42190 6930739)))
 
 ```
 """

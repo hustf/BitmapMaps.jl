@@ -55,8 +55,8 @@ copy_relevant_tifs_to_folder(joinpath(tempdir_utils, source_folder), dfona)
 ######################
 
 fnas = tif_full_filenames_buried_in_folder(pth)
-@test nonzero_raster_closed_polygon_string(fnas[1]) == "(43999 6909048, 44000 6909048, 44000 6909056, 43999 6909056, 43999 6909048)"
-@test nonzero_raster_closed_polygon_string(fnas[2]) == "(44000 6909048, 44005 6909048, 44005 6909056, 44000 6909056, 44000 6909048)"
+@test nonzero_raster_closed_polygon_string(fnas[1]) == "((43999 6909048, 44000 6909048, 44000 6909056, 43999 6909056, 43999 6909048))"
+@test nonzero_raster_closed_polygon_string(fnas[2]) == "((44000 6909048, 44005 6909048, 44005 6909056, 44000 6909056, 44000 6909048))"
 # Lower level
 let
     fna = fnas[2]

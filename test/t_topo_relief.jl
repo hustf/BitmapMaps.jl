@@ -5,7 +5,7 @@
 
 using Test
 using BitmapMaps
-using BitmapMaps: mapwindow
+using BitmapMaps: mapwindow, shade_exponent
 
 ###################################################
 # Preparation (much the same as in `test_pipeline`)
@@ -37,8 +37,8 @@ end
 # Extract and inspect.
 unzip_tif(tmpdir_topo_relief)
 fna = first(tif_full_filenames_buried_in_folder(tmpdir_topo_relief))
-@test nonzero_raster_closed_polygon_string(fna)== "(18294 6937563, 18449 6937563, 18449 6937717, 18294 6937717, 18294 6937563)"
-@test BitmapMaps.polygon_string(fna) ==  "POLYGON ((18294 6937562, 18449 6937562, 18449 6937717, 18294 6937717, 18294 6937562),\n                   (18294 6937563, 18449 6937563, 18449 6937717, 18294 6937717, 18294 6937563))"
+@test nonzero_raster_closed_polygon_string(fna) == "((18294 6937563, 18449 6937563, 18449 6937717, 18294 6937717, 18294 6937563))"
+@test BitmapMaps.polygon_string(fna) ==  "MULTIPOLYGON (\n                   ((18294 6937562, 18449 6937562, 18449 6937717, 18294 6937717, 18294 6937562)),\n                   ((18294 6937563, 18449 6937563, 18449 6937717, 18294 6937717, 18294 6937563)))"
 ##################
 # More preparation
 ##################
@@ -66,6 +66,7 @@ end
 
 # Now copy the relevant file to the relevant directory
 fnas = copy_relevant_tifs_to_folder(tmpdir_topo_relief, smb)
+@test ! isempty(fnas)
 # Consolidate
 @test BitmapMaps.consolidate_elevation_data.(smb) == [true]
 let
@@ -179,6 +180,8 @@ let
     @test all(x -> x == ver[2, 2], ver[:, 2:(end - 1)])
 end
 
+# Surface 'reflectivity' dependency on height
+shade_exponent.(375:25:520) .== [1.0, 1.0, 0.825, 0.65, 0.475, 0.3]
 
 
 #########
@@ -196,17 +199,4 @@ if ispath(full_folder_path(smb))
     sleep(1) # prevent resource busy error....
     rm(full_folder_path(smb), recursive = true)
 end
-
-
-function f_verif1(M::Matrix)
-    @assert size(M) == (3, 3)
-    _, w, _, n, z, s, _, e, _ = M
-    deriv_south_north = (n - s) / 2
-    deriv_east_west = (w - e) / 2
-    mag = sqrt(1 + deriv_south_north^2 + deriv_east_west^2)
-    n_sn = -deriv_south_north / mag
-    n_ew = -deriv_east_west / mag
-    n_up =  1 / mag
-    # Unit vector in a right-handed Euclidean coordinate system
-    n_ew, n_sn, n_up
-end 
+nothing

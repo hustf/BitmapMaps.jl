@@ -8,12 +8,12 @@
 # `establish_folder.(sheet_matrix_builder)`
 
 """
-    copy_relevant_tifs_to_folder((source_folder, destination_folder)
-    copy_relevant_tifs_to_folder(source_folder, smb::SheetMatrixBuilder)
-    copy_relevant_tifs_to_folder(source_folder, sb::SheetBuilder)
+    copy_relevant_tifs_to_folder((source_folder, destination_folder; recurse = true)
+    copy_relevant_tifs_to_folder(source_folder, smb::SheetMatrixBuilder; recurse = true)
+    copy_relevant_tifs_to_folder(source_folder, sb::SheetBuilder; recurse = true)
     ---> Vector{String}, full names of new files in destination
 
-- `source_folder` is searched recursively. Each file is opened to find if it's relevant to the destination coordinates.
+- `source_folder` is searched recursively if 'recurse' is true. Each file is opened to find if it's relevant to the destination coordinates.
 - `destination_folder` respects the integers naming scheme: `r c min_x min_y max_x max_y` (ref. `parse_folder_name`).
    Relevant files copied into the destination's first level.
 
@@ -24,13 +24,13 @@ Ignores any files named `Bitmapmap.CONSOLIDATED_FNAM`.
 Copying from somewhere inside the destination folder to the destination folder is not possible, as this would duplicate files for no good reason.
 A more advanced version would create shortcuts, but we don't.
 """
-function copy_relevant_tifs_to_folder(source_folder, destination_folder)
+function copy_relevant_tifs_to_folder(source_folder, destination_folder; recurse = true)
     # Any files to be copied need to match the geographical area of source.
     r, c, min_x, min_y, max_x, max_y = parse_folder_name(destination_folder)
     d = (;min_x = Float64(min_x), min_y = Float64(min_y), max_x = Float64(max_x), max_y = Float64(max_y))
     # Candidates from file names only, no geographical info. If the same file name occurs twice in the source folder hierarchy,
     # only one will be copied.
-    cs = candidate_tif_names(source_folder, destination_folder)
+    cs = candidate_tif_names(source_folder, destination_folder; recurse)
     if get(ENV, "JULIA_DEBUG", "") !== "BitmapMaps"
         @info "Found $(length(cs)) candidates for copying."
     else
@@ -43,11 +43,14 @@ function copy_relevant_tifs_to_folder(source_folder, destination_folder)
         if is_source_relevant(d, cafna)
             @debug "    Found relevant file $cafna"
             dfna = file_name_at_dest(cafna, destination_folder)
-            @assert ! isfile(dfna)
-            @debug "    Destination file $dfna"
-            # This has at least once failed for a file > 1 Gb, but not every time. Do it manually if that occurs.
-            cp(cafna, dfna)
-            push!(destination_files, dfna)
+            if isfile(dfna) 
+                @warn "Existing file: $dfna, hinders copying $cafna "
+            else
+                @debug "    Destination file $dfna"
+                # This has at least once failed for a file > 1 Gb, but not every time. Do it manually if that occurs.
+                cp(cafna, dfna)
+                push!(destination_files, dfna)
+            end
         else
             bbs = closed_box_string(d)
             @debug "    Ignored copying $(splitdir(cafna)[end]) because it does not overlap the geographical region $bbs"
@@ -55,15 +58,15 @@ function copy_relevant_tifs_to_folder(source_folder, destination_folder)
     end
     destination_files
 end
-function copy_relevant_tifs_to_folder(source_folder, smb::SheetMatrixBuilder)
+function copy_relevant_tifs_to_folder(source_folder, smb::SheetMatrixBuilder; recurse = true)
     destination_files = String[]
     for sb in smb
-        append!(destination_files, copy_relevant_tifs_to_folder(source_folder, sb))
+        append!(destination_files, copy_relevant_tifs_to_folder(source_folder, sb; recurse))
     end
     destination_files
 end
-function copy_relevant_tifs_to_folder(source_folder, sb::SheetBuilder)
-    copy_relevant_tifs_to_folder(source_folder, full_folder_path(sb))
+function copy_relevant_tifs_to_folder(source_folder, sb::SheetBuilder; recurse = true)
+    copy_relevant_tifs_to_folder(source_folder, full_folder_path(sb); recurse)
 end
 
 
@@ -73,12 +76,14 @@ function file_name_at_dest(full_file_name, destination_folder)
 end
 
 """
-    candidate_tif_names(source_folder, destination_folder))
+    candidate_tif_names(source_folder, destination_folder; recurse = true)
 
 Candidates for copying based on file names, excepting file names that already exists on
 any level of the destination folder hierarchy.
+
+If 'recurse' is true, will look in the hierarchy beneath source_folder .
 """
-function candidate_tif_names(source_folder, destination_folder)
+function candidate_tif_names(source_folder, destination_folder; recurse = true)
     source_fo = abspath(source_folder)
     dest_fo = abspath(destination_folder)
     # For avoiding unwanted duplicates:
@@ -91,7 +96,7 @@ function candidate_tif_names(source_folder, destination_folder)
     # Also avoid the name of the file we're going to make later:
     push!(fnas_avoid, file_name_at_dest(BitmapMaps.CONSOLIDATED_FNAM, dest_fo))
     # These exist, but may be buried in the destination folders.
-    fnas_candidates = tif_full_filenames_buried_in_folder(source_fo)
+    fnas_candidates = tif_full_filenames_buried_in_folder(source_fo; recurse)
     filter(fnas_candidates) do cand
         file_name_at_dest(cand, dest_fo) ∉ fnas_avoid
     end

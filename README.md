@@ -54,14 +54,50 @@ run_bitmapmap_pipeline()
 ```
 # Current state
 
-Steps 1-13 is fully working
+Steps 1-13 is fully working.
 
-Version 0.1.4 makes slight improvements to elevation contour lines. User can now modify the minimum length of "countour dashes", and the algorithm scales better when zoomed out.
+Version 0.1.5:
+ - change the palette to have a more uniform lightness, and an increasing red-yellow-ish tint between altitudes 500 m and 1500 m. Also change from using the colorspace RGB to XYZ while
+ generating the palette. The topographic relief may look better if we complete that transition,
+ because lightness is linear in XYZ.
+ - Introduce 'recurse' keyword to the utilty function `copy_sources_into_destination`.
+ - Accept 'missing' values in geoarray files.
+ - For files with only zeros or 'missing' values, the Well-Know-Text feedback now shows a diagonal. 
 
-: summit text and lake elevations is included. Style can be modified in the .ini file.
+   Example for multiple files:
+```
+julia> fnas = filter(n -> endswith(n, ".tif"), readdir());
 
-## Step 13, vector graphics:
-Version 0.1.3: summit and lakes text has been refined to render well in all browsers and close to sheet edges. Style can be modified in the .ini file, text contents can be modified in .csv files.
+julia> polygon_string(fnas[1:3]) |> println
+MULTIPOLYGON (
+                   ((-54575 6875995, -39565 6875995, -39565 6891005, -54575 6891005, -54575 6875995)),
+                   ((-40758 6875995, -39565 6875995, -39565 6881141, -40758 6881141, -40758 6875995)),
+                   ((-54575 6890995, -39565 6890995, -39565 6906005, -54575 6906005, -54575 6890995)),
+                   ((-54575 6890995, -54574 6890995, -39566 6906005, -39565 6906005, -54575 6890995)),
+                   ((-39575 6875995, -24565 6875995, -24565 6891005, -39575 6891005, -39575 6875995)))
+```
+
+Or, for single files:
+
+```
+julia> show_derived_properties(fnas[1])
+        
+        [easting, northing] derived properties:
+          Bounding Box (BB) SE-NW            = (-54575 6875995)-(-39565 6891005)
+          Northeast internal corner          = (-39566.0, 6.891005e6) - most northeastern sample point
+          Geo centre                         = (-47070.0, 6.8835e6)
+          Grid centre single                 = (-47070.0, 6.8835e6)
+        Derived properties:
+          Geographical (width, height) [km]  = (15.0, 15.0)
+          Geographical area [km²]            = 225
+          Distance between cells [utm or m]  = 1.0
+        External and zero-padded boundary box as Well Known Text (paste in wktmap.com or nvdb-vegdata.github.io/nvdb-visrute/STM ):
+          MULTIPOLYGON (
+                   ((-54575 6875995, -39565 6875995, -39565 6891005, -54575 6891005, -54575 6875995)),
+                   ((-40758 6875995, -39565 6875995, -39565 6881141, -40758 6881141, -40758 6875995)))
+```
+
+
 
 ## Step 11, summits:
 
@@ -76,7 +112,7 @@ Summit prominences are calculated taking boundary conditions between sheets into
 Tall power lines are sometimes marked as obscure summits. Version v0.0.40 introduces a configurable filter, 'Markers / Mininum stress level' for filtering out unwanted summits. Stress is also reported in 'Summits.csv'. If some actual summits are missing, try to set the minimum stress level to 0 and iterate.
 
 ## General
-`GeoArrays.jl` has breaking changes in  version 0.9 (we currently pin to 0.8.5). 
+`GeoArrays.jl` has breaking changes in  version 0.9 (we currently pin to 0.8.5). It could be fixed easily.
 
 Some nice to know:
 

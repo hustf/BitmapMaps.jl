@@ -43,7 +43,7 @@ function __topo_relief(za, cell_iter, cell2utm)
     # We need a 'render single output pixel function'. It changes a pixel at a time,
     # and its argument is its immediate surrounding in the source data.
     # It also needs to know more, but we're capturing that data.
-    fr = func_render(generate_directional_palette_func())
+    fr = func_render(func_directional_pallette())
     # Now map the render function to an output image.
     @debug "    Render topo relief"
     # Output image size
@@ -111,8 +111,10 @@ function reflected_color(direction_no, z, n_ew, n_sn, n_up, f_hypso)
     # reflected towards the observer
     lambert_reflection = lambert_shade(n_ew, n_sn, n_up, l_ew, l_sn, l_up)
     # We want a wider spread of reflected light further up, where snow is.
+    # Note: lambert_reflection^shade_exponent(z) naively does not exceed 1.0. Thrust, but check.
     reflection = convert(N0f8, min(1.0f0, lambert_reflection^shade_exponent(z)))
-    #
+    # Multiplication of an RGB is defined in ColorVectorSpace. Not sure
+    # exactly how it is imported to be available here. ImageCore?
     f_hypso(z, direction_no) * reflection
 end
 function shade_exponent(z)

@@ -40,24 +40,28 @@ julia> smb = run_bitmapmap_pipeline(); # No matter how early the pipeline exits,
 julia> smb[2, 2]  # Let's examine one of the sheets
 SheetBuilder(;pixel_origin_ref_to_bitmapmap = (2255, 3248),
                          cell_iter = CartesianIndices((1:3248, 1:2255)),
-                        f_I_to_utm = (11638, 6928536)@(1, 1),
+                        f_I_to_utm = func_I_to_utm((42190, 6930739), 3248, 3),
                       sheet_number = 5,
                     density_pt_m⁻¹ = 11811,
-                             pthsh = "bitmapmaps/default\\2 2  11638 6918792  18403 6928536")
+                             pthsh = "bitmapmaps/default\\2 2  42190 6930739  48955 6940483")
 
 julia> show_derived_properties(smb[2, 2]) # Let's see more human-readable details.
 
         [easting, northing] derived properties:
-          Bounding Box (BB) SE-NW            = (11638 6918792)-(18403 6928536)
-          Northeast internal corner          = (18400, 6928536) - most northeastern sample point
-          Geo centre                         = (15020.5, 6.923664e6)
-          Grid centre single                 = (15020, 6923665)
+          Bounding Box (BB) SE-NW            = (42190 6930739)-(48955 6940483)
+          Northeast internal corner          = (48952, 6940483) - most northeastern sample point
+          Geo centre                         = (45572.5, 6.935611e6)
+          Grid centre single                 = (45572, 6935612)
         Derived properties:
+          Geographical (width, height) [km]  = (6.8, 9.7)
           Geographical area [km²]            = 66
-          Adj. paper (width, height) [mm]    = (190.9, 275.0)
+          Sheets total (width, height) [cm]  = (19.1, 27.5)
           Map scale                          = 1 : 35433 = 1 : (cell_to_utm_factor * density_pt_m⁻¹)
-        External boundary box as Well Known Text (paste in e.g. https://nvdb-vegdata.github.io/nvdb-visrute/STM ):
-          POLYGON ((11638 6918792, 18403 6918792, 18403 6928536, 11638 6928536, 11638 6918792))
+        External and zero-padded boundary box as Well Known Text (paste in wktmap.com or nvdb-vegdata.github.io/nvdb-visrute/STM ):
+          MULTIPOLYGON (
+                   ((42190 6930739, 48955 6930739, 48955 6940483, 42190 6940483, 42190 6930739)))
+
+
 ```
 """
 @kwdef struct SheetBuilder

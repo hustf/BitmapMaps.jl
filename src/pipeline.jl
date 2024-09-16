@@ -16,8 +16,9 @@ is recommended.
 # Example
 ```
 julia> run_bitmapmap_pipeline(;nrc = (2, 2));
+[ Info: Pipeline running. Set ENV["JULIA_DEBUG"] = "BitmapMaps" for detailed progress.
 Bitmapmap builder based on .ini file and keywords
-SheetMatrixBuilder((4873, 6909048), # southwest_corner
+SheetMatrixBuilder((35425, 6920995), # southwest_corner
       CartesianIndices((1:2, 1:2)), # sheet_indices
                                  3, # cell_to_utm_factor
                                191, # sheet_width_mm
@@ -25,26 +26,28 @@ SheetMatrixBuilder((4873, 6909048), # southwest_corner
                              11811, # density_pt_m⁻¹
               "bitmapmaps/default") # pth
         [easting, northing] derived properties:
-          Bounding Box (BB) SE-NW            = (4873 6909048)-(18403 6928536)
-          Northeast internal corner          = (18400, 6928536) - most northeastern sample point
-          Geo centre                         = (11638.0, 6.918792e6)
-          Grid centre single                 = (11638, 6918793)
+          Bounding Box (BB) SE-NW            = (35425 6920995)-(48955 6940483)
+          Northeast internal corner          = (48952, 6940483) - most northeastern sample point
+          Geo centre                         = (42190.0, 6.930739e6)
+          Grid centre single                 = (42190, 6930740)
         Derived properties:
+          Geographical (width, height) [km]  = (13.5, 19.5)
           Geographical area [km²]            = 264
                     Per sheet = 65.92 km²   (Single file export limit: 16 km²)
-          Adj. paper (width, height) [mm]    = (381.8, 550.0)
-                    Per sheet [mm] (width, height) = (190.9, 275.0)
+          Sheets total (width, height) [cm]  = (38.2, 55.0)
+                    Per sheet [mm] (w, h) = (190.9, 275.0)
           Map scale                          = 1 : 35433 = 1 : (cell_to_utm_factor * density_pt_m⁻¹)
-        BBs of sheets as Well Known Text (paste in e.g. https://nvdb-vegdata.github.io/nvdb-visrute/STM ):
-          POLYGON ((4873 6909048, 11638 6909048, 11638 6918792, 4873 6918792, 4873 6909048),
-                   (4873 6918792, 11638 6918792, 11638 6928536, 4873 6928536, 4873 6918792),
-                   (11638 6909048, 18403 6909048, 18403 6918792, 11638 6918792, 11638 6909048),
-                   (11638 6918792, 18403 6918792, 18403 6928536, 11638 6928536, 11638 6918792))
+        BBs of sheets as Well Known Text (paste in wktmap.com or nvdb-vegdata.github.io/nvdb-visrute/STM ):
+          MULTIPOLYGON (
+                   ((35425 6920995, 42190 6920995, 42190 6930739, 35425 6930739, 35425 6920995)),
+                   ((35425 6930739, 42190 6930739, 42190 6940483, 35425 6940483, 35425 6930739)),
+                   ((42190 6920995, 48955 6920995, 48955 6930739, 42190 6930739, 42190 6920995)),
+                   ((42190 6930739, 48955 6930739, 48955 6940483, 42190 6940483, 42190 6930739)))
 [ Info: Since geographical area per sheet is  > 16km², 'høydedata.no' will not provide a single elevation data file per sheet. The pipeline will make a consolidated single file.
-[ Info: No relevant data to consolidate. Exiting.
-[ Info: Could not make consolidated .tif for sheet  with folder path bitmapmaps/default\1 1  4873 6909048  11638 6918792. Download and unzip .tif files? Exiting.
-┌ Warning: Could not finish consolidate_elevation_data(SheetBuilder((0, 3248), (1:3248, 1:2255), f(I) -> utm, 111811, "bitmapmaps/default\\1 1  4873 6909048  11638 6918792",  )
-│ ) with success. Exiting.
+[ Info: No .tif files in C:\\Users\\f\bitmapmaps/default\\1 1  35425 6920995  42190 6930739 to consolidate. Exiting.
+[ Info: Could not make Consolidated.tif for sheet  with folder path bitmapmaps/default\1 1  35425 6920995  42190 6930739. Download and unzip .tif files? Exiting.
+┌ Warning: Could not finish consolidate_elevation_data(SheetBuilder((0, 3248), (1:3248, 1:2255), (35425, 6930739)@(1, 1), 1, 11811, "bitmapmaps/default\\1 1  35425 6920995  42190 6930739")
+│ ) with success. Exiting
 ```
 """
 function run_bitmapmap_pipeline(; complete_sheets_first = true, kwds...)

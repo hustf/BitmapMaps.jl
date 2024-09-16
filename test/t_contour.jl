@@ -7,14 +7,6 @@ using BitmapMaps
 using BitmapMaps: fir_lp_coefficients, centered
 using BitmapMaps: imfilter, mapwindow, mapwindow!, define_builder, _elev_contours
 using BitmapMaps: contour_lines_overlay, CONTOUR_FNAM
-#=
-using ImageCore: N0f32, N0f16, N0f8, Normed, scaleminmax, RGB, channelview, GrayA, RGBA, gray, alpha
-using ImageCore: red, green, blue, Gray, mosaic
-using ImageFiltering: FIRTiled, imfilter!, imgradients, KernelFactors, Fill
-import ColorBlendModes
-using ColorBlendModes: BlendLighten
-import ImageMorphology: erode, dilate
-=#
 
 #fofo = joinpath(homedir(), "bitmapmaps\\render\\1 1  47675 6929520  54041 6938686")
 #fofo = joinpath(homedir(), raw"BitmapMaps/Hov Litlevatn\1 1  29000 6826535  31828 6830608")
