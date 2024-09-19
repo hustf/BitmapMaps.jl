@@ -75,13 +75,20 @@ end
     ---> @NamedTuple{min_x::Int64, min_y::Int64, max_x::Int64, max_y::Int64}
 
 This returns the geographical external boundaries of the cells containing data other than zero.
+It also stores the result in memory. See TIFDIC constant note.
 
 I.e. unpadded external utm boundaries. See figure `/resource/padded_geoarray.svg`.
 """
 function nonzero_raster_rect(fna::String)
     @assert isfile(fna)
     @assert endswith(fna, r".tif|.TIF")
-    nonzero_raster_rect(readclose(fna))
+    if haskey(TIFDIC, fna)
+        bb = TIFDIC[fna]
+    else
+        bb = nonzero_raster_rect(readclose(fna))
+        push!(TIFDIC, fna => bb)
+    end
+    bb
 end
 function nonzero_raster_rect(g::GeoArray)::@NamedTuple{min_x::Int64, min_y::Int64, max_x::Int64, max_y::Int64}
     # Downloaded .tifs are often zero padded.

@@ -56,6 +56,11 @@ run_bitmapmap_pipeline()
 
 Steps 1-13 is fully working.
 
+Version 0.1.6:
+
+- Add .ini parameter 'Behaviour when data is missing', for sheets completely filled with water surface.
+- In step 5, use a temporary dictionary for storing non-zero boundary boxes for input files.
+
 Version 0.1.5:
  - change the palette to have a more uniform lightness, and an increasing red-yellow-ish tint between altitudes 500 m and 1500 m. Also change from using the colorspace RGB to XYZ while
  generating the palette. The topographic relief may look better if we complete that transition,

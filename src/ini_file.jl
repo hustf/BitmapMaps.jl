@@ -40,13 +40,18 @@ function _prepare_init_file_configuration(io)
     ini = Inifile()
     entry("File folder", "Top folders path under homedir()", "bitmapmaps/default"; comm = ":pth \r\n  #    Folder hierarchy will be created under homedir().\r\n  #    For copying in files, see 'copy_relevant_tifs_to_folder'")
     println(io, ini)
+
+    # Sections which can not be overruled by keywords to `run_bitmapmap_pipeline`
     msg = """
         #
         # Sections which can not be overruled by keywords to `run_bitmapmap_pipeline`
         #
         """
     println(io, msg)
-    # Sections which can not be overruled by keywords to `run_bitmapmap_pipeline`
+
+    ini = Inifile()
+    entry("Behaviour when data is missing", "Fill with elevation zero (true or false)", "false")
+    println(io, ini)
     ini = Inifile()
     entry("Elevation contour lines", "Thickness 20m", "1  "; comm = "\r\n  #  Values: 0, 1, 3, 5...")
     entry("Elevation contour lines", "Thickness 100m", "3 "; comm = "\r\n  #  Values: 0, 1, 3, 5...")

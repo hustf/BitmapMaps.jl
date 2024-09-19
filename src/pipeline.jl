@@ -83,7 +83,8 @@ Make a grid for individual printed pages. Each page is associated with an utm co
 Parameters from .ini file will be overridden by keywords. See `run_bitmapmap_pipeline`.
 """
 function define_builder(; kwds...)
-    allowed_keywords = [:southwest_corner, :cell_to_utm_factor, :sheet_width_mm, :sheet_height_mm, :density_pt_m⁻¹, :pth, :density_limit_pt_inch⁻¹, :sheet_indices, :nrc]
+    allowed_keywords = [:southwest_corner, :cell_to_utm_factor, :sheet_width_mm, :sheet_height_mm, :density_pt_m⁻¹,
+        :pth, :density_limit_pt_inch⁻¹, :sheet_indices, :nrc]
     unrecognized_keywords = filter(∉(allowed_keywords), keys(kwds))
     if ! isempty(unrecognized_keywords)
         throw(ArgumentError("Unrecognized_keywords: $unrecognized_keywords. See file BitmapMap.ini for keywords, like: 'sheet_width_mm'"))
@@ -125,18 +126,18 @@ end
 
 
 function process_job(smb, complete_sheets_first)
-        operations_order = [establish_folder, 
-        unzip_tif, 
-        consolidate_elevation_data, 
-        water_overlay, 
-        topo_relief, 
-        contour_lines_overlay, 
-        grid_overlay, 
+        operations_order = [establish_folder,
+        unzip_tif,
+        consolidate_elevation_data,
+        water_overlay,
+        topo_relief,
+        contour_lines_overlay,
+        grid_overlay,
         ridge_overlay,
         summit_markers,
         join_layers,
         make_vector_graphics]
-    # 
+    #
     if complete_sheets_first
         for sb in smb
             for fn in operations_order

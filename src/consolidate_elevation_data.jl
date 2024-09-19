@@ -72,11 +72,16 @@ function consolidate_local_data_to_geoarray_in_folder(fofo; include_parent_folde
         A = zeros(Float32, w, h, 1)
         f = GeoArrays.AffineMap([1.0 0.0; 0.0 -1.0], 1.0 .* [min_x, max_y])
         GeoArray(A, f)
-    end
-    copy_sources_into_destination!(g_dest, fnas_source)
+    end    
+    copy_sources_into_destination!(g_dest, filter(fna -> is_source_relevant(g_dest, fna), fnas_source))
     if sum(g_dest.A) == 0
-        @info "No relevant data to consolidate. Exiting."
-        return false
+        allow_emtpy_sheets = get_config_value("Behaviour when data is missing", "Fill with elevation zero (true or false)", String)
+        if allow_emtpy_sheets == "false"
+            @info "No relevant data to consolidate. \n      Consider changing section 'Behaviour when data is missing' in $(_get_fnam_but_dont_create_file()). Exiting."
+            return false
+        elseif allow_emtpy_sheets !== "true"
+            throw(ArgumentError("Unexpected value of 'allow_emtpy_sheets': $(allow_emtpy_sheets)"))
+        end
     end
     # Feedback
     display_if_vscode(transpose(g_dest.A[:, :, 1]))
