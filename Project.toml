@@ -1,7 +1,7 @@
 name = "BitmapMaps"
 uuid = "dcf5437e-85d8-460a-98f8-69920db83c61"
 authors = ["hustf <hustf@users.noreply.github.com> and contributors"]
-version = "0.1.6"
+version = "0.1.7"
 
 [deps]
 ColorBlendModes = "60508b50-96e1-4007-9d6c-f475c410f16b"
@@ -20,7 +20,6 @@ ImageIO = "82e4d734-157c-48bb-816b-45c225c6df19"
 ImageMorphology = "787d08f9-d448-5407-9aad-5290dd7ab264"
 ImageSegmentation = "80713f31-8817-5129-9cf8-209ff8fb23e1"
 ImageShow = "4e3cecfd-b093-5904-9786-8bbb286a6a31"
-ImageView = "86fae568-95e7-573e-a6b2-d8a6b900c9ef"
 IniFile = "83e8ac13-25f8-5344-8a64-a9f2b223428f"
 PNGFiles = "f57f5aa1-a3ce-4bc8-8ab9-96f992907883"
 PROJ_jll = "58948b4f-47e0-5654-a9ad-f609743f8632"

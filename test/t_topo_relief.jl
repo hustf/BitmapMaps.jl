@@ -181,8 +181,8 @@ let
 end
 
 # Surface 'reflectivity' dependency on height
-shade_exponent.(375:25:520) .== [1.0, 1.0, 0.825, 0.65, 0.475, 0.3]
-
+@test all(shade_exponent.(375:25:520, 1) .≈ [1.2, 1.2, 0.9999999999999999, 0.8, 0.6000000000000001, 0.4])
+@test all(shade_exponent.(375:25:520, 3) .≈ [1.2, 1.2, 1.2, 1.2, 1.2, 1.2])
 
 #########
 # Cleanup

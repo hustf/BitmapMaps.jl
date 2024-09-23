@@ -20,7 +20,7 @@ function topo_relief(fofo, cell_iter, cell2utm)
         @debug "    $CONSOLIDATED_FNAM in $fofo\n           does not exist. Exiting `topo_relief`"
         return false
     end
-    res = _topo_relief(fofo, cell_iter, cell2utm)
+    res = RGB{N0f8}.(_topo_relief(fofo, cell_iter, cell2utm))
     # Feedback
     display_if_vscode(res)
     # Save
@@ -56,7 +56,7 @@ end
 
 function func_render(f_hypso)
     # f_hypso takes two arguments: elevation and direction number 1..4.
-    # It returns an RGB{N0f8}.
+    # It returns an XYZ{Float32}.
     (M::Matrix) -> @inbounds begin
         @assert size(M) == (3, 3)
         # If rows in M correspond to south -> north
@@ -72,22 +72,16 @@ function func_render(f_hypso)
         n_ew = -deriv_east_west / mag
         n_sn = -deriv_south_north / mag
         n_up =  1 / mag
-        # Find the color reflected from the sun's direction
-        col  = reflected_color(1, z, n_ew, n_sn, n_up, f_hypso)
-        # Find the color reflected from the other light sources direction
-        # If that reflection is stronger (we're probably in the shade),
-        # use that light source instead.
-        for lightsource_no in 2:4
-            othercol  = reflected_color(lightsource_no, z, n_sn, n_ew, n_up, f_hypso)
-            if luminance(othercol) > luminance(col)
-                col = othercol
-            end
-        end
-        col
+        # Find the reflected color for light sources 1 to 4.
+        vcol = reflected_color.(1:4, z, n_ew, n_sn, n_up, f_hypso)
+        # We don't mix the light sources, but rather use the one
+        # that is most luminous at this pixel.
+        _, i = findmax(luminance, vcol)
+        vcol[i]
     end
 end
 
-function reflected_color(direction_no, z, n_ew, n_sn, n_up, f_hypso)
+function reflection_coefficient(direction_no, z, n_ew, n_sn, n_up)
     @assert 1 <= direction_no <= 4
     sun = 202
     azimuth_deg = [sun, sun -180 -60, sun - 180, sun - 180 + 60]
@@ -112,23 +106,26 @@ function reflected_color(direction_no, z, n_ew, n_sn, n_up, f_hypso)
     lambert_reflection = lambert_shade(n_ew, n_sn, n_up, l_ew, l_sn, l_up)
     # We want a wider spread of reflected light further up, where snow is.
     # Note: lambert_reflection^shade_exponent(z) naively does not exceed 1.0. Thrust, but check.
-    reflection = convert(N0f8, min(1.0f0, lambert_reflection^shade_exponent(z)))
-    # Multiplication of an RGB is defined in ColorVectorSpace. Not sure
-    # exactly how it is imported to be available here. ImageCore?
-    f_hypso(z, direction_no) * reflection
+    convert(Float32, min(1.0f0, lambert_reflection^shade_exponent(z, direction_no)))
 end
-function shade_exponent(z)
+
+function reflected_color(direction_no, z, n_ew, n_sn, n_up, f_hypso)
+    r = reflection_coefficient(direction_no, z, n_ew, n_sn, n_up)
+    r * f_hypso(z, direction_no)
+end
+function shade_exponent(z, direction_no)
     # Elevation dependent exponent for Lambertian shading.
     # We want the snow to return light from a wider cone.
-    upper_limit_exponent_1 = 400
-    lower_limit_low_exponent = 500
-    low_exponent = 0.3
-    if z <= upper_limit_exponent_1
-        1.0
-    elseif z >= lower_limit_low_exponent
-        low_exponent
+    z1 = 400
+    z2 = 500
+    y1 = 1.2
+    y2 = direction_no == 3 ? y1 : 0.4
+    if z <= z1
+        y1
+    elseif z < z2
+        linterp(y1, y2, z1, z2, z)
     else
-        1 + (low_exponent - 1) * (z - upper_limit_exponent_1) / (lower_limit_low_exponent - upper_limit_exponent_1)
+        y2
     end
 end
 function lambert_shade(n_ew, n_sn, n_up, l_ew, l_sn, l_up)
@@ -141,21 +138,17 @@ end
 
 
 function luminance(col::ColorTypes.RGB{N0f8})
-    r = col.r / 255
-    g = col.g / 255
-    b = col.b / 255
+    r, g, b = red(col), green(col), blue(col)
+    # Linearization recommended by the recommended by the sRGB standard,
     r_lin = r <= 0.04045 ? r / 12.92 : ((r + 0.055) / 1.055) ^ 2.4
     g_lin = g <= 0.04045 ? g / 12.92 : ((g + 0.055) / 1.055) ^ 2.4
     b_lin = b <= 0.04045 ? b / 12.92 : ((b + 0.055) / 1.055) ^ 2.4
+    # These coefficients reflect the human eye's sensitivity to different 
+    # wavelengths of light, as defined by the Rec. 709 standard.
     0.2126 * r_lin + 0.7152 * g_lin + 0.0722 * b_lin
 end
 
-# For inspection during development (dead)
-function to_gray(z)
-   mi, ma = extrema(z)
-   zr = (z .- mi) ./ (ma - mi)
-   Gray{N0f8}.(zr)
-end
+luminance(col::ColorTypes.XYZ) = col.y
 
 function lightness(col::ColorTypes.RGB{N0f8})
     lumi = luminance(col)

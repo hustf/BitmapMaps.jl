@@ -1,17 +1,20 @@
 # This pipeline is the most central part of the package.
 """
-    run_bitmapmap_pipeline(; complete_sheets_first = true, kwds...)
+    run_bitmapmap_pipeline(; complete_sheets_first = true, skip_summits = false, kwds...)
     ---> SheetMatrixBuilder
 
-The job is defined in file BitmapMaps.ini, in user's home directory.
-You can overrule parameters from the .ini file with identical keywords, but changing the .ini file
-is recommended.
+The job is defined in file BitmapMaps.ini, in user's home directory. Call `less(homedir() * "/BitmapMaps.ini")` to inspect.
 
 # Arguments
 
-`complete_sheets_first`    The default 'true' means one sheet is fully processed, then the next sheet.
-                         'false' means that each operation is finished for all sheets before the next operation.
-`width_cell`, etc           Keyword names (like `width_cell`) are included in the default .ini file, with explanation.
+You can overrule parameters from the .ini file with identical keywords, but changing the .ini file
+is recommended. 
+
+- `example_keyword` (would appear as `:example_keyword`) in the file.
+- `complete_sheets_first`=true   'true' means one sheet is fully processed, then the next sheet.
+                                 'false' means that each operation is finished for all sheets before the next operation.
+- `skip_summits`=false           'true' skips the prominence (re-)calculation, which can save time. A few iteration is 
+                                 needed for correct boundary conditions between sheets.
 
 # Example
 ```
@@ -50,12 +53,12 @@ SheetMatrixBuilder((35425, 6920995), # southwest_corner
 │ ) with success. Exiting
 ```
 """
-function run_bitmapmap_pipeline(; complete_sheets_first = true, kwds...)
+function run_bitmapmap_pipeline(; complete_sheets_first = true, skip_summits = false, kwds...)
     if get(ENV, "JULIA_DEBUG", "") !== "BitmapMaps"
         @info "Pipeline running. Set ENV[\"JULIA_DEBUG\"] = \"BitmapMaps\" for detailed progress."
     end
     smb = define_builder(; kwds...)
-    ok_res = process_job(smb, complete_sheets_first)
+    ok_res = process_job(smb, complete_sheets_first, skip_summits)
     if ok_res
         printstyled("Finished job in folder $(joinpath(homedir(), smb.pth))\n", color = :yellow)
         for sb in smb
@@ -125,8 +128,8 @@ function define_builder(; kwds...)
 end
 
 
-function process_job(smb, complete_sheets_first)
-        operations_order = [establish_folder,
+function process_job(smb, complete_sheets_first, skip_summits)
+    operations_order = [establish_folder,
         unzip_tif,
         consolidate_elevation_data,
         water_overlay,
@@ -141,26 +144,28 @@ function process_job(smb, complete_sheets_first)
     if complete_sheets_first
         for sb in smb
             for fn in operations_order
-                call_func(fn, sb) || return false
+                call_func(fn, sb, skip_summits) || return false
             end
         end
     else
         for fn in operations_order
             for sb in smb
-                call_func(fn, sb) || return false
+                call_func(fn, sb, skip_summits) || return false
             end
         end
     end
     true
 end
-function call_func(fn, sb)
-    @debug "Calling `$fn`. $(full_folder_path(sb))"
-    ok_res = fn(sb)
-    if ! ok_res
-        @warn "Could not finish $fn($sb) with success. Exiting"
-        return false
-    else
-        @debug "Finished `$fn`"
+function call_func(fn, sb, skip_summits)
+    if !skip_summits || fn !== summit_markers
+        @debug "Calling `$fn`. $(full_folder_path(sb))"
+        ok_res = fn(sb)
+        if ! ok_res
+            @warn "Could not finish $fn($sb) with success. Exiting"
+            return false
+        else
+            @debug "Finished `$fn`"
+        end
     end
     true
 end

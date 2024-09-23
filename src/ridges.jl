@@ -121,25 +121,3 @@ function hessian_components(z::Matrix{T}) where T
     g1, g2 = jacobian_components((z))
     hessian_components(g1, g2)
 end
-
-#=
-
-DEAD code. We're instead trying to find summit prominence using 
-the MaxTree approach.
-
-# This is not plotted directly, but used in
-# determining peak prominence. Where the Gaussian
-# curvature is zero, we probably have a saddle point.
-function gaussian_curvature(z)
-    g1, g2 = jacobian_components((z))
-    g11, g21, g12, g22 = hessian_components(g1, g2)
-    # Compute the determinant of the Hessian matrix at each index
-    det_H = g11 .* g22 .- g12 .* g21
-    # Compute the magnitude squared of the gradient at each point
-    grad_magnitude_squared = g1.^2 .+ g2.^2
-    # Compute the Gaussian curvature at each point
-    det_H ./ (1 .+ grad_magnitude_squared).^2
-end
-
-gaussian_curvature_smoothed(z) = gaussian_curvature(smoothed_surface_fir(z))
-=#

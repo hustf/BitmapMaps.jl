@@ -5,8 +5,8 @@ import Base: iterate, length, getindex, size, axes
 using IniFile
 # For loading and displaying png:
 import FileIO
-import ImageShow
 using FileIO: load
+import ImageShow
 # For adding physical print widths to png files in png_phys.jl
 import PNGFiles
 using PNGFiles: _save, png_init_io, close_png, png_uint_32
@@ -36,7 +36,7 @@ using ImageFiltering: imgradients, KernelFactors, mapwindow, mapwindow!, Kernel,
 # Pick color from lightness
 import Colors
 import ColorTypes
-using ColorTypes: RGBA, RGB, XYZ, AbstractGray, AbstractRGB, Gray, red, green, blue # Todo clean
+using ColorTypes: RGBA, RGB, XYZ, XYZA, AbstractGray, AbstractRGB, Gray, red, green, blue
 # Identify water
 import ImageSegmentation
 using ImageSegmentation: felzenszwalb, labels_map, segment_pixel_count, segment_mean, SegmentedImage

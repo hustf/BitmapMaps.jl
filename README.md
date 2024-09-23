@@ -56,6 +56,12 @@ run_bitmapmap_pipeline()
 
 Steps 1-13 is fully working.
 
+Version 0.1.7:
+- Change topographic relief to XYZ colorspace.
+- Revise palette to lighter colors
+- Modify `shade_exponent` and make it direction dependent
+- Add keyword argument `skip_summits`, for faster pipeline iterations
+
 Version 0.1.6:
 
 - Add .ini parameter 'Behaviour when data is missing', for sheets completely filled with water surface.
