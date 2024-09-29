@@ -442,3 +442,14 @@ function get_fields_namedtuple(smb::SheetMatrixBuilder)
     values = getfield.(Ref(smb), field_names)
     NamedTuple{field_names}(values)
 end
+
+
+"""
+    cartesian_index_string(smb::SheetMatrixBuilder, i::Int)
+        cartesian_index_string(smb::SheetMatrixBuilder)
+    ---> String
+
+Used for feedback by pipeline.
+"""
+cartesian_index_string(smb::SheetMatrixBuilder, i::Int) = replace(string(CartesianIndices(axes(smb))[i].I), '(' => '[', ')' => ']')
+cartesian_index_string(smb::SheetMatrixBuilder) = replace(string(CartesianIndices(axes(smb))[end].I), '(' => '[', ')' => ']')

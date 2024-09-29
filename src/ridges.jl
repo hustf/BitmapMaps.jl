@@ -81,6 +81,7 @@ function smoothed_surface_fir(z)
     # Elevations smoothed by lp-filter
     imfilter(z, (c, transpose(c)), FIRTiled())
 end
+
 """
    smoothed_laplacian(z)
    ---> Matrix{scalar}

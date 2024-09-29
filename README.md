@@ -56,6 +56,10 @@ run_bitmapmap_pipeline()
 
 Steps 1-13 is fully working.
 
+Version 0.1.8:
+- Add feedback for every sheet processed.
+- Prepare and optimize an algorithm for identifying forest areas.
+
 Version 0.1.7:
 - Change topographic relief to XYZ colorspace.
 - Revise palette to lighter colors

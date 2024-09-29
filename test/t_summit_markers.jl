@@ -264,9 +264,7 @@ save_png_with_phys(ffna, map(traces) do pix
 end)
 
 
-else
-    @info "Skipping assembly tests because data is missing"
-end # isdir, after_assembly_test
+
 
 
 # Filter out obscure summits that are really artifacts or
@@ -297,3 +295,8 @@ summit_elevation = [prom[i] > 30 ? z[i] : 0.0f0 for i in cell_iter]
 minimum(peak_stress)
 maximum(peak_stress)
 sort(filter(s -> s < 0 ,peak_stress))
+
+
+else
+    @info "Skipping assembly tests because data is missing"
+end # isdir, after_assembly_test

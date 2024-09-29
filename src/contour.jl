@@ -29,8 +29,6 @@ function contour_lines_overlay(fofo, cell_iter, cell2utm, minlen, vthick, vdist)
         return false
     end
     res = _elev_contours(fofo, cell_iter, cell2utm, minlen, vthick, vdist)
-    # Feedback
-    #display_if_vscode(res)
     # Save
     ffna = joinpath(fofo, CONTOUR_FNAM)
     @debug "    Saving $ffna"
@@ -38,9 +36,6 @@ function contour_lines_overlay(fofo, cell_iter, cell2utm, minlen, vthick, vdist)
     true
 end
 function _elev_contours(fofo, cell_iter, cell2utm, minlen, vthick, vdist)
-    #################
-    # Allocate arrays
-    #################
     # Read elevation
     g = readclose(joinpath(fofo, CONSOLIDATED_FNAM))
     #
@@ -50,38 +45,42 @@ function _elev_contours(fofo, cell_iter, cell2utm, minlen, vthick, vdist)
     source_indices = (1:cell2utm:(ny  * cell2utm), 1:cell2utm:(nx * cell2utm))
     si = CartesianIndices(source_indices)
     # After this resolution reduction we can use cell_iter for both source and dest.
-    elevation = transpose(g.A[:, :, 1])[si]
-    y´, x´ = terrain_gradient(elevation)
-    # We elevation and gradient info in an 'image' in order to use the fast image filtering functions later.
-    zs = RGB{Float32}.(elevation, y´, x´)
-    # Pre-allocate boolean buffer (we make one countour distance at a time)
-    bbuf = Array{Gray{Bool}}(undef, size(si)...)
-    # Pre-allocate boolean result image
-    res = zeros(Gray{Bool}, size(si)...)
-    # With all buffers ready, call the inner function
-    _elev_contours!(res, zs, bbuf, minlen, vthick, vdist)
+    res = __elev_contours(transpose(g.A[:, :, 1])[si], minlen, vthick, vdist)
     # Go from black-and-white to defined colours. Flip axes to image-like.
     map(res) do pix
         pix == true && return RGBA{N0f8}(0.714, 0.333, 0.0, 1)
         RGBA{N0f8}(0., 0, 0, 0)
-    end
+    end    
 end
-function _elev_contours!(res::T1, zs::T2, 
-        bbuf::T1, minlen::Int64, vthick::T3, elevation_spacings::T3) where {T1 <: Matrix{Gray{Bool}},
-            T2 <: Matrix{RGB{Float32}},
-            T3 <: Vector{Int64}}
-    for (t, Δz) in zip(vthick, elevation_spacings)
-        # Overwrite bbuf with pixels on contours.
-        mapwindow!(func_elev_contour(Δz), bbuf, zs, (3, 3))
-        # We have tried to reduce contours on bumps. Now remove most of the rest:
-        # Our very clever thinning, despeckling and thickening
-        # (and this part takes ~85% of the time in this loop):
-        bbuf .= strokeify(bbuf, t, minlen)
-        # Treat 'false' as transparent. Overlay bbuf on res and write in-place to res.
-        map!(BlendLighten, res, res, bbuf)
-    end
+function __elev_contours(elevation, minlen, vthick, vdist)
+    # We store both elevation and gradient in an 'image' in order to use the fast image filtering functions later.
+    y´, x´ = terrain_gradient(elevation)
+    zs = RGB{Float32}.(elevation, y´, x´)
+    # Pre-allocate boolean buffer (we make one countour distance at a time)
+    bbuf = Array{Gray{Bool}}(undef, size(elevation)...)
+    # Pre-allocate boolean result image
+    res = zeros(Gray{Bool}, size(elevation)...)
+    # With all buffers ready, call the inner function
+    _elev_contours!(res, zs, bbuf, minlen, vthick, vdist)
     res
 end
+function _elev_contours!(res::T1, zs::T2, 
+    bbuf::T1, minlen::Int64, vthick::T3, elevation_spacings::T3) where {T1 <: Matrix{Gray{Bool}},
+        T2 <: Matrix{RGB{Float32}},
+        T3 <: Vector{Int64}}
+        for (t, Δz) in zip(vthick, elevation_spacings)
+            # Overwrite bbuf with pixels on contours.
+            mapwindow!(func_elev_contour(Δz), bbuf, zs, (3, 3))
+            # We have tried to reduce contours on bumps. Now remove most of the rest:
+            # Our very clever thinning, despeckling and thickening
+            # (and this part takes ~85% of the time in this loop):
+            bbuf .= strokeify(bbuf, t, minlen)
+            # Treat 'false' as transparent. Overlay bbuf on res and write in-place to res.
+            map!(BlendLighten, res, res, bbuf)
+        end
+        res
+end
+
 
 function terrain_gradient(zs::Matrix{Float32})
     # Prepare a wide low-pass filter. Window size:
@@ -94,6 +93,7 @@ function terrain_gradient(zs::Matrix{Float32})
     # local stone, tree or shed.
     imgradients(zf, KernelFactors.ando5, "replicate")
 end
+
 
 """
     strokeify(bw, thickness, minlen)

@@ -46,7 +46,6 @@ SheetMatrixBuilder((35425, 6920995), # southwest_corner
                    ((35425 6930739, 42190 6930739, 42190 6940483, 35425 6940483, 35425 6930739)),
                    ((42190 6920995, 48955 6920995, 48955 6930739, 42190 6930739, 42190 6920995)),
                    ((42190 6930739, 48955 6930739, 48955 6940483, 42190 6940483, 42190 6930739)))
-[ Info: Since geographical area per sheet is  > 16km², 'høydedata.no' will not provide a single elevation data file per sheet. The pipeline will make a consolidated single file.
 [ Info: No .tif files in C:\\Users\\f\bitmapmaps/default\\1 1  35425 6920995  42190 6930739 to consolidate. Exiting.
 [ Info: Could not make Consolidated.tif for sheet  with folder path bitmapmaps/default\1 1  35425 6920995  42190 6930739. Download and unzip .tif files? Exiting.
 ┌ Warning: Could not finish consolidate_elevation_data(SheetBuilder((0, 3248), (1:3248, 1:2255), (35425, 6930739)@(1, 1), 1, 11811, "bitmapmaps/default\\1 1  35425 6920995  42190 6930739")
@@ -120,10 +119,6 @@ function define_builder(; kwds...)
     # Often, the user will be interested in inspecting
     # derived properties rather than the basic ones.
     show_augmented(smb)
-    # Nice to know.
-    if geo_area(smb) >= 16e6
-        @info "Since geographical area per sheet is  > 16km², 'høydedata.no' will not provide a single elevation data file per sheet. The pipeline will make a consolidated single file."
-    end
     smb
 end
 
@@ -143,28 +138,30 @@ function process_job(smb, complete_sheets_first, skip_summits)
     #
     if complete_sheets_first
         for sb in smb
-            for fn in operations_order
-                call_func(fn, sb, skip_summits) || return false
+            @info "Sheet $(cartesian_index_string(smb, sb.sheet_number)) of up to $(cartesian_index_string(smb))"
+            for (i, fn) in enumerate(operations_order)
+                call_func(fn, sb, skip_summits, i) || return false
             end
         end
     else
-        for fn in operations_order
+        for (i, fn) in enumerate(operations_order)
             for sb in smb
-                call_func(fn, sb, skip_summits) || return false
+                @info "Sheet $(cartesian_index_string(smb, sb.sheet_number)) of up to $(cartesian_index_string(smb))"
+                call_func(fn, sb, skip_summits, i) || return false
             end
         end
     end
     true
 end
-function call_func(fn, sb, skip_summits)
+function call_func(fn, sb, skip_summits, i)
     if !skip_summits || fn !== summit_markers
-        @debug "Calling `$fn`. $(full_folder_path(sb))"
+        @debug "$(lpad(i, 2)) `$fn`. $(full_folder_path(sb))"
         ok_res = fn(sb)
         if ! ok_res
-            @warn "Could not finish $fn($sb) with success. Exiting"
+            @warn "Could not finish step $i $fn($sb) with success. Exiting"
             return false
         else
-            @debug "Finished `$fn`"
+            #@debug "Finished `$fn`"
         end
     end
     true
