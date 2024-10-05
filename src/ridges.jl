@@ -1,5 +1,5 @@
 # This is an experiment into a fluid dynamics analogy of terrain.
-
+# TODO: Implement is_forest, update values.
 """
     ridge_overlay(sb::SheetBuilder)
     ridge_overlay(fofo)
@@ -67,20 +67,6 @@ function _corners_and_dieders!(result, bbuf, source, source_indices, criterion_f
     result
 end
 
-"""
-    smoothed_surface(z)
-
-We use a FIR filter with Blackman window. The intention is to avoid 
-phase-distortion and to work with something familiar.
-"""
-function smoothed_surface_fir(z)
-    # Prepare a wide low-pass filter. Window size:
-    w = 49
-    # Coefficients, including a window.
-    c = Float32.(fir_lp_coefficients(w))
-    # Elevations smoothed by lp-filter
-    imfilter(z, (c, transpose(c)), FIRTiled())
-end
 
 """
    smoothed_laplacian(z)
@@ -94,7 +80,7 @@ fluid would be entering (from outside) at this point?
 """
 function smoothed_laplacian(z)
     # Smooth surface
-    zf = smoothed_surface_fir(z)
+    zf = smoothed_surface_fir(z; w = 49)
     g11, _, _, g22 = hessian_components(zf)
     g11 .+ g22
 end

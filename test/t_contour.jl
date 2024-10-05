@@ -11,8 +11,7 @@ using BitmapMaps: _elev_contours, __elev_contours, Gray, load, felzenszwalb
 using BitmapMaps: contour_lines_overlay, CONTOUR_FNAM, CONSOLIDATED_FNAM, TOPORELIEF_FNAM, COMPOSITE_FNAM
 using BitmapMaps: RGB, RGBA, labels_map, N0f8, segment_mean, segment_pixel_count, dilate!
 using BitmapMaps: CompositeDestinationOver, cartesian_index_string, imfilter
-import BitmapMaps: Kernel
-using BitmapMaps.Kernel: gaussian
+import BitmapMaps: is_forest, bumpiness, blue, red, green, smoothed_surface_fir, roughness_of_surface_fir
 using Statistics: quantile
 using Random
 
@@ -29,29 +28,10 @@ for i in 1:6
 end
 
 # Separating forest and houses from ridges is pretty hard. We need to use the full 
-# resolution (cell_to_utm_factor = 1) to have much chance.
-
-function bumpiness(z; w = 67, cutoff⁻ = 2.5, z_max = 6000.0f0, cap⁺ = 16.0f0)
-    isodd(w) || throw(ArgumentError("w must be odd, not $w"))
-    # Prepare coefficients for wide high-pass filter. 
-    #     Coefficients, including a window.
-    c = Float32.(BitmapMaps.fir_hp_coefficients(w))
-    # The local bumps (+ and -)
-    r = imfilter(z, (c, transpose(c)), BitmapMaps.FIRTiled())
-    r1 = r .* (z .< z_max)
-    # Take absolute value, and cap the large values, which may be artifacts, 
-    # and would not affect significant areas anyway.
-    # NOTE: Maybe drop the large values altogether?
-    map(r1) do ρ
-        mag = abs(ρ)
-        mag < cutoff⁻ ? Gray{Float32}(0.0f0) : mag > cap⁺ ? Gray{Float32}(1.0f0) : Gray{Float32}(mag / cap⁺)
-    end
-end
-
-
+# resolution (cell_to_utm_factor = 1) to do it well.
 
 function show_results_of_parameters(z, bcg, w)
-    b = bumpiness(z; w, cap⁺ = 10)
+    b = bumpiness(z; w, cutoff⁺ = 10)
     cou = count(x -> x == 1.0f0, b)
     bmps = filter(x -> x > 0.0f0, b)
     cou = length(bmps)
@@ -69,28 +49,25 @@ function show_results_of_parameters(z, bcg, w)
     c
 end
 
-shno = 6
+shno = 5
 bcg = load(joinpath(full_folder_path(smb[shno]), COMPOSITE_FNAM))
 z =  transpose(readclose(joinpath(full_folder_path(smb[shno]), CONSOLIDATED_FNAM)).A[:, :, 1]);
 for w in 61:2:81
     show_results_of_parameters(z, bcg, w)
 end
 # Results minimizing 'count'
-# shno = 1      w = 69     count  = 167032      maxcount  = 21       mean(bumps) = 0.3310675 99quantile(bumps) = 0.6228346 
-# shno = 2      w = 65     count  = 641551     maxcount  = 331      mean(bumps) = 0.35834447 99quantile(bumps) = 0.7264333
-# shno = 3      w = 65     count  = 146164      maxcount  = 99      mean(bumps) = 0.34591758 99quantile(bumps) = 0.68322724 
-# shno = 4      w = 71     count  = 128875    maxcount  = 2652      mean(bumps) = 0.40135497      99quantile(bumps) = 1.0 
-# shno = 5      w = 69     count  = 315338     maxcount  = 569       mean(bumps) = 0.3643127 99quantile(bumps) = 0.7528747 
-#        6       w = 67     count  = 346976     maxcount  = 728      mean(bumps) = 0.37078118 99quantile(bumps) = 0.78817546 
+
+# 1 w = 69     count  = 510339       maxcount  = 0       mean(bumps) = 0.2349821 99quantile(bumps) = 0.52533156
+# 2 w = 67    count  = 1440404       maxcount  = 0      mean(bumps) = 0.26742142 99quantile(bumps) = 0.6453081 
+# 3 w = 67     count  = 358744       maxcount  = 0       mean(bumps) = 0.2559296  99quantile(bumps) = 0.59335  
+# 4 w = 73      count  = 10023       maxcount  = 0      mean(bumps) = 0.25086126 99quantile(bumps) = 0.65424484 
+# 5 w = 67     count  = 668411       maxcount  = 0       mean(bumps) = 0.2725699 99quantile(bumps) = 0.6557525 
+# 6 w = 69     count  = 703201       maxcount  = 0       mean(bumps) = 0.2810644 99quantile(bumps) = 0.6924516  
 
 c = show_results_of_parameters(z, bcg, 67)
-c[CartesianIndices((2100:size(z, 1), 1000:size(z, 2)))]
-c[CartesianIndices((2100:2500, 1000:1400))]
 
 save_png_with_phys(joinpath(full_folder_path(smb[shno]), "filterfind.png"), c)
 
-# Gimp should be opened by user first, or else
-# wont' be visible:
 gimp_path = "C:\\Program Files\\GIMP 2\\bin\\gimp-2.10.exe"
 for shno in 1:6
     fnam = joinpath(full_folder_path(smb[shno]), "filterfind.png")
@@ -108,21 +85,6 @@ end
 # It seems w = 65-69 is a good range for the foresty sheets.
 # It seems that cap⁺ = 0.6228 * 10 = 6.228f0  should cover 99% of actual forest. 
 # Let's revise this function, and also cut values above max instead of capping.
-function bumpiness(z; w = 67, cutoff⁻ = 2.5, z_max = 6000.0f0, cutoff⁺ = 6.228f0)
-    isodd(w) || throw(ArgumentError("w must be odd, not $w"))
-    # Prepare coefficients for wide high-pass filter. 
-    #     Coefficients, including a window.
-    c = Float32.(BitmapMaps.fir_hp_coefficients(w))
-    # The local bumps (+ and -)
-    r = imfilter(z, (c, transpose(c)), BitmapMaps.FIRTiled())
-    r1 = r .* (z .< z_max)
-    # Take absolute value, and drop the large values, which are most likely artifacts
-    # or houses. 
-    map(r1) do ρ
-        mag = abs(ρ)
-        mag < cutoff⁻ ? Gray{Float32}(0.0f0) : mag > cutoff⁺ ? Gray{Float32}(0.0f0) : Gray{Float32}(mag / cutoff⁺)
-    end
-end
 
 # Now that we don't primarily want to emphasize the cut-off pixels, we change 
 # the exponent so as to show the extent of areas better.
@@ -179,21 +141,6 @@ save_png_with_phys(fnam, c)
 # It seems that cutoff⁺ = 0.90849406 * 6.228f0 = 5.658101f0  should cover 99% of actual forest. 
 # To really focus on actual forest, we lower z_max to a realistic local forest elevation boundary.
 # Let's revise this function.
-function bumpiness(z; w = 69, cutoff⁻ = 2.5, z_max = 600.0f0, cutoff⁺ = 5.658101f0)
-    isodd(w) || throw(ArgumentError("w must be odd, not $w"))
-    # Prepare coefficients for wide high-pass filter. 
-    #     Coefficients, including a window.
-    c = Float32.(BitmapMaps.fir_hp_coefficients(w))
-    # The local bumps (+ and -)
-    r = imfilter(z, (c, transpose(c)), BitmapMaps.FIRTiled())
-    r1 = r .* (z .< z_max)
-    # Take absolute value, and drop the large values, which are most likely artifacts
-    # or houses. 
-    map(r1) do ρ
-        mag = abs(ρ)
-        mag < cutoff⁻ ? Gray{Float32}(0.0f0) : mag > cutoff⁺ ? Gray{Float32}(0.0f0) : Gray{Float32}(mag / cutoff⁺)
-    end
-end
 # Let's revise this function.
 function show_results_of_parameters(z, bcg, cutoff⁺)
     b = bumpiness(z; cutoff⁺)
@@ -227,21 +174,6 @@ show_results_of_parameters(z, bcg, 5.658101f0 * 0.93999803 * 0.957 * 0.9642)
 show_results_of_parameters(z, bcg, 5.658101f0 * 0.93999803 * 0.957 * 0.9642 * 0.9715482) 
 # count  = 149478      mean(bumps) = 0.66405535 99quantile(bumps) = 0.9747605 
 # Let's decide on cutoff⁺ =  5.658101f0 * 0.93999803 * 0.957 * 0.9642 * 0.9715482 * 0.9747605  = 4.6477094f0 Revising:
-function bumpiness(z; w = 69, cutoff⁻ = 2.5, z_max = 700.0f0, cutoff⁺ = 4.6477094f0)
-    isodd(w) || throw(ArgumentError("w must be odd, not $w"))
-    # Prepare coefficients for wide high-pass filter. 
-    #     Coefficients, including a window.
-    c = Float32.(BitmapMaps.fir_hp_coefficients(w))
-    # The local bumps (+ and -)
-    r = imfilter(z, (c, transpose(c)), BitmapMaps.FIRTiled())
-    r1 = r .* (z .< z_max)
-    # Take absolute value, and drop the large values, which are most likely artifacts
-    # or houses. 
-    map(r1) do ρ
-        mag = abs(ρ)
-        mag < cutoff⁻ ? Gray{Float32}(0.0f0) : mag > cutoff⁺ ? Gray{Float32}(0.0f0) : Gray{Float32}(mag / cutoff⁺)
-    end
-end
 
 # Let's revise this function.
 # New parameter for optimization, and use linear bumps.
@@ -280,21 +212,6 @@ c = show_results_of_parameters(z, bcg, 1.5)
 c[CartesianIndices((100:800, 1:500))]
 c[CartesianIndices((1000:1800, 500:1200))]
 # Let's change the lower cutoff default to 1.5 (and the tree-line to 680)
-function bumpiness(z; w = 69, cutoff⁻ = 1.5, z_max = 680.0f0, cutoff⁺ =  4.6477094f0)
-    isodd(w) || throw(ArgumentError("w must be odd, not $w"))
-    # Prepare coefficients for wide high-pass filter. 
-    #     Coefficients, including a window.
-    c = Float32.(BitmapMaps.fir_hp_coefficients(w))
-    # The local bumps (+ and -)
-    r = imfilter(z, (c, transpose(c)), BitmapMaps.FIRTiled())
-    r1 = r .* (z .< z_max)
-    # Take absolute value, and drop the large values, which are most likely artifacts
-    # or houses. 
-    map(r1) do ρ
-        mag = abs(ρ)
-        mag < cutoff⁻ ? Gray{Float32}(0.0f0) : mag > cutoff⁺ ? Gray{Float32}(0.0f0) : Gray{Float32}(mag / cutoff⁺)
-    end
-end
 
 # Check these parameters results in Gimp:
 for shno = 1:6
@@ -369,25 +286,118 @@ i = CompositeDestinationOver.(map(ρ -> RGBA{N0f8}(0, Float32(ρ), 0, Float32(0.
 
 i[CartesianIndices((2500:3000, 1:800))]
 
-"""
-    is_forest(z; forest_cell_min = 9062, w = 69, cutoff⁻ = 1.5, cutoff⁺ =  4.6477094f0, z_max = 680.0f0)
-    ---> Matrix{Gray{Bool}}
+#
+# A test image
+#
 
-Used by 'ridges' and 'contours'.
 
-# Arguments
-
-z                 Elevations. The other default parameters assumes a grid spacing of 1 utm meter.
-forest_cell_min   Remove smaller forests
-w                 Window length for high-pass filter
-cutoff⁻           Drop filtered values below
-cutoff⁺           Drop filtered values above (often steep ridges or artifacts)
-z_max             Drop forest above this elevation
-"""
-function is_forest(z; forest_cell_min = 9062, w = 69, cutoff⁻ = 1.5, cutoff⁺ =  4.6477094f0, z_max = 680.0f0)
-    b = bumpiness(z; w, cutoff⁻, z_max, cutoff⁺)
-    d = imfilter(b, Kernel.gaussian(2))
-    e = map(β -> Gray{N0f8}(β > 0.0), d)
-    g = felzenszwalb(e, 1, forest_pixels_min)
-    map(i-> Gray{Bool}(round(segment_mean(g, i))), labels_map(g))
+function mountain(r)
+    a = 650 / 2
+    λ = 1000√2
+    χ  =  π * (2r / λ - 1)
+    a * (1 - (tanh(χ) ))
 end
+function forest(r, θ)
+    a = 4
+    λ = 5
+    χ = r / λ
+    va = 0.5 + 0.5 * sin(2 * π * r * θ / λ)
+    a * (1 + va * sin(2 * π * χ))
+end
+
+
+function test_elevations()
+    P = Gray{Float32}[rand()  for i in 1:2000, j in 1:2000]
+    R = CartesianIndices(size(P))
+    for I in R
+        xo, yo = I.I
+        xc = xo - 1000
+        yc = yo - 1000
+        r = hypot(xc, yc)
+        θ = atan(yc, xc)
+        #
+        z = mountain(r)
+        # Add forest in some sectors
+        if mod(θ - π / 12, π / 3) > π / 6
+            # Wave above 0
+            z += forest(r, θ)
+        end
+        # Add noise in some
+        if mod(θ, π / 3) > π / 6
+            # Wave above 0
+            z += 0.5 *randn()
+        end
+        P[I] = z
+    end
+    P
+end
+
+
+z = test_elevations()
+# topo relief
+topo = RGB{N0f8}.(BitmapMaps.__topo_relief(Float32.(z), CartesianIndices(size(z)), 1))
+display_if_vscode(topo[900:1050, 755:765])
+
+vthick = [1, 3, 5]
+vdist = [20, 100, 1000] # Contour spacings.
+minlen = 6
+# Pre-process as in _elev_contours (won't be visible)
+isfo = Float32.(is_forest(z))
+display_if_vscode(isfo)
+z_smooth = smoothed_surface_fir(z; w = 13)
+display_if_vscode(z_smooth)
+
+for level in 2.0:1:650
+    bwimg = map(z -> Gray{Bool}(Float32(z) > level && Float32(z) < (level + 1)), z_smooth)
+    display_if_vscode(bwimg[1:1000, 1:1000])
+    sleep(0.01)
+end
+
+
+img = RGB{Float32}.(isfo, # red
+        z,           # green
+        Float32.(z_smooth)) # blue
+# Test contours
+conto = __elev_contours(img, minlen, vthick, vdist)
+
+
+fnam = "tempo.png"
+save_png_with_phys(fnam, conto)
+gimp_path = "C:\\Program Files\\GIMP 2\\bin\\gimp-2.10.exe"
+@async run(`$gimp_path "$fnam"`)
+
+
+fnam = "temp.png"
+save_png_with_phys(fnam, topo)
+gimp_path = "C:\\Program Files\\GIMP 2\\bin\\gimp-2.10.exe"
+@async run(`$gimp_path "$fnam"`)
+
+
+# DELETE
+
+# The low-pass filter deforms the large-scale terrain a lot. We must do better.
+
+zc = z[300:1000, 300:1000]
+RC = CartesianIndices(size(zc))
+for window in 3:2:27
+    z_smooth = smoothed_surface_fir(zc; w = window)
+    topo = RGB{N0f8}.(BitmapMaps.__topo_relief(Float32.(z_smooth), RC, 1))
+    @show window
+    display_if_vscode(topo)
+end
+# => Mostly ok at 15
+
+isfoc = isfo[300:1000, 300:1000]
+
+for window in 3:2:13
+    z_smooth = smoothed_surface_fir(zc; w = window)
+    img = RGB{Float32}.(isfoc, # red
+            zc,           # green
+            Float32.(z_smooth)) # blue
+    # Test contours
+    conto = __elev_contours(img, minlen, vthick, vdist)
+    @show window
+    display_if_vscode(conto)
+    sleep(1)
+end
+# => Good at 13

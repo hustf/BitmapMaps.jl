@@ -1,7 +1,7 @@
 using Test
 using BitmapMaps: fir_hp_coefficients, fir_lp_coefficients, centered, imfilter
 using BitmapMaps: highpass_coefficients, lowpass_coefficients, blackman_coefficients
-using BitmapMaps: mapwindow
+using BitmapMaps: mapwindow, Gray, mark_at!, line!, colorview, display_if_vscode
 import BitmapMaps
 @testset "Filter Coefficient Tests" begin
     @test length(fir_hp_coefficients(9)) == 9
@@ -40,12 +40,20 @@ function attenuation_dB(input_signal, output_signal)
     rms_output = rms(output_signal)
     20 * log10(rms_output / rms_input)
 end
-# Sinus, n cycles per filter length
-# Sum zero for n window lengths in sample length
-# Sum +/- 1 for half cycles in sample length
-# n is cycles per window length
-# w is window length
-# l is sample length
+
+"""
+    vsin(;n, w, l)
+
+Sinus, n cycles per filter length.
+Sum zero for n window lengths in sample length.
+Sum +/- 1 for half cycles in sample length.
+
+# Arguments
+
+- n is cycles per window length
+- w is window length
+- l is sample length
+"""
 vsin(;n, w, l) = [sin(2π * (n * (i - 1) / w)) for i in 1:l]
 @test abs(sum(vsin(n = 1, w = 4, l = 4))) < 0.00001
 @test abs(sum(vsin(n = 1, w = 4, l = 6)) - 1) < 0.00001
@@ -94,3 +102,63 @@ output1 = mapwindow(flp, input, (9, ))
 
 # NOTE: Since 'imfilter' is ridiculously advanced and fast, stick to using that even though
 # we need to allocate big temporary arrays for the derivatives during calculation of contours.
+# Let's visualize this with a little animated plot...
+
+function crudeplot(x, y; x1 = [], y1 = [])
+    length(x) == length(y) || throw(ArgumentError(".."))
+    all(-1 .<= y .<= 1) || throw(ArgumentError("y"))
+    n = length(x)
+    y0 = 400
+    R = zeros(Gray{N0f8}, (2y0 + 1, n + 1))
+    G = copy(R)
+    B = copy(R)
+    # x-axis
+    line!(R, CartesianIndex{2}(y0, 1), CartesianIndex{2}(y0, n + 1))
+    # Scale 
+    if ! isempty(y1)
+        scy = y0 * max(maximum(y1), maximum(y))
+    else
+        scy = y0 * maximum(y)
+    end
+    # Signal in green
+    for i in 1:(n - 1)
+        χ1, υ1 = x[i], y[i]
+        χ2, υ2 = x[i + 1], y[i + 1]
+        a = CartesianIndex((y0 + Int(round(υ1 * scy)), χ1))
+        b = CartesianIndex((y0 + Int(round(υ2 * scy)), χ2))
+        line!(R, a, b)
+        mark_at!(R, a)
+        mark_at!(R, b)
+    end
+    if ! isempty(y1)
+        # Filtered signal in magenta
+        for i in 1:(n - 1)
+            χ1, υ1 = x1[i], y1[i]
+            χ2, υ2 = x1[i + 1], y1[i + 1]
+            a = CartesianIndex((y0 + Int(round(υ1 * scy)), χ1))
+            b = CartesianIndex((y0 + Int(round(υ2 * scy)), χ2))
+            line!(G, a, b)
+            mark_at!(G, a)
+            mark_at!(G, b)
+            line!(B, a, b)
+            mark_at!(B, a)
+            mark_at!(B, b)
+        end
+    end
+    #
+    collect(colorview(RGB, R, G, B))
+end
+
+
+for λ in 138:-0.5:8
+    y = vsin(;n = 1, w = λ, l = 69 * 10)
+    x = 1:length(y)
+    y1 = imfilter(y, fir_hp_coefficients(69), BitmapMaps.FIRTiled())
+    display_if_vscode(crudeplot(x, y; x1 = x, y1))
+    print(lpad(" λ = $λ ", 20))
+    println(" => maximum(y1) = $(round(maximum(y1), digits = 3))")
+    sleep(0.01)
+end
+
+# => This 1D high pass filter with length w = 69 and Blackman window dampens 50 %
+#    at wave length 32 m, and 0.1 at wave length 20 m.

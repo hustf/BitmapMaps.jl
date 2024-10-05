@@ -44,33 +44,46 @@ function _elev_contours(fofo, cell_iter, cell2utm, minlen, vthick, vdist)
     ny, nx = size(cell_iter)
     source_indices = (1:cell2utm:(ny  * cell2utm), 1:cell2utm:(nx * cell2utm))
     si = CartesianIndices(source_indices)
-    # After this resolution reduction we can use cell_iter for both source and dest.
-    res = __elev_contours(transpose(g.A[:, :, 1])[si], minlen, vthick, vdist)
+    # We store three arrays in an 'image' in order to use the fast image filtering functions later.
+    #    red:   is_forest
+    #    green: unfiltered elevation
+    #    blue:  highly smoothed elevation
+    # Note that although we use the full resolution for identifying forest,
+    # we reduce the resolution in the three-channel image.
+    img = RGB{Float32}.(Float32.(is_forest(g)[si]), # red
+            transpose(g.A[:, :, 1])[si],           # green
+            Float32.(imfilter(transpose(g.A[:, :, 1])[si], Kernel.gaussian(49)))) # blue
+    #rm = maximum(red.(img))
+    #gm = maximum(green.(img))
+    #bm = maximum(blue.(img))
+    #img1 = RGB{N0f8}.(red.(img) ./ rm, green.(img) ./ gm, blue.(img) ./ bm)
+    #display(img1)
+    #ffna = joinpath(fofo, "temp.png")
+    #@debug "    Saving $ffna"
+    #save_png_with_phys(ffna, img1)
+    res = __elev_contours(img, minlen, vthick, vdist)
     # Go from black-and-white to defined colours. Flip axes to image-like.
     map(res) do pix
         pix == true && return RGBA{N0f8}(0.714, 0.333, 0.0, 1)
         RGBA{N0f8}(0., 0, 0, 0)
     end    
 end
-function __elev_contours(elevation, minlen, vthick, vdist)
-    # We store both elevation and gradient in an 'image' in order to use the fast image filtering functions later.
-    y´, x´ = terrain_gradient(elevation)
-    zs = RGB{Float32}.(elevation, y´, x´)
+function __elev_contours(img, minlen, vthick, vdist)
     # Pre-allocate boolean buffer (we make one countour distance at a time)
-    bbuf = Array{Gray{Bool}}(undef, size(elevation)...)
+    bbuf = Array{Gray{Bool}}(undef, size(img)...)
     # Pre-allocate boolean result image
-    res = zeros(Gray{Bool}, size(elevation)...)
+    res = zeros(Gray{Bool}, size(img)...)
     # With all buffers ready, call the inner function
-    _elev_contours!(res, zs, bbuf, minlen, vthick, vdist)
+    _elev_contours!(res, img, bbuf, minlen, vthick, vdist)
     res
 end
-function _elev_contours!(res::T1, zs::T2, 
+function _elev_contours!(res::T1, img::T2, 
     bbuf::T1, minlen::Int64, vthick::T3, elevation_spacings::T3) where {T1 <: Matrix{Gray{Bool}},
         T2 <: Matrix{RGB{Float32}},
         T3 <: Vector{Int64}}
         for (t, Δz) in zip(vthick, elevation_spacings)
             # Overwrite bbuf with pixels on contours.
-            mapwindow!(func_elev_contour(Δz), bbuf, zs, (3, 3))
+            mapwindow!(func_elev_contour(Δz), bbuf, img, (3, 3))
             # We have tried to reduce contours on bumps. Now remove most of the rest:
             # Our very clever thinning, despeckling and thickening
             # (and this part takes ~85% of the time in this loop):
@@ -81,18 +94,6 @@ function _elev_contours!(res::T1, zs::T2,
         res
 end
 
-
-function terrain_gradient(zs::Matrix{Float32})
-    # Prepare a wide low-pass filter. Window size:
-    w = 49
-    # Coefficients, including a window.
-    c = Float32.(fir_lp_coefficients(w))
-    # Elevations smoothed by lp-filter
-    zf = imfilter(zs, (c, transpose(c)), FIRTiled());
-    # Find nearby directional steepness, i.e. not the steepness of the
-    # local stone, tree or shed.
-    imgradients(zf, KernelFactors.ando5, "replicate")
-end
 
 
 """
@@ -109,11 +110,11 @@ function strokeify(bw, thickness, minlen)
         throw(ArgumentError("thickness = $thickness ∉ [0, 1, 3, ...] "))
     end
     # Despeckle
-    remove_isolated_pixels!(bw)
-    # Reduce all the 'true' regions to one pixel width.
+    # TEMP remove_isolated_pixels!(bw)
+    # Reduce regions to one pixel width.
     stroked = reinterpret(Gray{Bool}, thinning(reinterpret(Bool, bw), algo = GuoAlgo()))
     # Remove too short contours, (typically, minlen = 5)
-    remove_small_islands!(stroked, minlen)
+    # TEMP remove_small_islands!(stroked, minlen)
     # Make all the thin regions as thick as specified
     thickness == 1 && return stroked
     dilate(stroked; r = thickness ÷ 2)
@@ -121,8 +122,7 @@ end
 
 """
     func_elev_contour(Δc::Float32)
-    func_elev_contour(Δc::Float32)
-    ---> funtion
+    ---> function
 
 Δc is the vertical distance between contours, typically 20, 100 or 1000 m.
 """
@@ -140,7 +140,16 @@ function func_elev_contour(Δc::Float32)
             # _ n _
             # w z e  
             # _ s _
-            _, w, _, n, z, s, _, e, _ = red.(M)
+            is_forest = red(M[5]) == 1.0f0 
+            if is_forest 
+                # Use smoothed terrain values.
+                # We also compensate for a constant, assumed mean forest height.
+                # This introduces a error at the edge of forests,
+                # which could be masked by fading in the subtraction (via segmented distance calculations).
+                nw, w, sw, n, z, s, ne, e, se = blue.(M) .- 4f0
+            else
+                nw, w, sw, n, z, s, ne, e, se = green.(M)      # Exact terrain
+            end
             # No elevation contour line at sea level
             z < Δc && return isnot
             # Elevation at centre relative to the nearest contour
@@ -156,34 +165,22 @@ function func_elev_contour(Δc::Float32)
             abs(z - w) >= Δc / 2 && return isnot
             abs(z - n) >= Δc / 2 && return isnot
             abs(z - s) >= Δc / 2 && return isnot
-              # Elevation at immediate neighbours relative to the nearest contour
-            Δw = mod(w - Δc / 2, Δc) - Δc / 2
-            Δn = mod(n - Δc / 2, Δc) - Δc / 2
-            Δs = mod(s - Δc / 2, Δc) - Δc / 2
-            Δe = mod(e - Δc / 2, Δc) - Δc / 2
-            # If west-east elevations do not cross the contour,
-            # then sign(Δw) * sign(Δe) == 1
-            cross_we = sign(Δw) * sign(Δe)
-            # If south-north elevations do not cross the contour,
-            # then sign(Δs) * sign(Δn) == 1
-            cross_sn = sign(Δs) * sign(Δn)
-            # If both are non-crossing, this is no contour, for sure
-            cross_we == cross_sn == 1 && return isnot
-            # We still would have too many false positives, i.e. 
-            # 'noise', mostly due to trees and houses.
-            # So also consider with regional gradients. Values 
-            # are taken from highly smoothed gradient, at the 
-            # centre pixel):
-            pix = M[5]
-            pix_y´ = green(pix)
-            pix_x´ = blue(pix)
-            # Remember 'y' increases downwards,
-            # so: sign(wy´) == 1 slopes upward in a southerly direction. 
-            # Let's eliminate local upcrossings in regions of downslopes
-            sign(pix_y´) !== sign(s - n) && return isnot
-            sign(pix_x´) !== sign(e - w) && return isnot
-            # This is, as far as we can tell, a valid contour crossing.
-            return is
+            # Elevation at immediate neighbours relative to the nearest contour.
+            # If e.g. west-east elevations cross the contour,
+            # then sign(Δw) * sign(Δe) == - 1
+            Δw  = mod(w - Δc / 2, Δc) - Δc / 2
+            Δe  = mod(e - Δc / 2, Δc) - Δc / 2
+            sign(Δw) * sign(Δe) == -1 && return is
+            Δn  = mod(n - Δc / 2, Δc) - Δc / 2
+            Δs  = mod(s - Δc / 2, Δc) - Δc / 2
+            sign(Δs) * sign(Δn) == -1 && return is
+            Δnw = mod(nw - Δc / 2, Δc) - Δc / 2
+            Δse = mod(se - Δc / 2, Δc) - Δc / 2
+            sign(Δnw) * sign(Δse) == -1 && return is
+            Δsw = mod(sw - Δc / 2, Δc) - Δc / 2
+            Δne = mod(ne - Δc / 2, Δc) - Δc / 2
+            sign(Δsw) * sign(Δne) == -1 && return is
+            return isnot
         end
     end
     f
@@ -205,7 +202,6 @@ function remove_isolated_pixels!(img::Array{Gray{Bool},2})
     img
 end
 
-# TODO use this from 'water'
 function remove_small_islands!(img, max_pixels)
     segments = felzenszwalb(reinterpret(Bool, img), 1.0, 2)
     labels = labels_map(segments)

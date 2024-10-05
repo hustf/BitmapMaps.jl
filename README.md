@@ -54,7 +54,13 @@ run_bitmapmap_pipeline()
 ```
 # Current state
 
-Steps 1-13 is fully working.
+Fully working, though 'contours' and 'ridges' is being reworked.
+
+Version 0.1.9:
+ - Added forest detection and smooth contours in such areas.
+ This is in a temporary state. Currently, all forest is assumed to have a height offset of 4.0 metres.
+ We consider using 'forest height' as an identifier of forests instead. If that does not work well, we
+ might want to revert to this version.
 
 Version 0.1.8:
 - Add feedback for every sheet processed.

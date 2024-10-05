@@ -49,8 +49,9 @@ function fir_lp_coefficients(n)
     centered(c ./ sum(c))
 end
 function fir_hp_coefficients(n)
-    # The sum of coefficients for a long window is zero.
-    centered(highpass_coefficients(n) .* blackman_coefficients(n))
+    c = highpass_coefficients(n) .* blackman_coefficients(n)
+    # Also make this an OffsetArray suitable for kernel use
+    centered(c)
 end
 
 function conv(signal::Vector{T}, kernel::Vector{T}) where T
@@ -68,3 +69,93 @@ function conv(signal::Vector{T}, kernel::Vector{T}) where T
     end_idx = start_idx + len_signal - 1
     result[start_idx:end_idx]
 end
+
+ 
+"""
+    smoothed_surface_fir(z; w = 49)
+
+Apply a FIR low-pass filter with Blackman window. The intention is to avoid 
+phase-distortion and to work with something familiar.
+
+w is window length, an odd number.
+"""
+function smoothed_surface_fir(z; w = 49)
+    # Coefficients, including a Blackman window.
+    c = Float32.(fir_lp_coefficients(w))
+    # Elevations smoothed by lp-filter
+    imfilter(z, (c, transpose(c)), FIRTiled())
+end
+
+
+"""
+    roughness_of_surface_fir(z; w = 69)
+
+Apply a FIR high-pass filter with Blackman window. The intention is to avoid 
+phase-distortion and to work with something familiar.
+
+w is window length, an odd number.
+"""
+function roughness_of_surface_fir(z; w = 69)
+    # Coefficients, including a Blackman window.
+    c = Float32.(fir_hp_coefficients(w))
+    # Elevations where the smooth variation is removed and
+    # the bumps remain.
+    imfilter(z, (c, transpose(c)), FIRTiled())
+end
+
+
+"""
+    bumpiness(z; w = 69, cutoff⁻ = 1.5, z_max = 680.0f0, cutoff⁺ =  4.6477094f0)
+    ---> Matrix{Gray{Float32}} (shape and size like z)
+
+Returns positive values defined by a high-pass filter with length w, Blackman window.
+Values defined as non-interesting by the other keywords are set to zero. 
+
+Used by `is_forest`.
+"""
+function bumpiness(z; w = 69, cutoff⁻ = 1.5, z_max = 680.0f0, cutoff⁺ =  4.6477094f0)
+    isodd(w) || throw(ArgumentError("w must be odd, not $w"))
+    # The local bumps (+ and -)
+    r = roughness_of_surface_fir(z; w)
+    r1 = r .* (z .< z_max)
+    # Take absolute value, and drop the large values, which are most likely artifacts
+    # or houses. 
+    map(r1) do ρ
+        mag = abs(ρ)
+        mag < cutoff⁻ ? Gray{Float32}(0.0f0) : mag > cutoff⁺ ? Gray{Float32}(0.0f0) : Gray{Float32}(mag / cutoff⁺)
+    end
+end
+
+
+"""
+    is_forest(z; forest_cells_min= 9062, w = 69, cutoff⁻ = 1.5, cutoff⁺ =  4.6477094f0, z_max = 680.0f0)
+    is_forest(g::GeoArray)
+    ---> Matrix{Gray{Bool}}  (shape and size like z)
+
+Used by 'ridges' and 'contours'.
+
+# Arguments
+
+z                 Elevations. The other default parameters assumes a grid spacing of 1 utm meter.
+forest_cells_min  Remove smaller forests
+w                 Window length for high-pass filter
+cutoff⁻           Drop filtered values below
+cutoff⁺           Drop filtered values above (often steep ridges or artifacts)
+z_max             Drop forest above this elevation
+"""
+function is_forest(z; forest_cells_min = 9062, w = 69, cutoff⁻ = 1.5, cutoff⁺ =  4.6477094f0, z_max = 680.0f0)
+    # Based on roughness, values Gray(0.0f0 to 1.0f0⁻). 
+    # Not too much and not too little. Not too high above the ocean.
+    b = bumpiness(z; w, cutoff⁻, z_max, cutoff⁺)
+    # Forests are interspersed with high and low values. Smooth that out.
+    d = imfilter(b, Kernel.gaussian(2))
+    # Change to black and white (forest)
+    e = map(β -> Gray{N0f8}(β > 0.0), d)
+    # Build a Segmented Image, each forest has its own label.
+    # Each forest must be large enough to exclude typical rough cliffs (long and slender shapes wihtout much area).
+    # One (or more) of the segments cover the non-foresty areas.
+    g = felzenszwalb(e, 1, forest_cells_min)
+    # Convert segmented image to a normal image matrix
+    map(i-> Gray{Bool}(round(segment_mean(g, i))), labels_map(g))
+end
+is_forest(g::GeoArray) =  is_forest(transpose(g.A[:, :, 1]))
