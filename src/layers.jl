@@ -12,7 +12,7 @@ function join_layers(fofo, density_pt_m⁻¹)
     ffna = joinpath(homedir(), fofo, COMPOSITE_FNAM)
     layerstack  = [TOPORELIEF_FNAM    Nothing
                    CONTOUR_FNAM      CompositeDestinationOver
-                   RIDGE_FNAM        BlendMultiply           # This should be done in the HSL space to make ridges stand out more on snow.
+                   RIDGE_FNAM        BlendMultiply
                    WATER_FNAM        CompositeDestinationOver
                    GRID_FNAM         CompositeDestinationOver
                    MARKERS_FNAM      CompositeDestinationOver]
@@ -30,9 +30,11 @@ function join_layers(fofo, density_pt_m⁻¹)
             return true
         end
     end
-    if ! all(isfile.(layerfnas))
-        @debug "    Layers missing. Exiting `join_layers`"
-        return false
+    for fna in layerfnas
+        if ! isfile(fna)
+            @debug "    Layers missing. Exiting `join_layers`: $(splitpath(fna)[end])"
+            return false
+        end
     end
     res = load(joinpath(homedir(), fofo, layerstack[1, 1]))
     # Iterate through the rest of the layer stack
@@ -54,23 +56,3 @@ function composite_on_top!(res, layer, modefunc)
     res[R] = modefunc.(layer[R], res[R])
     res
 end
-
-# TODO check out doing the layer multiplication in HSL colorspace.
-# Currently, the ridge lines dominate forest.
-#=
-function composite_on_top!(res::AbstractArray{T1}, layer::AbstractArray{T1}, modefunc, colorspace::Type{T2}) where {T1, T2}
-    @assert size(res) == size(layer)
-
-    R = CartesianIndices(res)
-
-    if T1 == T2
-        # No color space conversion needed
-        res[R] = modefunc.(layer[R], res[R])
-    else
-        # Perform blending with on-the-fly conversion
-        res[R] = convert(T1, modefunc.(convert(T2, layer[R]), convert(T2, res[R])))
-    end
-
-    return res
-end
-=#

@@ -196,3 +196,19 @@ function write_vectors_to_csv(filename::String, headers::Vector{T}, vectors, wid
     nothing
 end
 
+
+# Function useful for developing and testing
+
+function open_as_temp__in_gimp(img)
+    @async let
+        fnam = tempname()
+        save_png_with_phys(fnam, img)
+        gimp_path = "C:\\Program Files\\GIMP 2\\bin\\gimp-2.10.exe"
+        run(`$gimp_path "$fnam"`)
+    end
+end
+
+function get_random_color(i)
+    Random.seed!(i) # For consistentency between runs
+    rand(RGB{N0f8})
+end

@@ -165,15 +165,7 @@ function _lake_segment(steepness, k, lake_steepness_max, lake_pixels_min)
     # inside of the lake regions. They would appear as islands that are really just noise, waves,
     # or recalibration. Most of them coindicentally fall below lake_pixels_min:
     @debug "    Second segmentation"
-    lake_segments = felzenszwalb(islake_matrix, k, lake_pixels_min)
-    #=
-    # Check that the first segment is NOT a lake.
-    i_1 = findfirst(labels_map(lake_segments)) do l 
-        l == 1
-    end
-    is_1_lake = segment_mean(lake_segments, i_1) < lake_steepness_max && isegment_pixel_count(steep_segments, i) >= lake_pixels_min
-    throw("TODO devise a working test")
-    =#
+    felzenszwalb(islake_matrix, k, lake_pixels_min)
 end
 
 

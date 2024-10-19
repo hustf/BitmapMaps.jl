@@ -56,6 +56,14 @@ run_bitmapmap_pipeline()
 
 Fully working, though 'contours' and 'ridges' is being reworked.
 
+Version 0.1.10:
+ - Improved forest detection
+ - Improved contours and ridges. All forest is assumed to have a height offset of 4.0 metres.
+ - Generalized FIR filtering
+ - A dictionary of geoarray files is now saved to the project path, speeding up consolidation
+ - Testing of contours, filters and ridges is in a temporary state
+ - Identification of bumpy patches is done twice, for contours and for ridges. Time consuming.
+
 Version 0.1.9:
  - Added forest detection and smooth contours in such areas.
  This is in a temporary state. Currently, all forest is assumed to have a height offset of 4.0 metres.

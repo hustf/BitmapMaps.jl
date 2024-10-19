@@ -50,6 +50,7 @@ function consolidate_local_data_to_geoarray_in_folder(fofo; include_parent_folde
         @debug "    $CONSOLIDATED_FNAM in $fofo \n           already exists. Exiting `consolidate_local_data_to_geoarray_in_folder`"
         return true
     end
+
     # The folder fofo's name contains the geometry request made at høydedata.no or similar!
     # r, c is row and column for this SheetBuilder of the entire SheetMatrixBuilder
     # The last four digits are the UTM corners used in the request.
@@ -59,7 +60,10 @@ function consolidate_local_data_to_geoarray_in_folder(fofo; include_parent_folde
     # Files to consolidate
     alltifs = tif_full_filenames_buried_in_folder(fofo)
     if include_parent_folder
+        # We may previously have examined the source files. This is time consuming, so let's update it from file.
+        read_TIFDIC(abspath(joinpath(fofo, "..")))
         append!(alltifs, tif_full_filenames_in_parent_folder(fofo))
+        save_TIFDIC(abspath(joinpath(fofo, "..")))
     end
     fnas_source = filter(alltifs) do ffna
         splitpath(ffna)[end] !== CONSOLIDATED_FNAM

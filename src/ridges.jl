@@ -1,5 +1,17 @@
-# This is an experiment into a fluid dynamics analogy of terrain.
-# TODO: Implement is_forest, update values.
+# Step in pipeline.
+# Calculates the divergence in a fluid flow analogy, where the
+# gradient of elevation resembles fluid flow. The same operator 
+# is called 'laplacian'.
+#
+# Large divergence coincicides with terrain ridges or outward corners.
+# Large negative divergence coincides with ridges, canyons or inward corners.
+#
+# In built-up and foresty areas, this is masked by local roughness, 
+# so we apply the same mask as is used in 'countours':  bumpy_patch.
+# The ridge and dieder lines are not generated in bumpy patches.
+#
+# Output is an image file per sheet, for manual touch-up.
+
 """
     ridge_overlay(sb::SheetBuilder)
     ridge_overlay(fofo)
@@ -30,16 +42,19 @@ function _ridge(fofo, cell_iter, cell2utm)
     # Get elevation matrix. This samples every point regardless of cell_to_utm_factor
     g = readclose(joinpath(fofo, CONSOLIDATED_FNAM))
     @debug "    Render ridge"
+    # Define output size and colours
+    ny, nx = size(cell_iter)
+    source_indices = (1:cell2utm:(ny  * cell2utm), 1:cell2utm:(nx * cell2utm))
+    si = CartesianIndices(source_indices)
     # Find the scalar matrix representing 'negative divergence'.
     # Interpretation: Gradients points uphill.
     # If the terrain gradients were a 2d fluid vector field, 
     # a negative laplacian at a point means that
     # 'fluid' collects at a point (the divergence is positive).
-    laplacian = Gray{Float32}.(smoothed_laplacian(g.A[:, :, 1]))
-    # Define output size and colours
-    ny, nx = size(cell_iter)
-    source_indices = (1:cell2utm:(nx  * cell2utm), 1:cell2utm:(ny * cell2utm))
-    si = CartesianIndices(source_indices)
+    #
+    # Where there is forest or houses, we do not want to show ridges.
+    # masked_laplacian will be zero in those patches.
+    masked_laplacian = smooth_laplacian(g, si) .* (1 .- bumpy_patch(g, si))
     # Pre-allocate output image
     result = zeros(RGBA{N0f8}, size(si)...)
     # Pre-allocate boolean buffer. This has the same size as the output image
@@ -50,15 +65,15 @@ function _ridge(fofo, cell_iter, cell2utm)
         colo_dieder = RGBA{N0f8}(0.0, 0.64, 1.0, 0.7)  # WAS (0.02, 0.0, 0.075, 0.7) # WAS (tuple(easter_map_shadow_colors()[1])..., 0.7)
         criterion_functions = [<(-0.05f0), >(0.2f0)]
         thicknesses = [3, 5]
-        _corners_and_dieders!(result, bbuf, laplacian, source_indices, criterion_functions, [colo_corner, colo_dieder], thicknesses)
+        _corners_and_dieders!(result, bbuf, masked_laplacian, criterion_functions, [colo_corner, colo_dieder], thicknesses)
     end
-    transpose(result)
+    result
 end
-function _corners_and_dieders!(result, bbuf, source, source_indices, criterion_functions, colors, thicknesses)
+function _corners_and_dieders!(result, bbuf, source, criterion_functions, colors, thicknesses)
     @assert length(criterion_functions) == length(colors) == length(thicknesses) == 2
     for (colo, t, criterion_function) in zip(colors, thicknesses, criterion_functions)
         # Overwrite bbuf with pixels on corners
-        mapwindow!(M -> Gray{Bool}(criterion_function(first(M))), bbuf, source, (1, 1); indices = source_indices)
+        mapwindow!(M -> Gray{Bool}(criterion_function(first(M))), bbuf, source, (1, 1))
         # Our very clever thinning, despeckling and thickening:
         bbuf .= strokeify(bbuf, t, 5) # Minimum length of a line is hardcoded as 5.
         # Treat 'false' as transparent. Overlay bbuf on result and write in-place to result.
@@ -69,7 +84,7 @@ end
 
 
 """
-   smoothed_laplacian(z)
+   smooth_laplacian(g::GeoArray, source_indices::CartesianIndices)
    ---> Matrix{scalar}
 
 We can interpret the gradient of elevation z as a vector field.
@@ -78,12 +93,16 @@ If that vector field represented a quasi-static, incompressible
 fluid flow, we would call the result 'divergence': How much
 fluid would be entering (from outside) at this point? 
 """
-function smoothed_laplacian(z)
+function smooth_laplacian(g::GeoArray, source_indices::CartesianIndices)
     # Smooth surface
-    zf = smoothed_surface_fir(z; w = 49)
+    zf = smooth_surface_fir(g; w = 159, nyquist_denom = 16)
     g11, _, _, g22 = hessian_components(zf)
-    g11 .+ g22
+
+    # We have used the full resolution to determine the curvature.
+    # Return the needed resolution only.
+    g11[source_indices] .+ g22[source_indices]
 end
+
 jacobian_components(z) = imgradients(z, KernelFactors.prewitt)
 
 """

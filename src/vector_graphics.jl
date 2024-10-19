@@ -138,7 +138,11 @@ function add_summit_text(svg, ffna_csv_summits, lineheight_px, max_x_left_align)
     # We trust the column order, as defined in `write_prominence_to_csv` and `add_names_to_csv`
     summits_data = readdlm(ffna_csv_summits, '\t')[2:end,:]
     if isempty(summits_data)
-        @debug "    No summits in file => no text to add."
+        @debug "    No summits in file $(joinpath(splitpath(ffna_csv_summits)[end - 1: end])) \n\t\t => no text to add."
+        return 
+    end
+    if size(summits_data, 2) < 6
+        @debug "    No summit names in file $(joinpath(splitpath(ffna_csv_summits)[end - 1: end])) \n\t\t => no text to add."
         return 
     end
     vz = Int.(summits_data[:, 1])

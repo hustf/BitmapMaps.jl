@@ -45,28 +45,25 @@ function _elev_contours(fofo, cell_iter, cell2utm, minlen, vthick, vdist)
     source_indices = (1:cell2utm:(ny  * cell2utm), 1:cell2utm:(nx * cell2utm))
     si = CartesianIndices(source_indices)
     # We store three arrays in an 'image' in order to use the fast image filtering functions later.
-    #    red:   is_forest
+    #    red:   bumpy_patch
     #    green: unfiltered elevation
     #    blue:  highly smoothed elevation
     # Note that although we use the full resolution for identifying forest,
-    # we reduce the resolution in the three-channel image.
-    img = RGB{Float32}.(Float32.(is_forest(g)[si]), # red
+    # we reduce the resolution in this three-channel image:
+    img = RGB{Float32}.(Float32.(bumpy_patch(g, si)), # red
             transpose(g.A[:, :, 1])[si],           # green
             Float32.(imfilter(transpose(g.A[:, :, 1])[si], Kernel.gaussian(49)))) # blue
-    #rm = maximum(red.(img))
-    #gm = maximum(green.(img))
-    #bm = maximum(blue.(img))
-    #img1 = RGB{N0f8}.(red.(img) ./ rm, green.(img) ./ gm, blue.(img) ./ bm)
-    #display(img1)
-    #ffna = joinpath(fofo, "temp.png")
-    #@debug "    Saving $ffna"
-    #save_png_with_phys(ffna, img1)
+    # Boolean countours image:
     res = __elev_contours(img, minlen, vthick, vdist)
-    # Go from black-and-white to defined colours. Flip axes to image-like.
+    # An alternative topo colour which would show better on green:
+    #     RGB 0.71, 0.572, 0. 157
+    # We consider topo lines are unimportant in such places, so better to use one colour.
+    #
+    # Go from black-and-white to defined colours.
     map(res) do pix
         pix == true && return RGBA{N0f8}(0.714, 0.333, 0.0, 1)
         RGBA{N0f8}(0., 0, 0, 0)
-    end    
+    end
 end
 function __elev_contours(img, minlen, vthick, vdist)
     # Pre-allocate boolean buffer (we make one countour distance at a time)
@@ -81,17 +78,17 @@ function _elev_contours!(res::T1, img::T2,
     bbuf::T1, minlen::Int64, vthick::T3, elevation_spacings::T3) where {T1 <: Matrix{Gray{Bool}},
         T2 <: Matrix{RGB{Float32}},
         T3 <: Vector{Int64}}
-        for (t, Δz) in zip(vthick, elevation_spacings)
-            # Overwrite bbuf with pixels on contours.
-            mapwindow!(func_elev_contour(Δz), bbuf, img, (3, 3))
-            # We have tried to reduce contours on bumps. Now remove most of the rest:
-            # Our very clever thinning, despeckling and thickening
-            # (and this part takes ~85% of the time in this loop):
-            bbuf .= strokeify(bbuf, t, minlen)
-            # Treat 'false' as transparent. Overlay bbuf on res and write in-place to res.
-            map!(BlendLighten, res, res, bbuf)
-        end
-        res
+    for (t, Δz) in zip(vthick, elevation_spacings)
+        # Overwrite bbuf with pixels on contours.
+        mapwindow!(func_elev_contour(Δz), bbuf, img, (3, 3))
+        # We have tried to reduce contours on bumps. Now remove most of the rest:
+        # Our very clever thinning, despeckling and thickening
+        # (and this part takes ~85% of the time in this loop):
+        bbuf .= strokeify(bbuf, t, minlen)
+        # Treat 'false' as transparent. Overlay bbuf on res and write in-place to res.
+        map!(BlendLighten, res, res, bbuf)
+    end
+    res
 end
 
 
@@ -109,12 +106,10 @@ function strokeify(bw, thickness, minlen)
     if (thickness - 1 ) % 2 !== 0
         throw(ArgumentError("thickness = $thickness ∉ [0, 1, 3, ...] "))
     end
-    # Despeckle
-    # TEMP remove_isolated_pixels!(bw)
     # Reduce regions to one pixel width.
     stroked = reinterpret(Gray{Bool}, thinning(reinterpret(Bool, bw), algo = GuoAlgo()))
     # Remove too short contours, (typically, minlen = 5)
-    # TEMP remove_small_islands!(stroked, minlen)
+    remove_small_islands!(stroked, minlen)
     # Make all the thin regions as thick as specified
     thickness == 1 && return stroked
     dilate(stroked; r = thickness ÷ 2)
@@ -134,22 +129,25 @@ function func_elev_contour(Δc::Float32)
     # 
     f = let Δc = Δc, max_from_contour = max_from_contour, isnot =  isnot, is = is
         (M) -> let
+            #    red:   bumpy_patch
+            #    green: unfiltered elevation
+            #    blue:  highly smoothed elevation
             @assert size(M) == (3, 3)
             # If rows in M correspond to south -> north
             # and cols in M correspond to west -> east
             # _ n _
             # w z e  
             # _ s _
-            is_forest = red(M[5]) == 1.0f0 
-            if is_forest 
-                # Use smoothed terrain values.
-                # We also compensate for a constant, assumed mean forest height.
-                # This introduces a error at the edge of forests,
-                # which could be masked by fading in the subtraction (via segmented distance calculations).
-                nw, w, sw, n, z, s, ne, e, se = blue.(M) .- 4f0
-            else
-                nw, w, sw, n, z, s, ne, e, se = green.(M)      # Exact terrain
-            end
+            # 
+            # If all pixels are in the forest, we apply the blue channel fully.
+            # Otherwise, we interpolate according to 'forest factor':
+            forest_factor = sum(x -> x > 0, red.(M)) / 9
+            # Interpolate from forest_factor.
+            # Note that we subtract 4 m from the elevation in bumpy patches. This is 
+            # often too much in upper elevations, and too little in lower elevations
+            # with tall forest and houses. We aren't able to estimate the actual
+            # height of the forest.
+            nw, w, sw, n, z, s, ne, e, se  = forest_factor .* (blue.(M) .- 4f0 ) .+ (1 - forest_factor)  .* green.(M)
             # No elevation contour line at sea level
             z < Δc && return isnot
             # Elevation at centre relative to the nearest contour
@@ -186,21 +184,6 @@ function func_elev_contour(Δc::Float32)
     f
 end
 
-
-function remove_isolated_pixels!(img::Array{Gray{Bool},2})
-    kernel = centered(Int[1 1 1; 1 0 1; 1 1 1])
-    # Make a similar matrix{Float32} counting neighbors of a pixel
-    neighbors = imfilter(img, kernel, Fill(Gray{Bool}(false)))
-    # Very clever: ´x .&= y´ is a synonym for ´x .= x .& y´
-    #               ´&´ is bitwise ´and´.
-    # So, for every pixel:
-    #      1) If a pixel is not set, set it to false without considering neigbors.
-    #      2) If a pixel is set (x = true), and it does not have neighbors (y is false),
-    #         unset it.
-    #      3) If a pixel is set, and it does have neighbors, set it.
-    reinterpret(Bool, img) .&= (neighbors .> 0)
-    img
-end
 
 function remove_small_islands!(img, max_pixels)
     segments = felzenszwalb(reinterpret(Bool, img), 1.0, 2)

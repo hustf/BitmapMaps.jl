@@ -24,6 +24,8 @@ import Base: show
 # ZipFile and comparing file hashes:
 import ZipFile
 import SHA
+import Serialization
+using Serialization: serialize, deserialize
 using SHA: sha256
 # GeoArray, hypsometric colors
 import GeoArrays
@@ -40,6 +42,7 @@ using ColorTypes: RGBA, RGB, XYZ, XYZA, AbstractGray, AbstractRGB, Gray, red, gr
 # Identify water
 import ImageSegmentation
 using ImageSegmentation: felzenszwalb, labels_map, segment_pixel_count, segment_mean, SegmentedImage
+using ImageSegmentation: fast_scanning, prune_segments
 import ImageMorphology
 using ImageMorphology: erode!, dilate!, dilate, GuoAlgo, thinning
 # Grid
@@ -64,7 +67,8 @@ using ColorBlendModes: CompositeDestinationOver, BlendLighten, BlendMultiply
 import EzXML
 using EzXML: readxml, write, Document, findfirst, setnodecontent! #prettyprint, 
 using EzXML: TextNode, AttributeNode, ElementNode, link!, unlink!
-
+# User utilties
+import Random
 #
 # Exports
 #
@@ -95,6 +99,7 @@ const SUMMITS_FNAM = "Summits.csv"
 const COMPOSITE_FNAM = "Composite.png"
 const PARSEABLE_FNAM = "Parse_builder.jl"
 
+
 """
 TIFDIC :: Dict[String, NamedTuple}()
 
@@ -107,6 +112,7 @@ because  opening every file for every sheet is potentially
 very time consuming and shouldn't be repeated unnecessarily.
 """
 const TIFDIC = Dict{String, NamedTuple}()
+const TIFDIC_FNAM = "tifdic.jls"
 
 include("ini_file.jl")
 include("png_phys.jl")

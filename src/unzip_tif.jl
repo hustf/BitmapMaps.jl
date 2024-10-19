@@ -132,3 +132,18 @@ function tif_full_filenames_in_parent_folder(pth)
     pth_parent = abspath(joinpath(pth, ".."))
     tif_full_filenames_buried_in_folder(pth_parent; recurse = false)
 end
+
+
+function read_TIFDIC(fofo)
+    fnam = joinpath(fofo, TIFDIC_FNAM)
+    if isfile(fnam)
+        tmpdic = deserialize(fnam)
+        for (ke, va) in tmpdic
+            push!(TIFDIC, ke => va)
+        end
+    end
+end
+function save_TIFDIC(fofo)
+    fnam = joinpath(fofo, TIFDIC_FNAM)
+    serialize(fnam, TIFDIC)
+end
