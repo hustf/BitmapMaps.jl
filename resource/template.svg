@@ -8,15 +8,15 @@
    preserveAspectRatio="xMidYMid meet"
 >
 <defs>
+    <!--
+    VSCode 'Svg Preview' extension won't display the image.
+    'xlink:href' is deprecated and dropped.
+    Firefox won't accept links to other directories. 
+    Ensure the image fills the rectangle and is positioned correctly.
+    The template values correspond to an image, Composite.png with 
+    (w, h) = (3000, 2833) pixels. 
+    -->
     <filter id="composite" >
-        <!--
-        VSCode 'Svg Preview' extension won't display the image.
-        'xlink:href' is deprecated and dropped.
-        Firefox won't accept links to other directories. 
-        Ensure the image fills the rectangle and is positioned correctly.
-        The template values correspond to an image, Compisite.png with 
-        (w, h) = (3000, 2833) pixels. 
-        -->
         <feImage href="Composite.png" x="0.5" y="0.5" width="2999" height="2832"/>
         <feMerge>
             <feMergeNode in="img"/>

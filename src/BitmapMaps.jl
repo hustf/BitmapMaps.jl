@@ -65,7 +65,7 @@ import ColorBlendModes
 using ColorBlendModes: CompositeDestinationOver, BlendLighten, BlendMultiply
 # Vector graphics (this .svg is .xml)
 import EzXML
-using EzXML: readxml, write, Document, findfirst, setnodecontent! #prettyprint, 
+using EzXML: readxml, write, Document, findfirst, setnodecontent!, firstnode
 using EzXML: TextNode, AttributeNode, ElementNode, link!, unlink!
 # User utilties
 import Random
@@ -95,6 +95,7 @@ const CONTOUR_FNAM = "Contour.png"
 const GRID_FNAM = "Grid.png"
 const RIDGE_FNAM = "Ridge.png"
 const MARKERS_FNAM = "Markers.png"
+const THUMBNAIL_FNAM = "Thumbnail.png"
 const SUMMITS_FNAM = "Summits.csv"
 const COMPOSITE_FNAM = "Composite.png"
 const PARSEABLE_FNAM = "Parse_builder.jl"

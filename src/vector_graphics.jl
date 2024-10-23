@@ -1,4 +1,5 @@
-# Step in pipeline.
+# Called prior to the sheets pipeline with a SheetMatrixBuilder to make a navigable .svg file.
+# Step in sheet pipeline.
 # This file copies and modifies an existing .svg file,
 # so as to include by reference the bitmap,
 # and adds text for the foreground, based on 'Summits.csv'.
@@ -7,11 +8,28 @@
 # and we avoid depending on the Cairo / Pango library.
 
 """
+    make_vector_graphics(smb::SheetMatrixBuilder)
     make_vector_graphics(sb::SheetBuilder)
     make_vector_graphics(fofo, cell_iter, sheet_width_mm, sheet_height_mm, density_pt_m⁻¹)
     --> Bool
 
+Create an svg file. 
+
+- When called with a SheetMatrixBuilder, makes an .svg mosaic from the sheets.
+The mosaic tiles show the topographic relief without overlays, but links to the composite images.
+- When called with a SheetBuilder, makes an .svg with the composite bitmap overlain with vector graphics text.
 """
+function make_vector_graphics(smb::SheetMatrixBuilder)
+    fna_svg = bbox_external_string(smb) * ".svg"
+    ffna_svg = joinpath(full_folder_path(smb), fna_svg)
+    # Early exit
+    if isfile(ffna_svg)
+        @debug "    $ffna_svg in $(full_folder_path(smb))\n           already exists. Exiting `make_vector_graphics`"
+        return true
+    end
+    # Do the work
+    make_vector_mosaic(smb, ffna_svg)
+end
 function make_vector_graphics(sb::SheetBuilder)
     make_vector_graphics(full_folder_path(sb), sb.cell_iter, width_adjusted_mm(sb), height_adjusted_mm(sb), sb.density_pt_m⁻¹)
 end
@@ -87,14 +105,19 @@ function _make_vector_graphics(ffna_svg, ffna_css, ffna_csv_summits, ffna_csv_la
     #
     copy_templates_to_folder(ffna_svg, ffna_css)
     modify_css_font_size(ffna_css, fontsize_px)
-    modify_svg_to_sheet_size(ffna_svg, cell_iter, sheet_width_mm, sheet_height_mm)
+    modify_svg_to_sheet_size(ffna_svg, ffna_css, cell_iter, sheet_width_mm, sheet_height_mm)
     modify_svg_text(ffna_svg, ffna_csv_summits, ffna_csv_lakes, lineheight_px, max_x_left_align)
 end
 
-function modify_svg_to_sheet_size(ffna_svg, cell_iter, sheet_width_mm, sheet_height_mm)
+function modify_svg_to_sheet_size(ffna_svg, ffna_css, cell_iter, sheet_width_mm, sheet_height_mm)
     ny, nx = size(cell_iter)
     doc = readxml(ffna_svg)
     ns = ["x" => "http://www.w3.org/2000/svg"]
+    # Update style sheet ref.
+    stylenode = firstnode(doc.node)
+    stylecontent = "type=\"text/css\" href=\"$(splitpath(ffna_css)[end])\""
+    setnodecontent!(stylenode, stylecontent)
+    # Update svg contents
     svg = EzXML.root(doc)
     svg["width"] = "$(round(sheet_width_mm, digits=3))mm"
     svg["height"] = "$(round(sheet_height_mm, digits=3))mm"
@@ -103,7 +126,7 @@ function modify_svg_to_sheet_size(ffna_svg, cell_iter, sheet_width_mm, sheet_hei
     feImage = findfirst(xp, svg, ns)
     feImage["width"] = "$(nx - 1)"
     feImage["height"] = "$(ny - 1)"
-    commentnode = findfirst("x:defs / x:filter / comment()", svg, ns)
+    commentnode = findfirst("x:defs / comment()", svg, ns)
     setnodecontent!(commentnode, """
         Ensure the image fills the rectangle and is positioned correctly.
         The values in this svg file match the size of $COMPOSITE_FNAM with
@@ -204,12 +227,6 @@ function add_two_line_text_element(parent, text1, text2, class, x, y, lineheight
             tsp1 = ElementNode("tspan")
             link!(tsp1, TextNode(text1))
             add_alignment!(tsp1, dx, text_anchor)
-            #if text_anchor == "end" || text_anchor == "middle"
-            #    link!(tsp1, AttributeNode("dx", string(-dx)))
-            #    link!(tsp1, AttributeNode("text-anchor", "end"))
-            #else
-            #    link!(tsp1, AttributeNode("dx", string(dx)))
-            #end
             link!(tsp1, TextNode("\n    ")) # line break and tabs for xml readability
         link!(el, tsp1)
             tsp2 = ElementNode("tspan")
@@ -218,12 +235,6 @@ function add_two_line_text_element(parent, text1, text2, class, x, y, lineheight
             link!(tsp2, AttributeNode("y", y))
             link!(tsp2, AttributeNode("dy", "$lineheight_px"))
             add_alignment!(tsp2, dx, text_anchor)
-            #if text_anchor == "end" || text_anchor == "middle"
-            #    link!(tsp2, AttributeNode("dx", string(-dx)))
-            #    link!(tsp2, AttributeNode("text-anchor", "end"))
-            #else
-            #    link!(tsp2, AttributeNode("dx", string(dx)))
-            #end
             link!(tsp2, TextNode("\n    ")) # line break and tabs for xml readability
         link!(el, tsp2)
     link!(parent, el)
@@ -276,4 +287,89 @@ function modify_css_font_size(ffna_css, fontsize_px)
             write(io, s)
         end
     end
+end
+
+"""
+    make_vector_mosaic(smb, ffna_svg)
+
+Called via make_vector_graphics. We refer files not knowing if they're made yet.
+"""
+function make_vector_mosaic(smb, ffna_svg)
+    @debug "Pre-process: Make $(ffna_svg)"
+    # We curently don't use features from the .css style sheet, but
+    # that may change in future. So make both .svg and .css
+    ffna_css = splitext(ffna_svg)[1] * ".css"
+    copy_templates_to_folder(ffna_svg, ffna_css)
+    modify_svg_to_sheet_size(ffna_svg, ffna_css, smb[1].cell_iter, smb.sheet_width_mm, smb.sheet_height_mm)
+    make_reference_mosaic(ffna_svg, smb)
+end
+function make_reference_mosaic(ffna_svg, smb)
+    doc = readxml(ffna_svg)
+    ns = ["x" => "http://www.w3.org/2000/svg"]
+    svg = EzXML.root(doc)
+    # Remove the dummy elements in the template.
+    unlink!(findfirst("x:text", svg, ns))
+    unlink!(findfirst("x:defs / x:filter", svg, ns))
+    unlink!(findfirst("x:rect", svg, ns))
+    # Prepare params which are identical to every sheet tile
+    ny, nx = size(smb[1].cell_iter)
+    n_governing = max(size(smb)...)
+    tile_width = Int(floor((nx - 1) / n_governing))
+    tile_height = Int(floor((ny - 1) / n_governing))
+    # Add sheet tiles
+    for sb in smb
+        imgpath = joinpath(splitpath(sb.pthsh)[end], THUMBNAIL_FNAM)
+        urlpath = joinpath(splitpath(sb.pthsh)[end], replace(COMPOSITE_FNAM, ".png" => ".svg"))
+        r, c = row_col_of_sheet(smb, sb.sheet_number)
+        x, y = Int.(round.(sb.pixel_origin_ref_to_bitmapmap ./ n_governing))
+        add_sheet_tile!(svg, x, y, tile_width, tile_height, r, c, imgpath, urlpath, ns)
+    end
+    write(ffna_svg, doc)
+    nothing
+end
+function add_sheet_tile!(svg, x, y, tile_width, tile_height, r, c, imgpath, urlpath, ns)
+    defs = findfirst("x:defs", svg, ns)
+    add_filter_def!(defs, x, y, tile_width, tile_height, r, c, imgpath, ns)
+    add_linked_tile!(svg, x, y, tile_width, tile_height, r, c, urlpath, ns)
+    svg
+end
+
+function add_filter_def!(parent, x, y, tile_width, tile_height, r, c, imgpath, ns)
+    el = ElementNode("filter")
+    link!(el, AttributeNode("id", "f_$(r)_$(c)"))
+    link!(el, TextNode("\n\t\t")) # Line break for readability.
+    elc1 = ElementNode("feImage")
+    link!(elc1, AttributeNode("href", imgpath))
+    link!(elc1, AttributeNode("x", "$(x + 0.5)"))
+    link!(elc1, AttributeNode("y", "$(y + 0.5)"))
+    link!(elc1, AttributeNode("width", "$(tile_width)"))
+    link!(elc1, AttributeNode("height", "$(tile_height)"))
+    link!(el, elc1)
+    link!(el, TextNode("\n\t\t")) # Line break for readability.
+    elc2 = ElementNode("feMerge")
+    elc2c = ElementNode("feMergeNode")
+    link!(elc2c, AttributeNode("in", "img"))
+    link!(elc2, elc2c)
+    link!(el, elc2)
+    link!(el, TextNode("\n\t")) # Line break for readability.
+    link!(parent, TextNode("\n\t")) # Line break for readability.
+    link!(parent, el)
+    link!(parent, TextNode("\n\t")) # Line break for readability.
+    parent
+end
+function add_linked_tile!(parent, x, y, tile_width, tile_height, r, c, urlpath, ns)
+    el = ElementNode("a")
+    link!(el, AttributeNode("href", urlpath))
+    link!(el, TextNode("\n\t\t\t")) # Line break for readability.
+    elc = ElementNode("rect")
+    link!(elc, AttributeNode("x", "$(x)"))
+    link!(elc, AttributeNode("y", "$(y)"))
+    link!(elc, AttributeNode("width", "$(tile_width)"))
+    link!(elc, AttributeNode("height", "$(tile_height)"))
+    fref = "filter:url(#f_$(r)_$(c));"
+    link!(elc, AttributeNode("style", fref))
+    link!(el, elc)
+    link!(parent, TextNode("\n")) # Line break for readability.
+    link!(parent, el) # Line break for readability.
+    link!(parent, TextNode("\n")) # Line break for readability.
 end

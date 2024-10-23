@@ -87,11 +87,6 @@ end
 
 function SheetBuilder(pixel_origin_ref_to_bitmapmap, cell_iter, sheet_lower_left_utm, cell_to_utm_factor, sheet_number, density_pt_m⁻¹, pthsh)
     ny = size(cell_iter)[1]
-    #function f_I_to_utm(I::CartesianIndex)
-    #    easting_offset =   (I[2] - 1) * cell_to_utm_factor
-    #    northing_offset =  (ny - I[1] + 1) * cell_to_utm_factor
-    #    (easting_offset, northing_offset) .+ sheet_lower_left_utm
-    #end
     f_I_to_utm = func_I_to_utm(sheet_lower_left_utm, ny, cell_to_utm_factor)
     SheetBuilder(;pixel_origin_ref_to_bitmapmap, cell_iter, f_I_to_utm, sheet_number, density_pt_m⁻¹, pthsh)
 end

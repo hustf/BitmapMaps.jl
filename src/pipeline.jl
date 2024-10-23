@@ -124,6 +124,15 @@ end
 
 
 function process_job(smb, complete_sheets_first, skip_summits)
+    # Pre-process: Make an overview .svg file, referring the to-be-established files:
+    make_vector_graphics(smb)
+    # Capture for making thumbnails. Note, it would be cleaner to add another field to the
+    # SheetBuilder type, but making thumbnails is sort of an add-on functionality, so we 
+    # don't revise the type (at this late revision).
+    make_thumbnail = sb -> let n_governing = max(size(smb)...)
+        make_thumnail_image(full_folder_path(sb), sb.density_pt_m⁻¹, n_governing)
+    end
+    # Define the steps
     operations_order = [establish_folder,
         unzip_tif,
         consolidate_elevation_data,
@@ -134,14 +143,16 @@ function process_job(smb, complete_sheets_first, skip_summits)
         ridge_overlay,
         summit_markers,
         join_layers,
+        make_thumbnail,
         make_vector_graphics]
-    #
+    # Do the steps depth-first or width-first.
     if complete_sheets_first
         for sb in smb
             @info "Sheet $(cartesian_index_string(smb, sb.sheet_number)) of up to $(cartesian_index_string(smb))"
             for (i, fn) in enumerate(operations_order)
                 call_func(fn, sb, skip_summits, i) || return false
             end
+            sleep(0.25) # TEMP
         end
     else
         for (i, fn) in enumerate(operations_order)
