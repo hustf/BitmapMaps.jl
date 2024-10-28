@@ -25,7 +25,7 @@ svg {
   fill: black;
   dominant-baseline: alphabetic;
   filter: drop-shadow(var(--shadow-offset-x) var(--shadow-offset-y) var(--shadow-blur) rgba(193, 231, 255, var(--shadow-opacity)));
-
+}
 .sjø {
   font: bold var(--fontsize-small) serif;
   fill: darkblue;

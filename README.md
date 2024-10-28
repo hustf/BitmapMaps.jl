@@ -68,6 +68,10 @@ If the keyword `complete_sheets_first` = true, which is the default, all steps a
 
 Fully working, currently adding and revising features.
 
+Version 0.1.13:
+
+ - Use small font for alternative name and for summit prominence.
+
 Version 0.1.12:
 
  - Moved name-selection functionality to new revision of 'Stadnamn.jl'.

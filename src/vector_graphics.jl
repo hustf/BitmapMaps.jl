@@ -157,6 +157,7 @@ end
 function add_summit_text(svg, ffna_csv_summits, lineheight_px, max_x_left_align)
     # Prepare 
     class = "fjell"
+    subclass = "fjell_alt"
     dx = 0.2 * lineheight_px
     # Read the text contents
     # We trust the column order, as defined in `write_prominence_to_csv` and `add_names_to_csv`
@@ -183,16 +184,14 @@ function add_summit_text(svg, ffna_csv_summits, lineheight_px, max_x_left_align)
     for (name, z, prominence, (y, x), text_on_left) in zip(vname, vz, vpr, vI, vtext_on_left)
         text_anchor = text_on_left ? "end" : "start"
         if name == ""
-            inject_text!(svg, "$(z)m  ($(prominence))", class, strip(x), strip(y), dx, text_anchor)
+            inject_text!(svg, "$(z)m  ($(prominence)m)", strip(x), strip(y), dx, text_anchor; class, subclass)
         else
-            inject_two_line_text!(svg, name, "$(z)m  ($(prominence))", class, strip(x), strip(y), lineheight_px, dx, text_anchor)
+            inject_two_line_text!(svg, name, "$(z)m  ($(prominence)m)", strip(x), strip(y), lineheight_px, dx, text_anchor; class, subclass)
         end
     end
 end
 
 function add_lake_text(svg, ffna_csv_lakes)
-    # Prepare 
-    class = "sjø"
     # Read the text contents
     # We trust the column order, as defined in `write_prominence_to_csv` and `add_names_to_csv`
     lakes_data = readdlm(ffna_csv_lakes, '\t')[2:end,:]
@@ -208,52 +207,91 @@ function add_lake_text(svg, ffna_csv_lakes)
     #
     for (z, (y, x)) in zip(vz, vI)
         if z > 0
-            inject_text!(svg, "$(z)m", class, strip(x), strip(y), 0, "middle")
+            inject_text!(svg, "$(z)m", strip(x), strip(y), 0, "middle"; class = "sjø")
         end
     end
 end
 
-# TODO: In tsp1, replace (...) with:
-# " <tspan class="fjell_alt">...</tspan>"
-#    In tsp1, same for text2.
-#    Maybe separate a function to do both since paranthesis rule is the same.
-function inject_two_line_text!(parent, text1, text2, class, x, y, lineheight_px, dx, text_anchor)
-    # We're misusing indent to reflect xml structure in this function
-        el = ElementNode("text")
-        link!(el, AttributeNode("class", class))
-        link!(el, AttributeNode("x", x))
-        link!(el, AttributeNode("y", y))
-        inject_tspan!(el, text1, dx, text_anchor)
-        inject_tspan!(el, text2, dx, text_anchor; x, y, lineheight_px)
+
+function inject_two_line_text!(parent, text1, text2, x, y, lineheight_px, dx, text_anchor; class = nothing, subclass = nothing, tab_lev = 0)
+    el = ElementNode("text")
+    isnothing(class) || link!(el, AttributeNode("class", class))
+    link!(el, AttributeNode("x", x))
+    link!(el, AttributeNode("y", y))
+    inject_tspan!(el, text1; dx, text_anchor, subclass)
+    inject_tspan!(el, text2; dx, text_anchor, x, y, lineheight_px, subclass)
     link!(parent, el)
-    # Add a line break after the </text>, for readability.
-    link!(parent, TextNode("\n"))
+    link!(parent, TextNode('\n' * repeat("    ", tab_lev)))  # line break and indent for xml readability
     nothing
 end
 
-function inject_text!(parent, text, class, x, y, dx, text_anchor)
+function inject_text!(parent, text, x, y, dx, text_anchor; class = nothing, subclass = nothing, tab_lev = 0)
     el = ElementNode("text")
-    link!(el, TextNode(text))
-    link!(el, AttributeNode("class", class))
+    isnothing(class) || link!(el, AttributeNode("class", class))
     link!(el, AttributeNode("x", x))
     link!(el, AttributeNode("y", y))
     add_alignment!(el, dx, text_anchor)
+    #link!(el, TextNode('\n' * repeat("    ", tab_lev + 1))) # line break and indent for xml readability
+    #link!(el, TextNode(text))
+    link!(el, TextNode('\n' * repeat("    ", tab_lev + 1))) # line break and indent for xml readability
+    # Separate enclosed paranthesis, if any
+    rgx = r"\((.+?)\)"
+    m = match(rgx, text)
+    if isnothing(m)
+        link!(el, TextNode(text))
+    else
+        # Add the text outside of paranthesis to this element, tsp
+        link!(el, TextNode(replace(text, rgx => "")))
+        # Inject another tspan with the paranthesis content into this one
+        inject_tspan!(el, first(m.captures); class = subclass, tab_lev = tab_lev + 1)
+    end
+    #
+    link!(el, TextNode('\n' * repeat("    ", tab_lev))) # line break and indent for xml readability
     link!(parent, el)
-    # Add a line break after the </text>, for readability.
-    link!(parent, TextNode("\n"))
+    link!(parent, TextNode('\n' * repeat("    ", tab_lev)))  # line break and indent for xml readability
     nothing
 end
 
-function inject_tspan!(parent, text, dx, text_anchor; x = nothing, y = nothing, lineheight_px = nothing, tablev = 1)
-    link!(parent, TextNode('\n' * repeat("    ", tablev))) # line break and indent for xml readability
+"""
+    inject_tspan!(parent, text; dx = nothing, text_anchor = nothing,
+        x = nothing, y = nothing, lineheight_px = nothing, 
+        class = nothing, subclass = nothing, tab_lev = 1)
+
+# Arguments 
+
+- 'class' applies to the element itself
+- 'subclass' applies to the recursive call when enclosed paranthesises are part of 'text'.
+- 'text' is the text string. If it contains enclosed paranthesis, those are removed and
+   a tspan is injected within the tspan element through a recursive call.
+"""
+function inject_tspan!(parent, text; dx = nothing, text_anchor = nothing,
+    x = nothing, y = nothing, lineheight_px = nothing, 
+    class = nothing, subclass = nothing, tab_lev = 1)
+    #
+    link!(parent, TextNode('\n' * repeat("    ", tab_lev))) # line break and indent for xml readability
     tsp = ElementNode("tspan")
     isnothing(x) || link!(tsp, AttributeNode("x", x))
     isnothing(y) || link!(tsp, AttributeNode("y", y))
     isnothing(lineheight_px) || link!(tsp, AttributeNode("dy", "$lineheight_px"))
-    add_alignment!(tsp, dx, text_anchor)
-    link!(tsp, TextNode('\n' * repeat("    ", tablev + 1))) # line break and indent for xml readability
-    link!(tsp, TextNode(text))
-    link!(tsp, TextNode('\n' * repeat("    ", tablev))) # line break and indent for xml readability
+    isnothing(class) || link!(tsp, AttributeNode("class", class))
+    if ! isnothing(dx)
+        if ! isnothing(text_anchor)
+            add_alignment!(tsp, dx, text_anchor)
+        end
+    end
+    link!(tsp, TextNode('\n' * repeat("    ", tab_lev + 1))) # line break and indent for xml readability
+    # Separate enclosed paranthesis, if any
+    rgx = r"\((.+?)\)"
+    m = match(rgx, text)
+    if isnothing(m)
+        link!(tsp, TextNode(text))
+    else
+        # Add the text outside of paranthesis to this element, tsp
+        link!(tsp, TextNode(replace(text, rgx => "")))
+        # Inject another tspan with the paranthesis content into this one, recursively.
+        inject_tspan!(tsp, first(m.captures); class = subclass, tab_lev = tab_lev + 1)
+    end
+    link!(tsp, TextNode('\n' * repeat("    ", tab_lev))) # line break and indent for xml readability
     link!(parent, tsp)
 end
 
