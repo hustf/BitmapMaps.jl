@@ -103,7 +103,7 @@ function _summit_markers(fofo, cell_iter, cell2utm, f_I_to_utm, prom_levels, sym
         g11[3, 3] + g22[3,3]
     end
     #
-    # We'll remove some more false peaks from this user-adjustable criterion:
+    # We'll remove some more false peaks based on this user-adjustable criterion:
     #   4) Very steep on all sides of the tallest cell, i.e. very large amplitude Hessian components.
     σII = [vσ[i] for i in 1:length(vσ) if vσ[i] >= min_stress]
     vII = [vI[i] for i in 1:length(vI) if vσ[i] >= min_stress]
@@ -505,11 +505,11 @@ function distinct_summit_indices(z, maxtree)
 end
 
 """
-    add_names_to_csv(ffnam)
+    add_names_to_csv(ffnam; revise_names = false)
 
 Lookup online, keep names in a sheet unique. Save as last column.
 """
-function add_names_to_csv(ffnam)
+function add_names_to_csv(ffnam; revise_names = false)
     isfile(ffnam) || throw(ArgumentError("Does not exist: $ffnam"))
     old_data = readdlm(ffnam, '\t')[2:end,:]
     if isempty(old_data)
@@ -517,68 +517,14 @@ function add_names_to_csv(ffnam)
         return String[]
     end
     if size(old_data, 2) > 5
-        @debug "    Names already exist => keep those unchanged."
-        return String.(old_data[:, 6])
+        if ! revise_names
+            @debug "    Names already exist => keep those unchanged."
+            return String.(old_data[:, 6])
+        end
     end
     # utm positions as a vector of strings like "3,233"
     vsutm = map(s -> replace(s, ' ' => "", '(' => "", ')' => ""), old_data[:, 3])
-    #
-    endpoint = "/punkt"
-    names = String[]
-    for sutm in vsutm
-        params = Dict(:koordsys => 25833,
-            :utkoordsys => 25833,
-            :nord => split(sutm, ',')[2],
-            :ost => split(sutm, ',')[1],
-            :radius => 150,
-            :filtrer => "navn.stedsnavn,navn.meterFraPunkt")
-        jsono = get_stadnamn_data(endpoint, params)
-        if isempty(jsono)
-            # Something went wrong. Don't write anything to file,
-            # but return whatever we got so far.
-            return names
-        end
-        lv1 = jsono.navn
-        if isempty(lv1)
-            push!(names, "")
-        else
-            if length(lv1) == 1
-                lv2 = get(lv1[1], :stedsnavn)
-            else
-                # Take the closest place name. This
-                # may not be the best choice always,
-                # because e.g. the region name or anything
-                # on a higher level might be assigned a closer coordinate
-                # for arbitrary reasons.
-                # NOTE, we could probably improve on this by checking navneobjekttype == "Fjell"
-                closest_index = argmin(get.(lv1, "meterFraPunkt"))
-                lv2 = get(lv1[closest_index], :stedsnavn)
-            end
-            if isempty(lv2)
-                throw(ErrorException("Unexpected name, empty lv2, utm $sutm"))
-            else
-                if length(lv2) == 1
-                    name = lv2[1].skrivemåte
-                    if name ∈ names
-                        @debug "    Encountered duplicate name $name without alternatives, utm $sutm. Name set to \"\""
-                        push!(names, "")
-                    else
-                        push!(names, name)
-                    end
-                else
-                    candidates = get.(lv2, :skrivemåte)
-                    unique_candidates = filter(n-> n ∉ names, candidates)
-                    if length(unique_candidates) == 1
-                        push!(names, first(unique_candidates))
-                    else
-                        name = first(unique_candidates)
-                        @debug "    Picked name \"$name\", at $sutm as the first in list: $(unique_candidates)."
-                        push!(names, first(unique_candidates))
-                    end
-                end
-            end
-        end
-    end
+    names = point_names(vsutm)
     length(names) == length(vsutm) || throw(ErrorException("Some names were not assigned. length $(length(names)) $(length(vsutm))"))
     @debug "    Saving names: $ffnam"
     # NOTE: The column order ought to remain the same as in

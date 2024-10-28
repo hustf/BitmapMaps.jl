@@ -58,7 +58,7 @@ using ImageMorphology: MaxTree, strel
 import DelimitedFiles
 using DelimitedFiles: readdlm, writedlm
 import Stadnamn
-using Stadnamn: get_stadnamn_data
+using Stadnamn: point_names
 # 
 # Overlays to composite
 import ColorBlendModes

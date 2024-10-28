@@ -4,7 +4,7 @@ Make topographic relief bitmaps for printing from 32-bit elevation data, overlai
 
 # What does it do?
 
-Make printable topographic relief maps. The foreground is vector graphics from [RouteMap.jl](https://github.com/hustf/RouteMap.jl),
+Make printable topographic relief maps. The foreground is vector graphics text. Names are retrieved from 'Stadnamn.jl'.
 and the background is topographic relief maps based on elevation data. The hypsometric colours resemble a clear, early afternoon in 
 mid-February at 62°N, with snow cover above 500 m.
 
@@ -67,6 +67,10 @@ If the keyword `complete_sheets_first` = true, which is the default, all steps a
 # Current state
 
 Fully working, currently adding and revising features.
+
+Version 0.1.12:
+
+ - Moved name-selection functionality to new revision of 'Stadnamn.jl'.
 
 Version 0.1.11:
 

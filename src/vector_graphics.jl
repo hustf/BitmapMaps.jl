@@ -37,9 +37,10 @@ function make_vector_graphics(fofo, cell_iter, sheet_width_mm, sheet_height_mm, 
     #
     # Early exits
     #
+    # Note, we might continue just fine without Composite.png. That behaviour might be hard to reason about, though.
     if ! isfile(joinpath(fofo, COMPOSITE_FNAM))
-        @debug "    $COMPOSITE_FNAM in $fofo\n           does not exist. Exiting ´make_vector_graphics´"
-        return false
+       @debug "    $COMPOSITE_FNAM in $fofo\n           does not exist. Exiting ´make_vector_graphics´"
+       return false
     end
     bitmap_time = mtime(joinpath(fofo, COMPOSITE_FNAM))
     ffna_csv_summits = joinpath(fofo, SUMMITS_FNAM)
@@ -212,11 +213,10 @@ function add_lake_text(svg, ffna_csv_lakes)
     end
 end
 
-
-
-
-
-
+# TODO: In tsp1, replace (...) with:
+# " <tspan class="fjell_alt">...</tspan>"
+#    In tsp1, same for text2.
+#    Maybe separate a function to do both since paranthesis rule is the same.
 function add_two_line_text_element(parent, text1, text2, class, x, y, lineheight_px, dx, text_anchor)
     # We're misusing indent to reflect xml structure in this function
         el = ElementNode("text")
