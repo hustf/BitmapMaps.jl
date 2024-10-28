@@ -9,8 +9,8 @@
 
 """
     make_vector_graphics(smb::SheetMatrixBuilder)
-    make_vector_graphics(sb::SheetBuilder)
-    make_vector_graphics(fofo, cell_iter, sheet_width_mm, sheet_height_mm, density_pt_m⁻¹)
+    make_vector_graphics(sb::SheetBuilder; revise_names = false))
+    make_vector_graphics(fofo, cell_iter, sheet_width_mm, sheet_height_mm, density_pt_m⁻¹; revise_names = false))
     --> Bool
 
 Create an svg file. 
@@ -30,10 +30,10 @@ function make_vector_graphics(smb::SheetMatrixBuilder)
     # Do the work
     make_vector_mosaic(smb, ffna_svg)
 end
-function make_vector_graphics(sb::SheetBuilder)
-    make_vector_graphics(full_folder_path(sb), sb.cell_iter, width_adjusted_mm(sb), height_adjusted_mm(sb), sb.density_pt_m⁻¹)
+function make_vector_graphics(sb::SheetBuilder; revise_names = false)
+    make_vector_graphics(full_folder_path(sb), sb.cell_iter, width_adjusted_mm(sb), height_adjusted_mm(sb), sb.density_pt_m⁻¹; revise_names)
 end
-function make_vector_graphics(fofo, cell_iter, sheet_width_mm, sheet_height_mm, density_pt_m⁻¹)
+function make_vector_graphics(fofo, cell_iter, sheet_width_mm, sheet_height_mm, density_pt_m⁻¹; revise_names = false)
     #
     # Early exits
     #
@@ -61,7 +61,7 @@ function make_vector_graphics(fofo, cell_iter, sheet_width_mm, sheet_height_mm, 
     ffna_css = replace(joinpath(fofo, COMPOSITE_FNAM), ".png" => ".css")
     if isfile(ffna_svg) && isfile(ffna_css)
         svg_time = mtime(ffna_svg)
-        if svg_time > bitmap_time && svg_time > summits_time && svg_time > lakes_time
+        if svg_time > bitmap_time && svg_time > summits_time && svg_time > lakes_time && ! revise_names
             @debug "    $(splitpath(ffna_svg)[end]) in $fofo\n           already exists and is newer than its input files. Exiting ´make_vector_graphics´"
             return true
         end
@@ -183,9 +183,9 @@ function add_summit_text(svg, ffna_csv_summits, lineheight_px, max_x_left_align)
     for (name, z, prominence, (y, x), text_on_left) in zip(vname, vz, vpr, vI, vtext_on_left)
         text_anchor = text_on_left ? "end" : "start"
         if name == ""
-            add_single_line_text_element(svg, "$(z)m  ($(prominence))", class, strip(x), strip(y), dx, text_anchor)
+            inject_text!(svg, "$(z)m  ($(prominence))", class, strip(x), strip(y), dx, text_anchor)
         else
-            add_two_line_text_element(svg, name, "$(z)m  ($(prominence))", class, strip(x), strip(y), lineheight_px, dx, text_anchor)
+            inject_two_line_text!(svg, name, "$(z)m  ($(prominence))", class, strip(x), strip(y), lineheight_px, dx, text_anchor)
         end
     end
 end
@@ -208,7 +208,7 @@ function add_lake_text(svg, ffna_csv_lakes)
     #
     for (z, (y, x)) in zip(vz, vI)
         if z > 0
-            add_single_line_text_element(svg, "$(z)m", class, strip(x), strip(y), 0, "middle")
+            inject_text!(svg, "$(z)m", class, strip(x), strip(y), 0, "middle")
         end
     end
 end
@@ -217,33 +217,21 @@ end
 # " <tspan class="fjell_alt">...</tspan>"
 #    In tsp1, same for text2.
 #    Maybe separate a function to do both since paranthesis rule is the same.
-function add_two_line_text_element(parent, text1, text2, class, x, y, lineheight_px, dx, text_anchor)
+function inject_two_line_text!(parent, text1, text2, class, x, y, lineheight_px, dx, text_anchor)
     # We're misusing indent to reflect xml structure in this function
         el = ElementNode("text")
         link!(el, AttributeNode("class", class))
         link!(el, AttributeNode("x", x))
         link!(el, AttributeNode("y", y))
-        link!(el, TextNode("\n    ")) # line break and tabs for xml readability
-            tsp1 = ElementNode("tspan")
-            link!(tsp1, TextNode(text1))
-            add_alignment!(tsp1, dx, text_anchor)
-            link!(tsp1, TextNode("\n    ")) # line break and tabs for xml readability
-        link!(el, tsp1)
-            tsp2 = ElementNode("tspan")
-            link!(tsp2, TextNode(text2))
-            link!(tsp2, AttributeNode("x", x))
-            link!(tsp2, AttributeNode("y", y))
-            link!(tsp2, AttributeNode("dy", "$lineheight_px"))
-            add_alignment!(tsp2, dx, text_anchor)
-            link!(tsp2, TextNode("\n    ")) # line break and tabs for xml readability
-        link!(el, tsp2)
+        inject_tspan!(el, text1, dx, text_anchor)
+        inject_tspan!(el, text2, dx, text_anchor; x, y, lineheight_px)
     link!(parent, el)
     # Add a line break after the </text>, for readability.
     link!(parent, TextNode("\n"))
     nothing
 end
 
-function add_single_line_text_element(parent, text, class, x, y, dx, text_anchor)
+function inject_text!(parent, text, class, x, y, dx, text_anchor)
     el = ElementNode("text")
     link!(el, TextNode(text))
     link!(el, AttributeNode("class", class))
@@ -256,6 +244,18 @@ function add_single_line_text_element(parent, text, class, x, y, dx, text_anchor
     nothing
 end
 
+function inject_tspan!(parent, text, dx, text_anchor; x = nothing, y = nothing, lineheight_px = nothing, tablev = 1)
+    link!(parent, TextNode('\n' * repeat("    ", tablev))) # line break and indent for xml readability
+    tsp = ElementNode("tspan")
+    isnothing(x) || link!(tsp, AttributeNode("x", x))
+    isnothing(y) || link!(tsp, AttributeNode("y", y))
+    isnothing(lineheight_px) || link!(tsp, AttributeNode("dy", "$lineheight_px"))
+    add_alignment!(tsp, dx, text_anchor)
+    link!(tsp, TextNode('\n' * repeat("    ", tablev + 1))) # line break and indent for xml readability
+    link!(tsp, TextNode(text))
+    link!(tsp, TextNode('\n' * repeat("    ", tablev))) # line break and indent for xml readability
+    link!(parent, tsp)
+end
 
 function add_alignment!(el, dx, text_anchor::String)
     if text_anchor == "end" || text_anchor == "middle"
