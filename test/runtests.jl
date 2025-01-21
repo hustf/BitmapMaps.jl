@@ -41,7 +41,7 @@ end
     include("t_markers.jl")
 end
 @testset "Test summit prominence" begin # depends on local data files
-    include("t_summit_markers.jl")
+    include("t_summits_on_sheet.jl")
 end
 @testset "Test summit prominence" begin # depends on local data files
     include("t_sheet_contact.jl")

@@ -70,7 +70,7 @@ function _prepare_init_file_configuration(io)
     entry("Markers", "Symbol obscure summit", "on_triangle")
     entry("Markers", "Size prominent summit symbol", "31"; comm = "\r\n  #  Length of bounding box size. Must be odd.")
     entry("Markers", "Size obscure summit symbol", "21"; comm = "\r\n  #  Length of bounding box size. Must be odd.")
-    entry("Markers", "Minimum stress level", "-11"; comm = "\r\n  #  Summits with even lower stress values are discarded as power lines / artifacts")
+    entry("Markers", "Minimum stress level", "-5"; comm = "\r\n  #  Summits with even lower stress values are discarded as power lines / artifacts")
     entry("Text", "Font size [pt]", "10.0"; comm = "\r\n  #  Unit is postscript points, used in e.g. Office Word\r\n  # pt = inch / 72 = 0.3528 mm")
     entry("Text", "Flip text side at width fraction", "0.85"; comm = "\r\n  #  Set text to the left of summits when summit is further to the right")
     # To file..
@@ -198,4 +198,12 @@ function delete_init_file()
     else
         println("$fna Didn't and doesn't exist.")
     end
+end
+
+
+function parse_as_int_tuple(strtuple)
+    s1 = strip(string(strtuple))
+    s2 = replace(s1, "(" => "", ")" => "", " " => "")
+    st = Tuple(split(s2, ','))
+    tryparse(Int64, st[1]), tryparse(Int64, st[2])
 end

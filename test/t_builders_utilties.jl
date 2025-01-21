@@ -1,6 +1,7 @@
 using Test
 using BitmapMaps
 using BitmapMaps: cell_to_utm_factor, width_cell, height_cell
+using BitmapMaps: func_utm_to_sheet_index, func_utm_to_cell_index, geo_width_height
 
 # Corresponds to resource/matrix_sheet_cell_utm.svg
 sw_corner, nrc, cell2utm = (44000, 6909047), (2,3), 2
@@ -73,3 +74,58 @@ hp = height_cell(p) * cell_to_utm_factor(p)
 @test bbox_external_string(smb[1,1]) == "(44000 6909047)-(44006 6909055)"
 @test polygon_string(smb[1,2]) == "MULTIPOLYGON (\n                   ((44006 6909047, 44012 6909047, 44012 6909055, 44006 6909055, 44006 6909047)))"
 @test polygon_string(smb) == "MULTIPOLYGON (\n                   ((44000 6909047, 44006 6909047, 44006 6909055, 44000 6909055, 44000 6909047)),\n                   ((44000 6909055, 44006 6909055, 44006 6909063, 44000 6909063, 44000 6909055)),\n                   ((44006 6909047, 44012 6909047, 44012 6909055, 44006 6909055, 44006 6909047)),\n                   ((44006 6909055, 44012 6909055, 44012 6909063, 44006 6909063, 44006 6909055)),\n                   ((44012 6909047, 44018 6909047, 44018 6909055, 44012 6909055, 44012 6909047)),\n                   ((44012 6909055, 44018 6909055, 44018 6909063, 44012 6909063, 44012 6909055)))"
+
+
+##############################################################
+# Test conversion from geographical coordinates to sheet index
+##############################################################
+
+w_utm, h_utm = geo_width_height(smb)
+ws_utm, hs_utm = geo_width_height(smb[1])
+nw_utm = northwest_corner(smb[1])
+# The coordinates defined in the figure resource/matrix_sheet_cell_utm
+e, n = southwest_corner(smb)
+
+
+# Generated utm to sheet index function
+f = func_utm_to_sheet_index(smb)
+fs(e, n) = f((e, n))
+# The southwest corner, touched by four sheets, belongs to a sheet on the south side of the sheet matrix.
+# Whose coordinates are outside the sheet matrix.
+@test_throws ArgumentError fs(e, n) 
+ei, ni = southwest_internal_corner(smb)
+@test fs(ei, ni) == (1, 1)
+# The sheet row is 1 for this range of utm northing.
+@test [fs(e, n + i)[1] for i in 1:hs_utm] == ones(Int, hs_utm)
+# The sheet row is 2 for this range of utm northing.
+@test [fs(e, n + i)[1] for i in (1+hs_utm):2hs_utm] == 2 .* ones(Int, hs_utm)
+# The northheast corner, touched by four sheets, belongs to the sheet on the east side of the sheet matrix.
+# Whose coordinates are outside the sheet matrix.
+@test_throws ArgumentError fs(e + w_utm, n + h_utm)
+fs(e + w_utm - 1, n + h_utm) == (2, 3)
+@test_throws ArgumentError fs(e + w_utm, n + h_utm + 1)
+
+
+##############################################################
+# Test conversion from geographical coordinates to cell index
+##############################################################
+
+
+f1 = func_utm_to_cell_index(smb)
+fi(e, n) = f1((e, n))
+# The southwest corner, touched by four sheets, belongs to a sheet on the south side of the sheet matrix.
+# Whose coordinates are outside the sheet matrix. We return the repeating index from the sheet, even
+# if that one is outside the matrix
+@test fi(e, n) == (1, 1)
+# Our first sheet's top left
+@test fi(e + ws_utm, n + hs_utm) == (1, 1)
+# Our first sheets' bottom left
+@test fi(e, n + 1)[1] == hs_utm / cell2utm
+# Another utm coordinate with the same sheet index
+@test fi(e, n + 2)[1] == hs_utm / cell2utm
+# Our first sheets' bottom left
+@test fi(e, n)[2] == 1
+# Another utm coordinate with the same sheet index
+@test fi(e + 1, n)[2] == 1
+[fi(e, n + i)[1] for i in hs_utm:-1:1] == [1, 1, 2, 2, 3, 3, 4, 4]
+[fi(e + i, n)[2] for i in 0:(ws_utm - 1)] == [1, 1, 2, 2, 3, 3]

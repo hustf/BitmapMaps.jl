@@ -1,7 +1,7 @@
 # The pipeline has a consolidation step, but the pipeline requires that user download relevant elevation data from online.
 #
-# However, if data already exists locally for another bitmapmap, these functions
-# can help with local file management.
+# However, if data already exists locally for another bitmapmap, some of these functions
+# can help with local file management. Some others are used by the pipeline.
 #
 # To build the folder structure first, you can either `run_bitmapmap_pipeline()`,
 # which aborts the run when not finding data, or run
@@ -162,6 +162,31 @@ end
 
 
 
+
+"""
+    write_named_tuple_to_csv(filename::String, nt::NamedTuple)
+    ---> Nothing
+
+Make a column formatted and delimited .csv, without many dependencies. Not suitable for large files.
+
+# Example
+
+With predefined vector of same length.
+```
+julia> nt = (; Elevation_m = vz, Prominence_m = vprom, Utm = vutm, Cell_index = vcell_ij, Stress = vσ, Name = vname );
+
+julia> write_named_tuple_to_csv("temp.csv", nt)
+
+```
+"""
+function write_named_tuple_to_csv(filename::String, nt::NamedTuple)
+    symbols = [fieldnames(typeof(nt))...]
+    headers = string.(symbols)
+    vectors = [getfield(nt, sy) for sy in symbols]
+    widths = repeat([20], length(headers))
+    write_vectors_to_csv(filename, headers, vectors, widths)
+end
+
 """
     write_vectors_to_csv(filename::String, headers::Vector{T}, vectors, widths; delim = '\t') where T <: Union{String, Symbol}
     ---> Nothing
@@ -196,19 +221,45 @@ function write_vectors_to_csv(filename::String, headers::Vector{T}, vectors, wid
     nothing
 end
 
+# Methods useful for developing and testing
 
-# Function useful for developing and testing
 
-function open_as_temp__in_gimp(img)
+"""
+    elevation_at_output(sb::SheetBuilder)
+    elevation_at_output(fofo, cell_iter, cell2utm)
+    ---> Matrix{Float32}
+"""
+function elevation_at_output(fofo, cell_iter, cell2utm)
+    ny, nx = size(cell_iter)
+    si = CartesianIndices((1:cell2utm:(ny  * cell2utm), 1:cell2utm:(nx * cell2utm)))
+    permutedims(readclose(joinpath(fofo, CONSOLIDATED_FNAM)).A[:,:,1])[si]
+end
+
+function elevation_at_output(sb::SheetBuilder)
+    fofo = full_folder_path(sb)
+    cell_iter = sb.cell_iter
+    cell2utm = cell_to_utm_factor(sb)
+    if ! isfile(joinpath(fofo, CONSOLIDATED_FNAM))
+        @debug "    $CONSOLIDATED_FNAM in $fofo\n           does not exist. Exiting`"
+        return Float32[]
+    end
+    elevation_at_output(fofo, cell_iter, cell2utm)
+end
+
+function open_as_temp_in_gimp(img)
     @async let
         fnam = tempname()
         save_png_with_phys(fnam, img)
-        gimp_path = "C:\\Program Files\\GIMP 2\\bin\\gimp-2.10.exe"
-        run(`$gimp_path "$fnam"`)
+        open_in_gimp(fnam)
     end
+end
+function open_in_gimp(fnam)
+    gimp_path = "C:\\Program Files\\GIMP 2\\bin\\gimp-2.10.exe"
+    run(`$gimp_path "$fnam"`)
 end
 
 function get_random_color(i)
     Random.seed!(i) # For consistentency between runs
     rand(RGB{N0f8})
 end
+

@@ -88,6 +88,11 @@ end
 TODO make inclusion of prominence configureable.
 """
 function _make_vector_graphics(ffna_svg, ffna_css, ffna_csv_summits, ffna_csv_lakes, cell_iter, sheet_width_mm, sheet_height_mm, density_pt_m⁻¹, font_pt, limit_left_align)
+    # Early exit
+    if isempty(readdlm(ffna_csv_summits, '\t')[2:end,:])
+        @debug "    No summits in csv file => no text to add."
+        return
+    end
     #
     # Prepare arguments
     #
@@ -95,12 +100,6 @@ function _make_vector_graphics(ffna_svg, ffna_css, ffna_csv_summits, ffna_csv_la
     lineheight_px = Int(round(1.2 * fontsize_px))
     nx = size(cell_iter, 2)
     max_x_left_align = limit_left_align * nx
-    # We trust the column order, as defined in `write_prominence_to_csv` and `add_names_to_csv`
-    summits_data = readdlm(ffna_csv_summits, '\t')[2:end,:]
-    if isempty(summits_data)
-        @debug "    No summits in csv file => no text to add."
-        return 0
-    end
     #
     # Do the work
     #

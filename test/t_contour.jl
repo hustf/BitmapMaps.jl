@@ -137,7 +137,7 @@ for k in 0.2:0.1:1.0
     f_diff(rem_label, neigh_label) = segment_mean(gg, rem_label) - segment_mean(gg, neigh_label)
     h = prune_segments(gg, f_to_be_removed, f_diff)
     img = map(i -> get_random_color(i), labels_map(h))
-    open_as_temp__in_gimp(img)
+    open_as_temp_in_gimp(img)
     @show k length(gg.segment_labels) length(h.segment_labels)
 end
 
@@ -155,10 +155,10 @@ begin
 end
 
 mask = bumpy_patch(transpose(g.A[:, :, 1])[sicr])
-open_as_temp__in_gimp(mask)
+open_as_temp_in_gimp(mask)
 mask
 conto = _elev_contours(full_folder_path(sb), sb.cell_iter, cell_to_utm_factor(sb), minlen, vthick, vdist)
-open_as_temp__in_gimp(conto)
+open_as_temp_in_gimp(conto)
 
 
 

@@ -26,6 +26,8 @@ function water_overlay(fofo, cell_iter, cell2utm, lake_steepness_max)
         return true
     end
     ffna = joinpath(fofo, CONSOLIDATED_FNAM)
+    # TODO Since g can be very large, consider dropping the transpose until the result is available. Transpose that
+    # for possible speed gains.
     elevation = let
         g = readclose(ffna)
         eltype(g) == Float32 || throw(TypeError(:g, "unexpected .tif image eltype", GeoArrays.GeoArray{Float32, Array{Float32, 3}}, typeof(g)))
@@ -201,7 +203,7 @@ function centre_indices(segments)
 end
 
 function write_lake_to_csv(ffnam_csv_lakes, lakes::SegmentedImage, elevation, cell2utm)
-    headers = ["Elevation_m", "Area_m²", "Sheet_index"]
+    headers = ["Elevation_m", "Area_m²", "Cell_index"]
     # 
     vz = Int[]
     vA = String[]

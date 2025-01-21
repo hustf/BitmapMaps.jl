@@ -11,6 +11,8 @@
 # The ridge and dieder lines are not generated in bumpy patches.
 #
 # Output is an image file per sheet, for manual touch-up.
+# Consider TODO: Many artifacts have a very even, small, positive curvature.
+# We might identify those in a similar way as we do with lakes? 
 
 """
     ridge_overlay(sb::SheetBuilder)
@@ -54,6 +56,7 @@ function _ridge(fofo, cell_iter, cell2utm)
     #
     # Where there is forest or houses, we do not want to show ridges.
     # masked_laplacian will be zero in those patches.
+    # TODO consider using σₘᵢₙ , σₘₐₓ = principal_min_max_stress(z), see 'dev_summit_markers.jl'
     masked_laplacian = smooth_laplacian(g, si) .* (1 .- bumpy_patch(g, si))
     # Pre-allocate output image
     result = zeros(RGBA{N0f8}, size(si)...)
@@ -81,6 +84,47 @@ function _corners_and_dieders!(result, bbuf, source, criterion_functions, colors
     end
     result
 end
+
+"""
+    σm(z::Matrix{Float32})
+    ---> Matrix{Float32}
+
+Mean stress, i.e. hydrostatic pressure with the opposite sign. Tensile stress
+is positive.
+
+Use this for identifying cone-like summits, conifers or towers which have negative values.
+Use this for identifying holes in the ground or bowls, which have positive values.
+"""
+function σm(z::Matrix{Float32})
+    # The Hessian components are used to determine the principal tensile stress equivalent
+    σ11, _, _, σ22 = hessian_components(z)
+    # Return a scalar matrix representing the mean stress at each index
+    (σ11 .+ σ22) ./ 2
+end
+
+
+function principal_stresses(σ11, σ12, σ22)
+    trace = (σ11 .+ σ22) ./ 2
+    determinant = sqrt.(((σ11 .- σ22) ./ 2).^2 .+ σ12.^2)
+    λ1 = trace .+ determinant
+    λ2 = trace .- determinant
+    λ1, λ2
+end
+function principal_stresses(z)
+    σ11, _, σ12, σ22 = hessian_components(z)
+    # Disregarding roundoff, σ21 == σ22
+    principal_stresses(σ11, σ12, σ22)
+end
+
+principal_stress_min(z) = min.(principal_stresses(z))
+principal_stress_max(z) = max.(principal_stresses(z))
+
+function principal_min_max_stress(z)
+    λ1, λ2 = principal_stresses(z)
+    min.(λ1, λ2), max.(λ1, λ2)
+end
+
+
 
 
 """

@@ -1,6 +1,11 @@
-# Step in pipeline.
+# Contains two steps in pipeline.
+#
+# 1. join_layers
 # Merges foreground layers onto background using the α / opacity channel.
 # Output is an image file per sheet.
+#
+# 2. make_thumbnail_image
+# Unlike other pipeline functions, this takes a second, captured argument.
 
 """
     join_layers(sb::SheetBuilder)
@@ -68,7 +73,7 @@ function composite_on_top!(res, layer, modefunc)
 end
 
 # This is called by by the generated function `make_thumbnail`, which captures n_governing
-function make_thumnail_image(fofo, density_pt_m⁻¹, n_governing)
+function make_thumbnail_image(fofo, density_pt_m⁻¹, n_governing)
     # Prepare 
     ffna = joinpath(homedir(), fofo, THUMBNAIL_FNAM)
     layerstack  = [TOPORELIEF_FNAM    Nothing
@@ -97,20 +102,24 @@ function make_thumnail_image(fofo, density_pt_m⁻¹, n_governing)
         end
     end
     # Do the work
-    res = load(joinpath(homedir(), fofo, layerstack[1, 1]))
+    img = load(joinpath(homedir(), fofo, layerstack[1, 1]))
     # Iterate through the rest of the layer stack
     for rw in 2:size(layerstack, 1)
         layer = load(joinpath(homedir(), fofo, layerstack[rw, 1]))
         modefunc = layerstack[rw, 2]
-        composite_on_top!(res, layer, modefunc)
+        composite_on_top!(img, layer, modefunc)
     end
-    # Downsample
-    ny, nx = size(res)
-    I = CartesianIndices((1:n_governing:ny, 1:n_governing:nx))
+    # Downsize
+    ny, nx = size(img)
+    iter = (1:n_governing:ny, 1:n_governing:nx)
+    # A pure downsampling would result in a 'speckled' appearance. 
+    # Averaging over the influencing pixels works well in the XYZ colorspace
+    odd_size = 2 * div(n_governing, 2) + 1
+    thumb = RGB{N0f8}.(mapwindow(mean, XYZ.(img), (odd_size, odd_size); indices = iter))
     # Feedback
-    display_if_vscode(res[I])
+    display_if_vscode(thumb)
     # Save file
     @debug "    Saving $ffna"
-    save_png_with_phys(ffna, res[I]; density_pt_m⁻¹)
+    save_png_with_phys(ffna, thumb; density_pt_m⁻¹)
     true
 end

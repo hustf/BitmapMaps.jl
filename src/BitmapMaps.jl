@@ -53,16 +53,23 @@ using ColorTypes: GrayA, gray, alpha
 import ImageCore
 using ImageCore: channelview, scaleminmax, colorview, N0f8
 using ImageFiltering: FIRTiled, Fill
-# Summit prominence and names
+# Summit prominence, names, and graph_utilties
 using ImageMorphology: MaxTree, strel
 import DelimitedFiles
 using DelimitedFiles: readdlm, writedlm
 import Stadnamn
 using Stadnamn: point_names
+import MetaGraphsNext
+using MetaGraphsNext: loadgraph, savegraph, MetaGraph, DiGraph, labels, nv, ne, add_edge!, MGFormat
+using MetaGraphsNext: all_neighbors, neighbor_labels, inneighbor_labels, outneighbor_labels, all_neighbor_labels
+using MetaGraphsNext: neighbors, indegree, outdegree, rem_edge!, rem_vertex!, vertices, label_for, code_for
+using MetaGraphsNext: inneighbors, outneighbors, has_edge, edge_labels, is_cyclic # TODO clean unused graph things
+using MetaGraphsNext: DFSIterator
 # 
 # Overlays to composite
 import ColorBlendModes
 using ColorBlendModes: CompositeDestinationOver, BlendLighten, BlendMultiply
+using Statistics: mean
 # Vector graphics (this .svg is .xml)
 import EzXML
 using EzXML: readxml, write, Document, findfirst, setnodecontent!, firstnode
@@ -74,6 +81,10 @@ import Random
 #
 export save_png_with_phys
 export run_bitmapmap_pipeline, define_builder
+# Export of pipeline functions
+export establish_folder, unzip_tif, consolidate_elevation_data, water_overlay
+export topo_relief, contour_lines_overlay, grid_overlay, ridge_overlay, summits_and_prominence
+export join_layers, make_thumbnail_image, summits_regional_update, make_vector_graphics
 # Export of builders and and utilties
 export SheetBuilder, SheetMatrixBuilder, full_folder_path
 export northeast_corner, northeast_external_corner, northeast_internal_corner
@@ -134,8 +145,11 @@ include("grid.jl")
 include("ridges.jl")
 include("layers.jl")
 include("mark_utils.jl")
-include("summit_markers.jl")
-include("sheet_contact.jl")
+include("summits_on_sheet.jl")
+include("summits_regional_poststep.jl")
 include("vector_graphics.jl")
+include("graph_utilties.jl")
+include("graph_harvest.jl")
+
 
 end

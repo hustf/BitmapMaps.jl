@@ -68,27 +68,61 @@ function mark_at!(img, I::CartesianIndex{2}; side::Int = 3, f_is_filled = func_i
 end
 
 """
-    line!(img, A::CartesianIndex{2}, B::CartesianIndex{2})
+    line!(img, A::CartesianIndex{2}, B::CartesianIndex{2}, tol_dist=sqrt(2)/2)
 
-
-Line from A to B. Not the fastest or smartest implementation, especially for long line. 
-The line at least will appear consistently wide.
+Draws a line from A to B in the given image, with a thickness defined by `tol_dist`.
 """
-function line!(img, A::CartesianIndex{2}, B::CartesianIndex{2})
-    min_i = min(A[1], B[1])
-    min_j = min(A[2], B[2])
-    max_i = max(A[1], B[1])
-    max_j = max(A[2], B[2])
-    rngi = min_i:1:max_i
-    rngj = min_j:1:max_j
-    f = func_is_on_line(A.I, B.I)
-    Ω = [CartesianIndex((i,j)) for i in rngi, j in rngj if f(i, j)]
+function line!(img, A::CartesianIndex{2}, B::CartesianIndex{2}, tol_dist=√2 / 2)
+    i1, j1 = Tuple(A)
+    i2, j2 = Tuple(B)
+    Δi = abs(i2 - i1)
+    Δj = abs(j2 - j1)
+    si = sign(i2 - i1)
+    sj = sign(j2 - j1)
+    max_dist2 = tol_dist^2
+    # Get all valid indices for the image
     R = CartesianIndices(img)
-    Ωₚ = filter(q -> in(q, R), Ω)
-    img[Ωₚ] .= oneunit(eltype(img))
+    if Δi > Δj
+        err = Δi ÷ 2
+        for _ in 1:(Δi + 1)
+            color_neighbors!(img, R, CartesianIndex(i1, j1), max_dist2)
+            err -= Δj
+            if err < 0
+                j1 += sj
+                err += Δi
+            end
+            i1 += si
+        end
+    else
+        err = Δj ÷ 2
+        for _ in 1:(Δj + 1)
+            color_neighbors!(img, R, CartesianIndex(i1, j1), max_dist2)
+            err -= Δi
+            if err < 0
+                i1 += si
+                err += Δj
+            end
+            j1 += sj
+        end
+    end
     img
 end
 
+"""
+    color_neighbors!(img, R, C, max_dist2)
+
+Colors all neighbors of index `C` within the squared distance `max_dist2` and bounds `R`.
+"""
+function color_neighbors!(img, R, C::CartesianIndex{2}, max_dist2)
+    for di in -1:1
+        for dj in -1:1
+            neighbor = CartesianIndex(C[1] + di, C[2] + dj)
+            if neighbor in R && (di^2 + dj^2 <= max_dist2)
+                img[neighbor] = oneunit(eltype(img))
+            end
+        end
+    end
+end
 ###########
 # Internals
 ###########

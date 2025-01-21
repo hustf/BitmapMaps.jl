@@ -1,6 +1,7 @@
 # Step in pipeline.
 # Creates utm grid lines overlay.
 # Output is an image file per sheet, for manual touch-up.
+# Consider TODO: Break up lengths of 200 m, the distance btw. 100m-countours for 30° steepness.
 
 """
     grid_overlay(sb::SheetBuilder)

@@ -4,7 +4,7 @@
 # - sb::SheetBuilder
 # - p - duck typed, can be a GeoArray or a SheetBuilder.
 #
-# A few methods are extended for GeoArray in `geoarray_utilties`
+# A few functions are extended with methods for GeoArray in `geoarray_utilties`
 
 
 sheet_width_cell(smb::SheetMatrixBuilder) = Int(floor(smb.sheet_width_mm * smb.density_pt_m⁻¹ / 1000))
@@ -20,7 +20,9 @@ width_cell(sb::SheetBuilder) = ncols(sb)
 height_cell(smb::SheetMatrixBuilder) = nrows(smb) * sheet_height_cell(smb)
 height_cell(sb::SheetBuilder) = nrows(sb)
 
-cell_to_utm_factor(sb::SheetBuilder) = sb.f_I_to_utm(CartesianIndex(1, 2))[1] - sb.f_I_to_utm(CartesianIndex(1, 1))[1]
+cell_to_utm_factor(smb::SheetMatrixBuilder) = smb.cell_to_utm_factor
+cell_to_utm_factor(sb::SheetBuilder) = cell_to_utm_factor(sb.f_I_to_utm)
+cell_to_utm_factor(f_I_to_utm::Function) = f_I_to_utm(CartesianIndex(1, 2))[1] - f_I_to_utm(CartesianIndex(1, 1))[1]
 map_scale_denominator(smb::SheetMatrixBuilder) = map_scale_denominator(first(smb))
 map_scale_denominator(sb::SheetBuilder) = sb.density_pt_m⁻¹ * cell_to_utm_factor(sb)
 
@@ -44,17 +46,24 @@ height_adjusted_mm(sb::SheetBuilder) = 1000 * height_cell(sb) / sb.density_pt_m�
 
 
 """
-    southwest_corner(smb::SheetMatrixBuilder)
-    northeast_corner(smb::SheetMatrixBuilder)
-    northwest_corner(smb::SheetMatrixBuilder)
-    southeast_corner(smb::SheetMatrixBuilder)
-    northwest_corner(p::SheetBuilder)
-    southeast_internal_corner(p::SheetBuilder)
-    southeast_external_corner(p::SheetBuilder)
-    southwest_internal_corner(p::SheetBuilder)
-    southwest_external_corner(p::SheetBuilder)
-    northeast_internal_corner(p::SheetBuilder)
-    northeast_external_corner(p::SheetBuilder)
+southwest_corner(smb::SheetMatrixBuilder)
+northeast_corner(smb::SheetMatrixBuilder)
+northwest_corner(smb::SheetMatrixBuilder)
+southeast_corner(smb::SheetMatrixBuilder)
+northwest_corner(sb::SheetBuilder)
+southwest_external_corner(smb::SheetMatrixBuilder)
+northeast_external_corner(smb::SheetMatrixBuilder)
+northwest_external_corner(smb::SheetMatrixBuilder)
+southeast_external_corner(smb::SheetMatrixBuilder)
+southeast_internal_corner(sb::SheetBuilder)
+southeast_internal_corner(smb::SheetMatrixBuilder)
+southeast_external_corner(sb::SheetBuilder)
+southwest_internal_corner(p)
+southwest_internal_corner(smb::SheetMatrixBuilder)
+southwest_external_corner(p)
+northeast_internal_corner(p)
+northeast_internal_corner(smb::SheetMatrixBuilder)
+northeast_external_corner(p)
     ---> Tuple(Int, Int)
 
 An entire SheetMatrixBuilder is divided into sheets. Every SheetMatrixBuilder method refers to 'external' boundaries.
@@ -85,11 +94,11 @@ northwest_external_corner(smb::SheetMatrixBuilder) = northwest_corner(smb)
 "ref. southwest_corner"
 southeast_external_corner(smb::SheetMatrixBuilder) = southeast_corner(smb)
 "ref. southwest_corner"
-southeast_internal_corner(p::SheetBuilder) = p.f_I_to_utm(p.cell_iter[end, end])
+southeast_internal_corner(sb::SheetBuilder) = sb.f_I_to_utm(sb.cell_iter[end, end])
 "ref. southwest_corner"
 southeast_internal_corner(smb::SheetMatrixBuilder) = southeast_internal_corner(smb[1, end])
 "ref. southwest_corner"
-southeast_external_corner(p::SheetBuilder) = 2 .* southeast_internal_corner(p) .- p.f_I_to_utm(p.cell_iter[end - 1, end - 1])
+southeast_external_corner(sb::SheetBuilder) = 2 .* southeast_internal_corner(sb) .- sb.f_I_to_utm(sb.cell_iter[end - 1, end - 1])
 "ref. southwest_corner"
 southwest_internal_corner(p) = (northwest_corner(p)[1], southeast_internal_corner(p)[2])
 southwest_internal_corner(smb::SheetMatrixBuilder) = southwest_internal_corner(smb[1, 1])
@@ -147,12 +156,8 @@ julia> bbox_external_string(fna)
 "(43200 6909000)-(44000 6909600)"
 ```
 """
-function bbox_external_string(p)
-    min_x, min_y = southwest_external_corner(p)
-    max_x, max_y = northeast_external_corner(p)
-    bbox_external_string((;min_x, min_y, max_x, max_y))
-end
-function bbox_external_string(bb::NamedTuple{(:min_x, :min_y, :max_x, :max_y)})
+bbox_external_string(p) = _bbox_external_string(bbox_internal(p))
+function _bbox_external_string(bb::NamedTuple{(:min_x, :min_y, :max_x, :max_y)})
     x1 = Int(bb.min_x)
     y1 = Int(bb.min_y)
     x3 = Int(bb.max_x)
@@ -160,7 +165,59 @@ function bbox_external_string(bb::NamedTuple{(:min_x, :min_y, :max_x, :max_y)})
     "($x1 $y1)-($x3 $y3)"
 end
 
+"""
+    bbox_external(p)
+    --> NamedTuple{(:min_x, :min_y, :max_x, :max_y)}
 
+UTM coordinates from p, a SheetMatrixBuilder or SheetBuilder.
+"""
+function bbox_external(p)
+    min_x, min_y = southwest_external_corner(p)
+    max_x, max_y = northeast_external_corner(p)
+    (;min_x, min_y, max_x, max_y)
+end
+"""
+    bbox_internal(p)
+    bbox_internal(cell_iter, f_I_to_utm)
+    --> NamedTuple{(:min_x, :min_y, :max_x, :max_y)}
+
+UTM coordinates from p, a SheetMatrixBuilder or SheetBuilder.
+"""
+function bbox_internal(p)
+    min_x, min_y = southwest_internal_corner(p)
+    max_x, max_y = northeast_internal_corner(p)
+    (;min_x, min_y, max_x, max_y)
+end
+function bbox_internal(cell_iter, f_I_to_utm)
+    nw = f_I_to_utm(CartesianIndex(1, 1))
+    se = f_I_to_utm(CartesianIndices(cell_iter)[end])
+    min_x, min_y, max_x, max_y = nw[1], se[2], se[1], nw[2]
+    (;min_x, min_y, max_x, max_y)
+end
+function bbox_internal(v::Vector)
+    vbb = bbox_internal.(v)
+    max_x = maximum(nt -> nt.max_x, vbb)
+    min_x = minimum(nt -> nt.min_x, vbb)
+    max_y = maximum(nt -> nt.max_y, vbb)
+    min_y = minimum(nt -> nt.min_y, vbb)
+    (;min_x, min_y, max_x, max_y)
+end
+function bbox_internal(g::MetaGraph)
+    isempty(g[]) && throw(ArgumentError("No metadata"))
+    g[] isa Set{@NamedTuple{min_x::Int64, min_y::Int64, max_x::Int64, max_y::Int64}} || throw(ArgumentError("Metadata not recognized"))
+    max_x = maximum(nt -> nt.max_x, g[])
+    min_x = minimum(nt -> nt.min_x, g[])
+    max_y = maximum(nt -> nt.max_y, g[])
+    min_y = minimum(nt -> nt.min_y, g[])
+    (;min_x, min_y, max_x, max_y)
+end
+function bbox_internal(vtup::Vector{Tuple{Int64, Int64}})
+    max_x = maximum(tup -> tup[1], vtup)
+    min_x = minimum(tup -> tup[1], vtup)
+    max_y = maximum(tup -> tup[2], vtup)
+    min_y = minimum(tup -> tup[2], vtup)
+    (;min_x, min_y, max_x, max_y)
+end
 
 """
     geo_area(p)
@@ -202,10 +259,6 @@ function geo_width_height(p)
     n, e = northeast_external_corner(p)
     (n - s, e - w)
 end
-
-
-
-
 
 """
     closed_polygon_string(smb::SheetMatrixBuilder)
@@ -450,6 +503,169 @@ end
     ---> String
 
 Used for feedback by pipeline.
+
+# Example
+```
+julia> BitmapMaps.cartesian_index_string(smb)
+"[7, 7]"
+
+julia> BitmapMaps.cartesian_index_string(smb,2)
+"[2, 1]"
+```
 """
 cartesian_index_string(smb::SheetMatrixBuilder, i::Int) = replace(string(CartesianIndices(axes(smb))[i].I), '(' => '[', ')' => ']')
 cartesian_index_string(smb::SheetMatrixBuilder) = replace(string(CartesianIndices(axes(smb))[end].I), '(' => '[', ')' => ']')
+
+
+"""
+    func_utm_to_sheet_index(smb::SheetMatrixBuilder)
+
+Generate a function which returns on which sheet the utm coordinate belongs. Also see
+`func_I_to_utm` and `func_utm_to_cell_index`.
+"""
+function func_utm_to_sheet_index(smb::SheetMatrixBuilder)
+    sw_easting, sw_northing = southwest_external_corner(smb)
+    nr = nrows(smb)
+    nc = ncols(smb)
+    ws_utm, hs_utm = geo_width_height(smb[1]) # Sheet width, height
+    f = let sw_easting = sw_easting, sw_northing = sw_northing, nr = nr,  nc = nc, hs_utm = hs_utm, ws_utm = ws_utm
+        utm::Tuple{Int64, Int64} -> let 
+            i, j = (div((utm[2] - sw_northing), hs_utm, RoundUp), div((utm[1] - sw_easting), ws_utm) + 1)
+            i < 1 && throw(ArgumentError("Northing $(utm[2]) would coorespond to sheet [$i, j]. sw_northing = $(sw_northing) and hs_utm = $(hs_utm)"))
+            j < 1 && throw(ArgumentError("Easting $(utm[1]) would coorespond to sheet [i, $j]. sw_easting = $(sw_easting) and ws_utm = $(hs_utm)"))
+            i > nr && throw(ArgumentError("Northing $(utm[2]) would coorespond to sheet [$i, j], while nr = $nr. sw_northing = $(sw_northing) and hs_utm = $(hs_utm)"))
+            j > nc && throw(ArgumentError("Easting $(utm[1]) would coorespond to sheet [i, $j], while nc = $nc. sw_easting = $(sw_easting) and ws_utm = $(hs_utm)"))
+            return (i, j)
+        end
+    end
+    f
+end
+
+"""
+    func_utm_to_cell_index(p)
+
+p can be a SheetMatrixBuilder or a SheetBuilder.
+
+Generate a function which returns the sheet local index corresponding to the utm coordinate. 
+Also see `func_I_to_utm` and `func_utm_to_sheet_index`.
+"""
+function func_utm_to_cell_index(p)
+    # In the northwest, external and internal corners are the same.
+    nw_easting, nw_northing = northwest_corner(p)
+    if p isa SheetMatrixBuilder
+        w_utm, h_utm = geo_width_height(p[1]) # Sheet width, height
+    else
+        w_utm, h_utm = geo_width_height(p) # Sheet width, height
+    end
+    cell2utm = cell_to_utm_factor(p)
+    f = let nw_easting = nw_easting, nw_northing = nw_northing, w_utm = w_utm, h_utm = h_utm, cell2utm = cell2utm
+        utm::Tuple{Int64, Int64} -> let 
+            i_utm, j_utm = (mod(nw_northing - utm[2], h_utm) + 1, mod(utm[1] - nw_easting, w_utm) + 1)
+            return div(i_utm, cell2utm, RoundUp), div(j_utm, cell2utm, RoundUp)
+        end
+    end
+    f
+end
+
+
+
+# NOTE we have kept 'neighbor_folder_dict'.
+# We may perhaps reuse neighbor_folder if we will be linking sheet svgs to each other. 
+# For other uses, see `sides_with_border(smb, sb)`
+
+"""
+    neighbor_folder(sb::SheetBuilder, direction::Symbol)
+    ---> String
+
+Returns an empty string if the neigbour folder does not exist.
+"""
+function neighbor_folder(sb::SheetBuilder, direction::Symbol)
+    # Prepare
+    Δi, Δj = Tuple(cartesian_unit_offset(direction))
+    # Collect from sb
+    fo = joinpath(splitpath(sb.pthsh)[1:end - 1])
+    i = parse(Int, split(splitpath(sb.pthsh)[end])[1])
+    j = parse(Int, split(splitpath(sb.pthsh)[end])[2])
+    sw = southwest_external_corner(sb)
+    ne = northeast_external_corner(sb)
+    w = width_cell(sb) * cell_to_utm_factor(sb)
+    h = height_cell(sb) * cell_to_utm_factor(sb)
+    #
+    fofo = ""
+    fofo *= string(i + Δi) * " " * string(j + Δj)
+    fofo *= "  " * string(sw[1] + Δj * w) * " " * string(sw[2] + Δi * h)
+    fofo *= "  " * string(ne[1] + Δj * w) * " " * string(ne[2] + Δi * h)
+    fullfo = joinpath(homedir(), fo, fofo)
+    if isdir(fullfo)
+        return fullfo
+    else
+        return ""
+    end
+end
+function neighbor_folder_dict(sb)
+    dic = Dict{Symbol, String}()
+    for direction in [:s, :n, :w, :e]
+        nefo = neighbor_folder(sb, direction)
+        if nefo !== ""
+            push!(dic, direction => nefo)
+        end
+    end
+    dic
+end
+
+
+"""
+    sides_with_border(smb, sb)
+    sides_with_border(smb, i::Int64)
+    --> Vector{Symbol}
+
+# Example
+```
+julia> sides_with_border(smb, 1)
+2-element Vector{Symbol}:
+ :n
+ :e
+
+julia> sides_with_border(smb, 9)
+2-element Vector{Symbol}:
+ :w
+ :s
+
+julia> sides_with_border(smb, smb[2,2])
+4-element Vector{Symbol}:
+ :w
+ :n
+ :s
+ :e
+```
+"""
+function sides_with_border(smb, i::Int64)
+    nr = nrows(smb)
+    nc = ncols(smb)
+    borders = Symbol[]
+    R = CartesianIndices((nr, nc))
+    I = R[i]
+    for direction in [:w, :n, :s, :e]
+        Δ = cartesian_unit_offset(direction)
+        I_neighbor = I + Δ
+        if I_neighbor ∈ R
+            push!(borders, direction)
+        end
+    end
+    borders
+end
+sides_with_border(smb, sb) = sides_with_border(smb, sb.sheet_number)
+
+function cartesian_unit_offset(direction)
+    if direction == :n
+        CartesianIndex(1, 0)
+    elseif direction == :s
+        CartesianIndex(-1, 0)
+    elseif direction == :e
+        CartesianIndex(0, 1)
+    elseif direction == :w
+        CartesianIndex(0, -1)
+    else
+        throw(ArgumentError("Direction is $direction, ∉ [:n, :s, :e, :w]"))
+    end
+end

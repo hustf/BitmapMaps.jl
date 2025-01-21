@@ -14,7 +14,7 @@ using BitmapMaps: CompositeDestinationOver, cartesian_index_string, imfilter, bu
 import BitmapMaps: bumpy_patch, bumpiness, blue, red, green, smooth_surface_fir, roughness_of_surface_fir
 import ImageSegmentation
 using ImageSegmentation: unseeded_region_growing, region_splitting, fast_scanning, prune_segments
-using Statistics: quantile
+using Statistics: quantile, mean
 using Random
 
 

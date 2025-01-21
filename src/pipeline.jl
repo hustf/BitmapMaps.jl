@@ -126,13 +126,27 @@ end
 function process_job(smb, complete_sheets_first, skip_summits)
     # Pre-process: Make an overview .svg file, referring the to-be-established files:
     make_vector_graphics(smb)
-    # Capture for making thumbnails. Note, it would be cleaner to add another field to the
+    #
+    # Closure for making thumbnails. Note, it would be cleaner to add another field to the
     # SheetBuilder type, but making thumbnails is sort of an add-on functionality, so we 
     # don't revise the type (at this late revision).
-    make_thumbnail = sb -> let n_governing = max(size(smb)...)
-        make_thumnail_image(full_folder_path(sb), sb.density_pt_m⁻¹, n_governing)
+    n_governing = max(size(smb)...)
+    make_thumbnail(sb) = make_thumbnail_image(full_folder_path(sb), sb.density_pt_m⁻¹, n_governing)
+    #
+    # Prepare closure for summits and prominence.
+    # While almost all operations require no interaction between sheets, correct summit prominence
+    # typically is affected by neighbouring sheets. We can't store all data for all sheets simultaneously,
+    # so we choose to store the relevant data for this calculation in a sparse meta-graph indexed by utm coordinates.
+    # Filename for the graph which is common to all sheets
+    ffna_graph = joinpath(full_folder_path(smb), bbox_external_string(smb) * ".z")
+    @debug """    Common to all sheets, graph file: ffna_graph = raw"$ffna_graph" """
+    # 
+    f_sides_with_border  = let smb = smb
+        (sb) -> sides_with_border(smb, sb)
     end
-    # Define the steps
+    # Closure
+    summits_and_prominence(sb) = summits_on_sheet(sb, ffna_graph, f_sides_with_border)
+    # Define the steps order - each step is called with each sheet builder.
     operations_order = [establish_folder,
         unzip_tif,
         consolidate_elevation_data,
@@ -141,18 +155,16 @@ function process_job(smb, complete_sheets_first, skip_summits)
         contour_lines_overlay,
         grid_overlay,
         ridge_overlay,
-        summit_markers,
+        summits_and_prominence,
         join_layers,
-        make_thumbnail,
-        make_vector_graphics]
-    # Do the steps depth-first or width-first.
+        make_thumbnail]
+    # Do the sheet steps depth-first or width-first.
     if complete_sheets_first
         for sb in smb
             @info "Sheet $(cartesian_index_string(smb, sb.sheet_number)) of up to $(cartesian_index_string(smb))"
             for (i, fn) in enumerate(operations_order)
                 call_func(fn, sb, skip_summits, i) || return false
             end
-            sleep(0.25) # TEMP
         end
     else
         for (i, fn) in enumerate(operations_order)
@@ -162,10 +174,22 @@ function process_job(smb, complete_sheets_first, skip_summits)
             end
         end
     end
+    #
+    # Sheet interaction, or 'regional' step. Requires that `summits_on_sheet` have been run for 
+    # all sheets first. 
+    #
+    @info "Summits regional update (find names and prominence)"
+    summits_regional_update(smb, ffna_graph)
+    #
+    @info "Update vector graphics and joining layers for sheets [1, 1] to $(cartesian_index_string(smb))"
+    for sb in smb
+        call_func(make_vector_graphics, sb, skip_summits, length(operations_order) + 2) || return false
+        call_func(join_layers, sb, skip_summits, length(operations_order) + 3) || return false
+    end
     true
 end
 function call_func(fn, sb, skip_summits, i)
-    if !skip_summits || fn !== summit_markers
+    if !skip_summits || fn !== summits_on_sheet
         @debug "$(lpad(i, 2)) `$fn`. $(full_folder_path(sb))"
         ok_res = fn(sb)
         if ! ok_res
