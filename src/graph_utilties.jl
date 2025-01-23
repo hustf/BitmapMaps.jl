@@ -273,7 +273,7 @@ function get_graph(ffna_graph)
     end
 end
 
-\"""
+"""
     get_new_unsaved_graph()
     ---> MetaGraph
 

@@ -17,8 +17,14 @@ import ImageSegmentation
 using ImageSegmentation: unseeded_region_growing, region_splitting, fast_scanning, prune_segments
 using Statistics: quantile
 using Random
+
+
+
 #=
-include("t_contour_func.jl")
+
+if ! @isdefined mountain
+    include("t_contour_func.jl")
+end
 
 
 smb = define_builder(;pth = "BitmapMaps/1 1 18145 6894028 71625 6971028", 

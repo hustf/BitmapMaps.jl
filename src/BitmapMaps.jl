@@ -115,13 +115,16 @@ const PARSEABLE_FNAM = "Parse_builder.jl"
 """
 TIFDIC :: Dict[String, NamedTuple}()
 
-TIFDIC is an memory-only dictionary for storing 
+TIFDIC is a dictionary for storing 
 non-zero boundary boxes for the .geo files. 
 
 If files are being changed during runs, this is a 
 potential source of errors. We consider it's worthwhile,
 because  opening every file for every sheet is potentially
 very time consuming and shouldn't be repeated unnecessarily.
+
+On the other hand, the dictionary will be rebuilt and resaved if the file
+is deleted.
 """
 const TIFDIC = Dict{String, NamedTuple}()
 const TIFDIC_FNAM = "tifdic.jls"

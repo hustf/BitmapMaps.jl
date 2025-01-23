@@ -79,6 +79,12 @@ function _corners_and_dieders!(result, bbuf, source, criterion_functions, colors
         mapwindow!(M -> Gray{Bool}(criterion_function(first(M))), bbuf, source, (1, 1))
         # Our very clever thinning, despeckling and thickening:
         bbuf .= strokeify(bbuf, t, 5) # Minimum length of a line is hardcoded as 5.
+        # Edges of sheets sometimes get stroked due to boundary conditions. 
+        # It's better to clean the edges fully.
+        bbuf[:, 1:t] .= false
+        bbuf[1:t, :] .= false
+        bbuf[(end - t):end, :] .= false
+        bbuf[:, (end - t):end] .= false
         # Treat 'false' as transparent. Overlay bbuf on result and write in-place to result.
         map!((outcol, bol) -> bol == true ? colo : outcol, result, result, bbuf)
     end
@@ -128,7 +134,7 @@ end
 
 
 """
-   smooth_laplacian(g::GeoArray, source_indices::CartesianIndices)
+   smooth_laplacian(g, source_indices::CartesianIndices)
    ---> Matrix{scalar}
 
 We can interpret the gradient of elevation z as a vector field.
@@ -137,7 +143,7 @@ If that vector field represented a quasi-static, incompressible
 fluid flow, we would call the result 'divergence': How much
 fluid would be entering (from outside) at this point? 
 """
-function smooth_laplacian(g::GeoArray, source_indices::CartesianIndices)
+function smooth_laplacian(g, source_indices::CartesianIndices)
     # Smooth surface
     zf = smooth_surface_fir(g; w = 159, nyquist_denom = 16)
     g11, _, _, g22 = hessian_components(zf)
