@@ -32,10 +32,11 @@ end
 function _topo_relief(fofo, cell_iter, cell2utm)
     # Get elevation matrix. This samples every point regardless of cell_to_utm_factor
     g = readclose(joinpath(fofo, CONSOLIDATED_FNAM))
+    @assert g isa GeoArray{Float32, Array{Float32, 3}} "$(typeof(g))"
     eltype(g) == Float32 || throw(TypeError(:g, "unexpected .tif image eltype", GeoArrays.GeoArray{Float32, Array{Float32, 3}}, typeof(g)))
     # We're transposing the source data here, because
     # it makes it easier to reason about north, south, east west.
-    za = transpose(g.A[:, :, 1])
+    za = permutedims(g.A[:, :, 1])
     __topo_relief(za, cell_iter, cell2utm)
 end
 

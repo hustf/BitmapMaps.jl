@@ -8,6 +8,10 @@ function readclose(fna)::GeoArray # Type annotation for the compiler, just like 
     file_task = Threads.@spawn GeoArrays.read(fna)
     contents = fetch(file_task)
     GC.gc()            # Clean up resources explicitly after the operation
+    # We can't make stirct type assertions here, because some unconsolidated files return
+    # GeoArrays.GeoArray{Union{Missing, Float32}, Array{Union{Missing, Float32}, 3}}
+    # Do make type assertion in the caller.
+    # @assert contents isa GeoArray{Float32, Array{Float32, 3}} "$(typeof(contents))"
     contents
 end
 
@@ -19,6 +23,7 @@ function closed_polygon_string(fnas::Vector{String})
     for (i, fna) in enumerate(fnas)
         @debug "Finding extents of $fna"
         g = readclose(fna)
+        @assert g isa GeoArray{Float32, Array{Float32, 3}} "$(typeof(g))"
         s *= closed_polygon_string(g)
         if i < n
             s *= ",\n" * repeat(' ', 19)
@@ -55,6 +60,7 @@ end
 # Docstring in builders_utilties
 function bbox_external_string(fna::String)
     g = readclose(fna)
+    @assert g isa GeoArray{Float32, Array{Float32, 3}} "$(typeof(g))"
     min_x, min_y = southwest_external_corner(g)
     max_x, max_y = northeast_external_corner(g)
     bbox_external_string((;min_x, min_y, max_x, max_y))

@@ -59,8 +59,23 @@ function _prepare_init_file_configuration(io)
     entry("Elevation contour lines", "Minimum length", "6"; comm = "\r\n  #  Mostly affects forests and built-up")
     entry("UTM grid", "Grid line thickness", "5"; comm = "\r\n  #  5 works well for :density_pt_m⁻¹ = 11811")
     entry("UTM grid", "Grid spacing [m]", "1000")
-    entry("UTM grid", "Zone for elevation data", "33"; comm = "\r\n  #  File metadata is ignored. wgs84 datum assumed.")
-    entry("Water", "Lake steepness max", "0.075"; comm = "\r\n  #  Values with success in different terrains: 0.075, 0.156, 0.16, 0.2")
+    entry("UTM grid", "Zone for elevation data", "33"; comm = "\r\n  #   File metadata is ignored. wgs84 datum assumed.")
+
+    entry("Water detection", "Sea level max [m]", "0.7"; comm = "\r\n  #   All elevations below level is considered sea")
+    entry("Water detection", "Minimum area [m²]", "5193"; comm = "\r\n  #   All smaller lakes (including artifacts) are disregarded")
+    entry("Water detection", "Local slopes [rad] limit", "0.015"; 
+           comm = "\r\n  #   Max local steepness, √(z1² + z2²), where derivatives zᵢ are\r\n  #   blurred (i.e. smoothed) over a standard deviation radius")
+    entry("Water detection", "Radius [m], standard dev. for slopes blurring", "1"; comm = "\r\n  #   For smoothing nearby derivatives zᵢ = dz / di")
+    entry("Water detection", "Artifact [m⁻²] limit", "0.17"; 
+           comm = "\r\n  #   Criterion for local curvature change, where the change is restricted by a\r\n  #   hardcoded length window. Areas with higher values are candidates for water surface")
+    entry("Water detection", "Radius [m] for artifact criterion blurring", "5"; comm = "\r\n  #   For smoothing nearby artifact indicator")
+    entry("Water detection", "Elevation range [m] limit for a water body",  "1.2"; 
+           comm = "\r\n  #   If the water body's bounding box diagonal is shorter \r\n  #   than the length defined nearby, range is reduced proportionately")
+    entry("Water detection", "Bounding box diagonal length [m] limit", "2231"; 
+           comm = "\r\n  #   A water body can have the elevation range above at    \r\n  #   this and larger lengths")
+    entry("Water detection", "Flux [m] limit",  "-0.328"; 
+           comm = "\r\n  #   Flux limit of the elevation gradient field across the water boundary. \r\n  #   More negative area flux is a negative indicator for lakes")
+  
     entry("Markers", "Prominence level [m], prominent summit", "100")
     entry("Markers", "Prominence level [m], obscure summit", "50")
     entry("Markers", "Symbol prominent summit", "in_triangle"; comm = "

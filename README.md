@@ -109,6 +109,16 @@ The following steps are functions, called with a `SheetBuilder` argument at a ti
 
 # Current state
 
+Version 0.3.0:
+Rework water detection fundamentally. This approach detects most artifacts and colors those as water if close to
+a water body. Manual artifact removal is now not necessary in most cases. In steps:
+  a) Identify water candidate segments by local steepness.
+  b) Disqualify candidate segments which have too large elevation difference. The criterion scales with bounding box diagonal of    each segment
+  c) Identify artifact segments. Join with candidates to make water segments.
+  d) Disqualify water segments not meeting the area requirement.
+
+Add utm position of water bodies to 'Water.csv'.
+
 Version 0.2.1:
 Do not draw ridge lines on the borders of sheets.
 
@@ -291,7 +301,7 @@ Third, candidates must fall within a curvature range. This effectively eliminate
 
 ### Curvature is
 
-The partial derivatives of pixel values with respect to rows and columns comprise the local gradient (g1, g2), or the Jacian components as some like to call it. This is the simplified version; we actually implement this with 'Prewitt' kernel factors, which works out well for images. 
+The partial derivatives of pixel values with respect to rows and columns comprise the local gradient (g1, g2), or the Jacian components as some like to call it. This is the simplified version; we actually implement this with 'Bickley' kernel factors, which works out well for images. 
 
 Don't stop yet. We differentiate (g1, g2) once more with respect to the same directions, and we have (g11, g22). There are all sorts of analogies here, so we could pick from mathematical books, fluid dynamics or material stress tensors, hence the inconsistent terminology in code comment. 
 

@@ -140,7 +140,7 @@ function process_job(smb, complete_sheets_first, skip_summits)
     # Filename for the graph which is common to all sheets
     ffna_graph = joinpath(full_folder_path(smb), bbox_external_string(smb) * ".z")
     @debug """    Common to all sheets, graph file: ffna_graph = raw"$ffna_graph" """
-    # 
+    # Closure
     f_sides_with_border  = let smb = smb
         (sb) -> sides_with_border(smb, sb)
     end

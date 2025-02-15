@@ -110,16 +110,50 @@ function make_thumbnail_image(fofo, density_pt_m⁻¹, n_governing)
         composite_on_top!(img, layer, modefunc)
     end
     # Downsize
-    ny, nx = size(img)
-    iter = (1:n_governing:ny, 1:n_governing:nx)
-    # A pure downsampling would result in a 'speckled' appearance. 
-    # Averaging over the influencing pixels works well in the XYZ colorspace
-    odd_size = 2 * div(n_governing, 2) + 1
-    thumb = RGB{N0f8}.(mapwindow(mean, XYZ.(img), (odd_size, odd_size); indices = iter))
+    thumb = downsize(img, n_governing)
     # Feedback
     display_if_vscode(thumb)
     # Save file
     @debug "    Saving $ffna"
     save_png_with_phys(ffna, thumb; density_pt_m⁻¹)
     true
+end
+
+"""
+    downsize(img::Matrix{T}, n_governing) where T
+    downsize(img::Matrix{T}, n_governing) where T<:Union{Float32, Float64}
+    ---> typeof(img)
+
+Downsizing returns the mean of the original pixels for an output pixel.
+    
+For colors, it averages in the XYZ colorspace, since linear operations in RGB do not 
+match visual perception.
+
+"""
+
+function downsize(img::Matrix{T}, n_governing) where T
+    ny, nx = size(img)
+    iter = (1:n_governing:ny, 1:n_governing:nx)
+    odd_size = 2 * div(n_governing, 2) + 1
+    T.(mapwindow(mean, XYZ.(img), (odd_size, odd_size); indices = iter))
+end
+function downsize(img::Matrix{T}, n_governing) where T<:Union{Float32, Float64}
+    ny, nx = size(img)
+    iter = (1:n_governing:ny, 1:n_governing:nx)
+    # A pure downsampling would result in a 'speckled' appearance. 
+    # Averaging over the influencing pixels
+    odd_size = 2 * div(n_governing, 2) + 1
+    mapwindow(mean, img, (odd_size, odd_size); indices = iter)
+end
+
+"""
+    downsample(img, n_governing)
+    
+Downsampling retains sharpness and is preferrable to 
+`downsize` when the result is going to be compared to a threshold.
+"""
+function downsample(img, n_governing)
+    ny, nx = size(img)
+    iter = CartesianIndices((1:n_governing:ny, 1:n_governing:nx))
+    img[iter]
 end

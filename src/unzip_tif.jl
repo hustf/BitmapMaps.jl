@@ -101,7 +101,7 @@ end
 Excludes .tif files direcltly under 'metadata' folders
 """
 function tif_full_filenames_buried_in_folder(pth; recurse = true)
-    @assert ispath(pth)
+    @assert ispath(pth) pth
     tifs = String[]
     if recurse
         for (root, dirs, files) in walkdir(pth)

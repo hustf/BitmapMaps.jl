@@ -55,7 +55,7 @@ function summits_on_sheet(fofo, cell_iter, cell2utm, f_I_to_utm, min_prominence,
         vI = read_indices_from_column(ffna_sum, 4)
         # Also add sheet borders to vI, regardless of if they are not included in the summits file.
         append_indices_of_borders!(vI, CartesianIndices(cell_iter), border_sides)
-        # Load z for every cell (not the full source).  # TODO use this elsewhere in the pipleline. Permutedims is faster than transpose.
+        # Load z for every cell (not the full source).  # TODO use elevation_at_output elsewhere in the pipeline.
         z = elevation_at_output(fofo, cell_iter, cell2utm)
         # Calculating MaxTree once more is reasonably fast.
         maxtree = MaxTree(round.(z))
@@ -242,6 +242,7 @@ function condense_summit_candidates_data(fofo, cell_iter, cell2utm, f_I_to_utm, 
     # We need the full source matrix in this function. It's size is size(cell_iter) * cell2utm^2,
     # so performance is low with this function. Drop unnecessary calls!
     g = permutedims(readclose(joinpath(fofo, CONSOLIDATED_FNAM)).A[:,:,1])
+    @assert g isa Array{Float32, 2} "$(typeof(g))"
     # Source index into the transposed source
     si = CartesianIndices((1:cell2utm:(ny  * cell2utm), 1:cell2utm:(nx * cell2utm)))
     #

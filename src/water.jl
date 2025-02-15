@@ -4,64 +4,99 @@
 # This might probably be speed up a good deal.
 """
     water_overlay(sb::SheetBuilder)
-    water_overlay(fofo)
+    water_overlay(fofo, cell_iter, cell2utm, f_I_to_utm)
     ---> Bool
 
 Creates water overlay from elevation data.
 Output is an RGBA .png image file. Fully transparent outside water surfaces, for manual touch-up.
 """
 function water_overlay(sb::SheetBuilder)
-    lake_steepness_max = get_config_value("Water", "Lake steepness max", Float32)
     # Go ahead
-    water_overlay(full_folder_path(sb), sb.cell_iter, cell_to_utm_factor(sb), lake_steepness_max)
+    water_overlay(full_folder_path(sb), sb.cell_iter, cell_to_utm_factor(sb), sb.f_I_to_utm)
 end
-function water_overlay(fofo, cell_iter, cell2utm, lake_steepness_max)
+function water_overlay(fofo, cell_iter, cell2utm, f_I_to_utm)
+    # Early exits
     if ! isfile(joinpath(fofo, CONSOLIDATED_FNAM))
         @debug "    $CONSOLIDATED_FNAM in $fofo\n           does not exist. Exiting `water_overlay`"
         return false
     end
     ffnam_csv_lakes = splitext(joinpath(fofo, WATER_FNAM))[1] * ".csv"
     if isfile(joinpath(fofo, WATER_FNAM)) && isfile(ffnam_csv_lakes) 
-        @debug "    $WATER_FNAM in $fofo\n           already exists. Exiting `water_overlay`"
+        @debug "    $WATER_FNAM and $(splitpath(ffnam_csv_lakes)[end]) in $fofo\n           already exists. Exiting `water_overlay`"
         return true
     end
-    ffna = joinpath(fofo, CONSOLIDATED_FNAM)
-    # TODO Since g can be very large, consider dropping the transpose until the result is available. Transpose that
-    # for possible speed gains.
-    elevation = let
-        g = readclose(ffna)
-        eltype(g) == Float32 || throw(TypeError(:g, "unexpected .tif image eltype", GeoArrays.GeoArray{Float32, Array{Float32, 3}}, typeof(g)))
-        # We're transposing the source data here, because
-        # it makes it easier to reason about north, south, east west.
-        transpose(g.A[:, :, 1])
-    end
-    # Find segments with lakes, and without. Whether a segment is a lake
-    # determines segment_mean(..)
-    segments = lake_segment(elevation, cell_iter, cell2utm, lake_steepness_max)
-    # Save lakes posittions and elevations in a .csv file
-    write_lake_to_csv(ffnam_csv_lakes , segments, elevation, cell2utm)
-    # Make and save a colored 'lakes' overlay.
-    ice_elevation = 1000.0 # Hardcoded that lakes above 1000m are frozen.
-    save_lakes_overlay_png(segments, elevation, cell_iter, ice_elevation, fofo)
+    # Harvest defaults. 
+    sea_level = get_config_value("Water detection", "Sea level max [m]", Float32)
+    area_lim = get_config_value("Water detection", "Minimum area [m²]", Int64)
+    slopes_local_lim = get_config_value("Water detection", "Local slopes [rad] limit", Float32)
+    r_slopes = get_config_value("Water detection", "Radius [m], standard dev. for slopes blurring", Int64)
+    Δzlim = get_config_value("Water detection", "Elevation range [m] limit for a water body", Float32)
+    diagonal_length_lim = get_config_value("Water detection", "Bounding box diagonal length [m] limit", Float64)
+    r_art = get_config_value("Water detection", "Radius [m] for artifact criterion blurring", Int64)
+    artifact_lim = get_config_value("Water detection", "Artifact [m⁻²] limit", Float64)
+    flux_lim = get_config_value("Water detection", "Flux [m] limit", Float64)
+    water_overlay(fofo, cell_iter, cell2utm, f_I_to_utm,
+        sea_level, area_lim, slopes_local_lim, 
+        r_slopes, Δzlim, diagonal_length_lim, 
+        r_art, artifact_lim, flux_lim)
     true
 end
+function water_overlay(fofo, cell_iter, cell2utm, f_I_to_utm,
+    sea_level, area_lim, slopes_local_lim, 
+    r_slopes, Δzlim, diagonal_length_lim, 
+    r_art, artifact_lim, flux_lim)
+    # Find segments with lakes, and without. Whether a segment is water
+    # can be determined by: `i -> segment_mean(segments, i) > 0.5`
+    segments = water_segments(fofo, cell2utm,
+        sea_level, area_lim, slopes_local_lim, 
+        r_slopes, Δzlim, diagonal_length_lim, 
+        r_art, artifact_lim, flux_lim)
+    @debug "    Water overlay, output .csv and .png"
+    # Identify water segment label numbers (the remaining labels are terrain)
+    # This includes sea, of course
+    iswater = i -> segment_mean(segments, i) > 0.5 
+    labels_water = filter(iswater, segment_labels(segments))
+    # Indices of all segments in output image
+    index_dic = mean_index_dictionary(segments)
+    # Output resolution elevations 
+    z = elevation_at_output(fofo, cell_iter, cell2utm)
+    # Segment elevations dictionary
+    z_dic = Dict([label => z[I] for (label, I ) in index_dic])
+    # Indices of water segments
+    vI = [index_dic[label] for label in labels_water]
+    # Segment area
+    va = [cell2utm^2 * segment_pixel_count(segments, label) for label in labels_water]
+    # Geographical utm positions of water surfaces
+    vutm = f_I_to_utm.(vI)
+    # Vector of all water segment elevations
+    vz = [Int64(round(z_dic[label])) for label in labels_water]
+    # Save data in a .csv file
+    write_water_surfaces_to_csv(fofo, vz, va, vutm, getfield.(vI, :I))
+    # Make and save a colored 'lakes' overlay.
+    save_water_overlay_png(fofo, segments, z_dic)
+end
 
-function save_lakes_overlay_png(segments, elevations, cell_iter, ice_elevation, folder)
-    # Create a black-and-white image, where any segments with any trace of a lake is a lake.
-    # This step is unnecessary legacy from an older function structure, refactoring incomplete.
-    # There's no need to make this matrix now.
-    lm_bool = map(labels_map(segments)) do i
-        islake = segment_mean(segments, i) > 0.0f0
-        Gray{Bool}(islake)
-    end
+function write_water_surfaces_to_csv(fofo, vz, va, vutm, vItup)
+    ffnam_csv_lakes = splitext(joinpath(fofo, WATER_FNAM))[1] * ".csv"
+    @assert length(vz) == length(va) == length(vutm) == length(vItup)
+    nt = (;Elevation_m = vz, Area_m² = va, Utm = vutm, Cell_index = vItup)
+    write_named_tuple_to_csv(ffnam_csv_lakes, nt)
+    true
+end    
+
+
+function save_water_overlay_png(fofo, segments, z_dic)
+    iswater = i -> segment_mean(segments, i) > 0.5
     # Hardcoded lake colors
     water_color = RGBA{N0f8}(0.521, 0.633, 0.764, 1.0)
     ice_color = RGBA{N0f8}(0.8, 0.8, 0.8, 1.0)
     transparent = RGBA{N0f8}(0.0, 0.0, 0.0, 0.0)
-    # Create the colourful, transparent image (in full resolution, disregarding cell_to_utm_factor)    
-    img = map(zip(lm_bool, elevations[cell_iter])) do (is_lake, elevation)
-        if is_lake == Gray{Bool}(true)
-            if elevation > ice_elevation
+    # Colourful image
+    iswater = label -> segment_mean(segments, label) > 0.5
+    isicewater = label -> z_dic[label] > 1000
+    img = map(labels_map(segments)) do label
+        if iswater(label)
+            if isicewater(label)
                 ice_color
             else
                 water_color
@@ -71,157 +106,233 @@ function save_lakes_overlay_png(segments, elevations, cell_iter, ice_elevation, 
         end
     end
     # Feedback
-    display_if_vscode(img)
+    # display_if_vscode(img)
     # Save
-    ffna = joinpath(folder, WATER_FNAM)
+    ffna = joinpath(fofo, WATER_FNAM)
     @debug "    Saving $ffna"
     save_png_with_phys(ffna, img)
     # Feedback for testing purposes
     img
 end
 
-"""
-    lake_segment(elevations, cell_iter, horizontal_distance, lake_steepness_max)
-    ---> Segmented image
-"""
-function lake_segment(elevations, cell_iter, horizontal_distance, lake_steepness_max)
-    # Hardcoded parmeter for identifying lake regions from steepness using Felzenszwalb regions
-    lake_area_min = 900 # m²
-    lake_pixels_min = Int(round(lake_area_min / horizontal_distance^2))
-    k = 3.8
-    @debug "    For water id, finding local steepness over 2 m lenghts"
-    steepness = steepness_decirad_capped(elevations, cell_iter, horizontal_distance)
-    # Boolean result matrix
-    @debug "    For water id, classifying areas of low steepness"
-    _lake_segment(steepness, k, lake_steepness_max, lake_pixels_min)
+
+function water_segments(fofo, cell2utm,
+        sea_level, area_lim, slopes_local_lim, 
+        r_slopes, Δzlim, diagonal_length_lim, 
+        r_art, artifact_lim, flux_lim)
+    z = elevation_full_res(fofo)
+    ∇²z = divergence_of_gradients(z)
+    @debug "    Water overlay, find candidate segments"
+    candidate_segments = water_candidate_segments(cell2utm, z, ∇²z,
+        sea_level, area_lim, slopes_local_lim, 
+        r_slopes, Δzlim, diagonal_length_lim, 
+        r_art, artifact_lim)
+    # Feedback
+    # display_if_vscode(candidate_segments; randomcolor = true)
+    @debug "    Water overlay, prune by area flux"
+    # Basis on which to eliminate a segment. We're not finding actual flux here, but 
+    # a downscaled version of it. See `flux_lim_scaled`.
+    dic = flux_of_segments_dictionary(downsample(∇²z, cell2utm), candidate_segments)
+    # Criterion for removing a candidate segment. Scaling this is interesting,
+    # since flux is defined along the perimeter of a segment, which scales linearly,
+    # but we use Green's theorem on a number of pixels with divergence of gradients.
+    # So we scale the criterion with area instead of linearly.
+    flux_lim_scaled = flux_lim / cell2utm^2 
+    # Candidate segment means are not just 0 or 1 because of regions merging in the previous step. 
+    f_to_be_removed = i -> segment_mean(candidate_segments, i) > 0.5 && dic[i] <= flux_lim_scaled
+    # In case a segment to be removed has neighbors, it will be merged with the one minimizing this function:
+    f_diff = (rem_label, neigh_label) -> segment_mean(candidate_segments, neigh_label)
+    # Merge segments with too low flux (i.e. that are taller than their surroundings)
+    segments = prune_segments(candidate_segments, f_to_be_removed, f_diff)
+    # Feedback
+    display_if_vscode(segments; randomcolor = true)
+    segments
+end
+function water_candidate_segments(cell2utm, z, ∇²z,
+    sea_level, area_lim, slopes_local_lim, 
+    r_slopes, Δzlim, diagonal_length_lim, 
+    r_art, artifact_lim)
+    #
+    # We have three components, one of which should be true for a cell to be water.
+    # is_flat_large_water has been checked for size, but not the two other ones.
+    # (E.g. an artifact is allowed to be smaller, as it typically covers part of a water surface)
+    is_water_candidate  = is_local_and_bbox_diagonal_slope_in_range(cell2utm, z, slopes_local_lim, r_slopes, Δzlim, diagonal_length_lim) .| 
+        is_artifact(cell2utm, ∇²z, r_art, artifact_lim) .| 
+        is_low_water(cell2utm, z, sea_level)
+    # Feedback
+    # display_if_vscode(is_water_candidate)
+
+    # Segment the boolean matrix, while applying size limit.  
+    # 'k' is not sensitive when there is only two values like here.
+    # The result, since some segments are joined from '1' and '0', does not 
+    # exclusively contain  mean values 0 or 1.
+    @debug "    Water overlay, join candidates"
+    pixel_lim = Int(round(area_lim / cell2utm^2))
+    segments = felzenszwalb(is_water_candidate, 6, pixel_lim)
+    # Feedback
+    # display_if_vscode(segments; randomcolor = true)
+    segments
 end
 
-
-"""
-    steepness_decirad_capped(elevations, cell_iter)
-    ---> Matrix{Float32}
-
-`elevation` is a matrix with grid distance 1 unit, same unit as elevation.
-
-Returns local stepness around each pixel, a matrix of scalars in units of decirad:
-
-    10π / 2 decirad == 90°
-    10π / 180 decirad == 1°
-    1 decirad == 180 / 10π ° == 5.729577951308232°
-"""
-function steepness_decirad_capped(elevation, cell_iter, cell2utm)
-    # Output image size
-    ny, nx = size(cell_iter)
-    # Source indices
-    indices = (1:cell2utm:(ny * cell2utm), 1:cell2utm:(nx * cell2utm))
-    # Apply
-    mapwindow(local_steepness_capped, elevation, (3, 3); indices)
-end
-
-@inbounds function local_steepness_capped(M::Matrix)
-    # This function will operate on the original data resolution,
-    # so as to be independent of output resolution, cell to utm factor.
-    # This will find the local steepness around each output pixel.
-    @assert size(M) == (3, 3)
-    # If rows in M correspond to south -> north
-    # and cols in M correspond to west -> east
-    # _ n _
-    # w z e  
-    # _ s _
-    _, w, _, n, z, s, _, e, _ = M
-    gr1 = (e - w) / 2
-    gr2 = (n - s) / 2
-    # We're capping steepness at
-    cap_deg =  1.5f0
-    # For low steepness, atan(x) == x
-    10 * min(hypot(gr1, gr2), cap_deg * π / 180)
-end
-
-
-
-"""
-    _lake_segment(steepness, k, lake_steepness_max, lake_pixels_min)
-    ---> Segmented image
-"""
-function _lake_segment(steepness, k, lake_steepness_max, lake_pixels_min)
-    # Divide the steepness matrix into segments, based on proximity and steepness difference.
-    # Note that we don't have or use a minimum cell count argument yet.
-    # Note: A size check might be good here because this can take > 10 minutes.
-    @debug "    First steepness segmentation"
-    steep_segments = felzenszwalb(steepness, k)
-    is_flat(i) = segment_mean(steep_segments, i) < lake_steepness_max
-    is_large(i) = segment_pixel_count(steep_segments, i) >= lake_pixels_min
-    # Create a black-and-white image, where we discard small and too steep segments.
-    # We do not create a bool matrix, because we want to re-segment the result afterwards.
-    @debug "    Grouping segments"
-    islake_matrix = map(labels_map(steep_segments)) do i # i is a label, representing a set of pixels.
-        Gray{N0f8}(is_large(i) && is_flat(i))
+function is_local_and_bbox_diagonal_slope_in_range(cell2utm, z, slopes_local_lim, r_slopes, Δzlim, diagonal_length_lim)
+    # We fill sections with unacceptable local steepness with this:   
+    no_water_value = Float32(2 * slopes_local_lim)
+    # Segmented image, downsampled by cell2utm
+    segments = locally_acceptable_steepness_segments(cell2utm, z, no_water_value, slopes_local_lim, r_slopes)
+    # Feedback
+    # display_if_vscode(segments; randomcolor=true)
+    is_local_flat(i) = segment_mean(segments, i) <= no_water_value
+    # Function `is_local_flat` identifies some reasonably flat segments, probably including agricultural fields with minor slopes. 
+    # We will put additional demands on the vertical variation within each segment, i.e. lake. For small lakes, we allow propotionally less variation.
+    # The actual sea data won't necessarily meet all of these criteria, because the sea may have elevation differences due to tides.
+    # We will make exceptions for the sea elsewhere. The same goes for artifacts which are part of lakes.
+    #
+    # Dictionaries for max and min elevation within each segment
+    min_z_dic = segment_dictionary(downsample(z, cell2utm), segments, min)
+    max_z_dic = segment_dictionary(downsample(z, cell2utm), segments, max)
+    # Dictionary for each segment's bounding box diagonal (kind of like the enclosing diameter, but dependant  on coordinate system orientation)
+    bb_diag_len_dic = bbox_diagonal_length_dictionary(segments)
+    function is_bbox_diagonal_slope_in_range(i)
+        maxz = max_z_dic[i]
+        minz = min_z_dic[i]
+        diagonal_length = min(bb_diag_len_dic[i], diagonal_length_lim / cell2utm)
+        maxz - minz <= Δzlim * diagonal_length * cell2utm / diagonal_length_lim
     end
-    # A common artifact is lines across a lake, possibly from power lines.
-    # Let's grow the lakes, then shrink, with 8-connectivity to add
-    # lake shores.
-    @debug "    Dilate -> erode lakes"
-    dilate!(islake_matrix, copy(islake_matrix))
-    erode!(islake_matrix, copy(islake_matrix))
-    # We are confident that positives are true positives. Still, we have lots of fake negatives
-    # inside of the lake regions. They would appear as islands that are really just noise, waves,
-    # or recalibration. Most of them coindicentally fall below lake_pixels_min:
-    @debug "    Second segmentation"
-    felzenszwalb(islake_matrix, k, lake_pixels_min)
-end
-
-
-function sum_of_cartesian_indices_per_label(segments)
-    R = CartesianIndices(axes(labels_map(segments)))
-    dic = Dict{Int64, CartesianIndex}()
-    for ci in R
-        label = labels_map(segments)[ci]
-        if haskey(dic, label)
-            dic[label] += ci
-        else
-            push!(dic, label => ci)
-        end
+    #=
+    # DEBUG
+    dicind = mean_index_dictionary(segments)
+    for i in segment_labels(segments)
+        print(rpad("$i", 5))
+        print(rpad("Centre $(dicind[i].I)", 30))
+        print(rpad("Pixel count $(segment_pixel_count(segments, i))", 25))
+        print(rpad("z $(round(max_z_dic[i])) m", 20))
+        print(rpad("Δz $(round(max_z_dic[i] - min_z_dic[i], digits=2))", 10))
+        diagonal_length = min(bb_diag_len_dic[i], diagonal_length_lim)
+        print(rpad("diagonal_length for slope: $(round(diagonal_length))", 40))
+        println(rpad("slope in range: $(is_bbox_diagonal_slope_in_range(i))", 20))
     end
-    dic
+    # /DEBUG
+    =#
+    BitMatrix(map(labels_map(segments)) do i # i is the label of the current pixel in segments
+        is_local_flat(i) && is_bbox_diagonal_slope_in_range(i)
+    end)
+end
+is_low_water(cell2utm, z, sea_level) = downsample(z, cell2utm) .<= sea_level
+function is_artifact(cell2utm, ∇²z, r_art, artifact_lim)
+    wz = weighted_∇⁴z(∇²z)
+    # wz is an indicator of artifacts presence at a cell,
+    # but we need to blur it to find contiguous areas of artifacts
+    # and drop the mostly isolated false identifications.
+    downsample(imfilter(wz, Kernel.gaussian(r_art)), cell2utm) .> artifact_lim
 end
 
-function centre_indices(segments)
-    R = CartesianIndices(axes(labels_map(segments)))
-    diccum = sum_of_cartesian_indices_per_label(segments)
-    dicmean = Dict{Int64, CartesianIndex}()
-    for label in keys(diccum)
-        cum = diccum[label]
-        count = segment_pixel_count(segments, label)
-        mean = CartesianIndex{2}((cum.I .÷ count)) # We stick to integer indices here.
-        if mean ∉ R
-            @show mean cum count
-            throw("what?")
-        end 
-        push!(dicmean, label => mean)
-    end
-    dicmean
-end
-
-function write_lake_to_csv(ffnam_csv_lakes, lakes::SegmentedImage, elevation, cell2utm)
-    headers = ["Elevation_m", "Area_m²", "Cell_index"]
+function weighted_∇⁴z(∇²z; x₀::Float64 = 10^-6, x₁::Float64 = 10^(-3.5))
+    # ∇²z is the divergence of the gradient of scalar field z. 
+    # This divergence is of course a scalar field.
+    # We're looking at how the divergence (i.e. curvature) changes with space,
+    # in other words the bi-laplacian ∇²(∇²z).
+    ∇⁴z = .+(jacobian_components(∇²z)...)
+    # We have found that in areas with artifacts, values of ∇⁴z 
+    # is mostly in the range (x₀, x₁). However, 
+    # the values overlap with some 'naturally occuring' values.
     # 
-    vz = Int[]
-    vA = String[]
-    vij = String[]
-    # Indices of the centre of area for each lake
-    dic = centre_indices(lakes)
-    for (label, center_i) in dic
-        if ! iszero(segment_mean(lakes, label))
-            z = Int(round(elevation[cell2utm * center_i]))
-            A = segment_pixel_count(lakes, label) * cell2utm^2
-            push!(vz, z)
-            push!(vA, string(A))
-            push!(vij, string(center_i.I))
+    w = func_tanh_window(x₀, x₁)
+    # So these values will be close to 1 where artifacts are present:
+    w.(abs.(∇⁴z))
+end
+
+"""
+    func_tanh_window(x₀, x₁)
+
+If x₀ < x₁, returns a window function with maximum 1.0, sloping off symmetrically on a log10 axis.
+Also see the one-sided version, `func_tanh_limit`.
+
+Example
+```
+julia> f = func_tanh_window(1e-1, 1)
+#16 (generic function with 1 method)
+
+julia> vx = log10_rng(1e-5, 1e4, 10);
+
+julia> hcat(vx, f.(vx))
+10×2 Matrix{Float64}:
+     1.0e-5  0.000627443
+     0.0001  0.00462496
+     0.001   0.0335707
+     0.01    0.219028
+     0.1     0.824027
+     1.0     0.824027
+    10.0     0.219028
+   100.0     0.0335707
+  1000.0     0.00462496
+ 10000.0     0.000627443
+
+julia> f(1e-1)
+0.8240271368319426
+
+julia> f(1)
+0.8240271368319426
+
+julia> f(√(1e-1 * 1))
+1.0
+```
+
+"""
+function func_tanh_window(x₀::Float64, x₁::Float64)
+    @assert x₀ < x₁
+    # The maximum is, not so obviously, at √(x₀x₁)
+    # We're scaling so as to have maximum 1.0.
+    let ymax = (1 / 4 ) * (1 + tanh(log10(√(x₀ * x₁) / x₀))) * (1 - tanh(log10(√(x₀ * x₁) / x₁)))
+       x -> (1 / 4 ) * (1 + tanh(log10(x / x₀))) * (1 - tanh(log10(x / x₁))) / ymax
+    end
+end
+
+function locally_acceptable_steepness_segments(cell2utm, z, no_water_value, slopes_local_lim, r_slopes)
+    # Where steepness is above the slopes_local_lim, we set
+    # the value to 'no_water_value', for easy segmentation below.
+    st = local_steepness_where_acceptable(z, no_water_value, slopes_local_lim, r_slopes)
+    k = 6
+    # We set a minimum number of pixels here for speed, but
+    # larger segments are filtered out elsewhere, depending on the configureable "Minimum area [m²]"
+    preliminary_minimum_pixels_count = Int(round(200 / cell2utm^2))
+    felzenszwalb(downsample(st, cell2utm), k, preliminary_minimum_pixels_count)
+end
+
+function local_steepness_where_acceptable(z, no_water_value::Float32, slopes_local_lim::Float32 = 0.029f0, r_slopes = 2)
+    ssteep = Float32.(smoothed_steepness(z, r_slopes))
+    map(ssteep) do st 
+        st .<= slopes_local_lim ? st : no_water_value
+    end
+end
+function smoothed_steepness(z, r_slopes)
+    # We're smoothing before calculating steepness, because
+    # the derivatives have sign (whereas steepness does not have sign)
+    hypot.(blurred_gaussian(z, r_slopes)...)
+end
+
+function blurred_gaussian(z, r_slopes)
+    z1, z2 = jacobian_components(z)
+    imfilter(z1, Kernel.gaussian(r_slopes)), imfilter(z2, Kernel.gaussian(r_slopes))
+end
+function flux_of_segments_dictionary(∇²z, segments)
+    # Flux for all segments, valid or not
+    flux_dict = segment_dictionary(∇²z, segments, +)
+    # At the border of the elevation matrix, the divergence simply reflects 
+    # the general border conditions we used for the calculation.
+    # Hence, we invalidate the flux of a segment if the area is bordering the matrix,
+    # by setting the flux of that segment to zero. 
+    R = CartesianIndices(axes(labels_map(segments)))
+    segment_bbox_dict = bbox_internal_indices_dictionary(segments)
+    for label in segment_labels(segments)
+        bb = segment_bbox_dict[label]
+        tl = bb[1] + CartesianIndex(-1, -1)
+        br =  bb[end] + CartesianIndex(1, 1)
+        if tl ∉ R || br ∉ R
+            # Stepping one index away from at least one corner brought us outside the matrix.
+            # We don't trust this flux calculation.
+            flux_dict[label] = zero(flux_dict[label])
         end
     end
-    # Order by surface area
-    order = sortperm(vz; rev = true)
-    vectors = [string.(vz)[order], vA[order], vij[order]]
-    widths = [20, 20, 20]
-    write_vectors_to_csv(ffnam_csv_lakes, headers, vectors, widths)
+    # Flux for valid segments, zero for segments at border
+    flux_dict
 end

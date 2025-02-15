@@ -2,7 +2,7 @@ using Test
 using BitmapMaps
 using BitmapMaps: CONSOLIDATED_FNAM, MaxTree, maximum_elevation_above, leaf_indices
 using BitmapMaps: line!, mark_at!, prominence, distinct_summit_indices
-using BitmapMaps: parent_of_leaf_indices, core_family_dictionary, get_random_color
+using BitmapMaps: parent_of_leaf_indices, core_family_dictionary, get_consistent_random_color
 using BitmapMaps: find_prominence
 import ImageCore
 using ImageCore: RGB, N0f8, RGBA, Gray
@@ -181,7 +181,7 @@ display_if_vscode(z[I_close])
 # by inspecting indexed image
 ##########################################
 imea = Int.(round.(mea))
-levcols = get_random_color.(minimum(imea) : maximum(imea))
+levcols = get_consistent_random_color.(minimum(imea) : maximum(imea))
 
 indimg = levcols[imea]
 hw = 500

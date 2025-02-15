@@ -142,7 +142,7 @@ for k in 0.2:0.1:1.0
     f_to_be_removed = i -> (segment_pixel_count(gg, i) < cell_count_min)
     f_diff(rem_label, neigh_label) = segment_mean(gg, rem_label) - segment_mean(gg, neigh_label)
     h = prune_segments(gg, f_to_be_removed, f_diff)
-    img = map(i -> get_random_color(i), labels_map(h))
+    img = map(i -> get_consistent_random_color(i), labels_map(h))
     open_as_temp_in_gimp(img)
     @show k length(gg.segment_labels) length(h.segment_labels)
 end
@@ -321,14 +321,14 @@ end
 
 for k in 2.0:0.5:11.0
     g = felzenszwalb(d, k, forest_cells_min)
-    display_if_vscode(map(i -> get_random_color(i), labels_map(g)))
+    display_if_vscode(map(i -> get_consistent_random_color(i), labels_map(g)))
     @show k length(g.segment_labels)
 end
 # => felzenszwalb gives close to unacceptable results here
 
 for k in 0.75:0.01:0.85
     g = unseeded_region_growing(d, k)
-    display_if_vscode(map(i -> get_random_color(i), labels_map(g)))
+    display_if_vscode(map(i -> get_consistent_random_color(i), labels_map(g)))
     @show k length(g.segment_labels)
 end
 # => unseeded_region_growing easily ends up with strange divisions
@@ -339,7 +339,7 @@ end
 
 for k in 0.79:0.1:1.85
     g = region_splitting(d, func_homogeneous(k))
-    display_if_vscode(map(i -> get_random_color(i), labels_map(g)))
+    display_if_vscode(map(i -> get_consistent_random_color(i), labels_map(g)))
     @show k length(g.segment_labels)
 end
 # => region_splitting gives unacceptable results here
@@ -350,7 +350,7 @@ for k in 0.15:0.01:0.29
     f_to_be_removed = i -> (segment_pixel_count(g, i) < forest_cells_min)
     f_pick_merge_partner = (i,j) -> (-segment_pixel_count(g, j))
     h = prune_segments(g, to_be_removed, f_pick_merge_partner)
-    display_if_vscode(map(i -> get_random_color(i), labels_map(h)))
+    display_if_vscode(map(i -> get_consistent_random_color(i), labels_map(h)))
     @show k length(h.segment_labels)
 end
 # => fast scanning & pruning gives good results for k = 0.2

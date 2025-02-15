@@ -22,6 +22,7 @@ The mosaic tiles show the topographic relief without overlays, but links to the 
 function make_vector_graphics(smb::SheetMatrixBuilder)
     fna_svg = bbox_external_string(smb) * ".svg"
     ffna_svg = joinpath(full_folder_path(smb), fna_svg)
+    @info "Mosaic of linked sheets thumbnails in $ffna_svg"
     # Early exit
     if isfile(ffna_svg)
         @debug "    $ffna_svg in $(full_folder_path(smb))\n           already exists. Exiting `make_vector_graphics`"
@@ -192,20 +193,20 @@ end
 
 function add_lake_text(svg, ffna_csv_lakes)
     # Read the text contents
-    # We trust the column order, as defined in `write_prominence_to_csv` and `add_names_to_csv`
+    # We trust the column order, not checking headers
     lakes_data = readdlm(ffna_csv_lakes, '\t')[2:end,:]
     if isempty(lakes_data)
         @debug "    No lakes in file => no text to add."
         return
     end
     vz = Int.(lakes_data[:, 1])
-    v_index = strip.(string.(lakes_data[:, 3]))
+    v_index = strip.(string.(lakes_data[:, 4]))
     vI = Tuple.(split.(map(s -> strip(s,['(', ')']), v_index), ','))
     #
     # Add lake text, one at a time
     #
     for (z, (y, x)) in zip(vz, vI)
-        if z > 0
+        if z > 1
             inject_text!(svg, "$(z)m", strip(x), strip(y), 0, "middle"; class = "sjø")
         end
     end

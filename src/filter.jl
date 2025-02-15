@@ -105,7 +105,10 @@ end
     smooth_surface_fir(z; w = 101, nyquist_denom::Int = 10)
 
 Apply a FIR low-pass filter with Blackman window. The intention is to avoid 
-phase-distortion and to work with something familiar.
+phase-distortion while working with something familiar. A Gaussian filter
+likely would do the job "better" (with no overshoot), but the parameters are 
+less intuitive for me to quantify. We use the Gaussian 'low-pass' filter for 
+general blurring.
 
 w is window length, an odd number.
 nyquist_denom
@@ -114,9 +117,9 @@ function smooth_surface_fir(z; w = 101, nyquist_denom::Int = 10)
     # Coefficients, including a Blackman window.
     c = Float32.(fir_lp_coefficients(w; nyquist_denom))
     # Elevations smoothed by lp-filter
-    imfilter(z, (c, transpose(c)), FIRTiled())
+    imfilter(z, (c, permutedims(c)), FIRTiled())
 end
-smooth_surface_fir(g::GeoArray; w = 101, nyquist_denom::Int = 10) = smooth_surface_fir(transpose(g.A[:, :, 1]); w, nyquist_denom)
+smooth_surface_fir(g::GeoArray; w = 101, nyquist_denom::Int = 10) = smooth_surface_fir(permutedims(g.A[:, :, 1]); w, nyquist_denom)
 
 
 """
@@ -200,6 +203,7 @@ function bumpy_patch(z, source_indices; cell_count_min_m² = 9062, w = 75, amp_c
         amp_cut⁻ < segment_mean(h, j) < amp_cut⁺ ? 1f0 : 0f0
     end
 end
+# TODO: Use 'elevation_...' function in caller
 bumpy_patch(g::GeoArray, source_indices::CartesianIndices) = bumpy_patch(transpose(g.A[:, :, 1]), source_indices)
 
 

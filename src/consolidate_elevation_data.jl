@@ -88,7 +88,7 @@ function consolidate_local_data_to_geoarray_in_folder(fofo; include_parent_folde
         end
     end
     # Feedback
-    display_if_vscode(transpose(g_dest.A[:, :, 1]))
+    display_if_vscode(permutedims(g_dest.A[:, :, 1]))
     # Write to consolidated file
     GeoArrays.write(joinpath(fofo, CONSOLIDATED_FNAM), g_dest)
     return true
@@ -134,7 +134,7 @@ function sample_values_larger_than_limit!(g_dest::GeoArray, g_source::GeoArray)
                 # Also, close to zero elevation, there is much noise from waves and
                 # also from elevation recalibration. This heuristic gets rid of most.
                 val = g_source[i, j, z]
-                if ! ismissing(val) && val > 0.7
+                if ! ismissing(val) #&& val > 0.7
                     g_dest[io, jo, z] = g_source[i, j, z]
                 end
             end

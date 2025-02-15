@@ -32,7 +32,7 @@ import GeoArrays
 using GeoArrays: GeoArray, bbox, bbox_overlap, Vertex, coords, indices, crop
 # Feedback
 import Dates
-# Calculating gradients, topo map
+# Calculating gradients, topo map, artifact detection
 import ImageFiltering
 using ImageFiltering: imgradients, KernelFactors, mapwindow, mapwindow!, Kernel, imfilter, centered
 # Pick color from lightness
@@ -42,7 +42,7 @@ using ColorTypes: RGBA, RGB, XYZ, XYZA, AbstractGray, AbstractRGB, Gray, red, gr
 # Identify water
 import ImageSegmentation
 using ImageSegmentation: felzenszwalb, labels_map, segment_pixel_count, segment_mean, SegmentedImage
-using ImageSegmentation: fast_scanning, prune_segments
+using ImageSegmentation: fast_scanning, prune_segments, segment_labels
 import ImageMorphology
 using ImageMorphology: erode!, dilate!, dilate, GuoAlgo, thinning
 # Grid
@@ -153,6 +153,7 @@ include("summits_regional_poststep.jl")
 include("vector_graphics.jl")
 include("graph_utilties.jl")
 include("graph_harvest.jl")
+include("utilties_segmentation.jl")
 
 
 end

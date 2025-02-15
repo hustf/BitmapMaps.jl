@@ -159,7 +159,23 @@ function display_if_vscode(M::Matrix{T}) where T <: Union{RGBA{N0f8}, RGB{N0f8},
         end
     end
 end
-
+function display_if_vscode(M::SegmentedImage{Matrix{Int64}, T}; randomcolor = false) where T<: Union{Float64, Float32}
+    if isinteractive()
+        if get(ENV, "TERM_PROGRAM", "") == "vscode"
+            if randomcolor
+                coldic = Dict( [i => get_consistent_random_color(i) for i in segment_labels(M)])
+                display(map(i -> coldic[i], labels_map(M)))
+            else
+                # Stretch gray colors from black to white
+                foo = scaleminmax(extrema(i -> segment_mean(M, i), segment_labels(M))...)
+                # Display
+                display(colorview(Gray, map(labels_map(M)) do i
+                    foo(segment_mean(M, i))
+                end))
+            end
+        end
+    end
+end
 
 
 
@@ -232,7 +248,8 @@ end
 function elevation_at_output(fofo, cell_iter, cell2utm)
     ny, nx = size(cell_iter)
     si = CartesianIndices((1:cell2utm:(ny  * cell2utm), 1:cell2utm:(nx * cell2utm)))
-    permutedims(readclose(joinpath(fofo, CONSOLIDATED_FNAM)).A[:,:,1])[si]
+    z = permutedims(readclose(joinpath(fofo, CONSOLIDATED_FNAM)).A[:,:,1])[si]
+    z::Matrix{Float32}
 end
 
 function elevation_at_output(sb::SheetBuilder)
@@ -246,6 +263,17 @@ function elevation_at_output(sb::SheetBuilder)
     elevation_at_output(fofo, cell_iter, cell2utm)
 end
 
+
+"""
+    elevation_full_res(fofo)
+
+    ---> Matrix{Float32}
+"""
+elevation_full_res(fofo) = permutedims(readclose(joinpath(fofo, CONSOLIDATED_FNAM)).A[:,:,1])::Matrix{Float32}
+
+
+
+
 function open_as_temp_in_gimp(img)
     @async let
         fnam = tempname()
@@ -258,7 +286,7 @@ function open_in_gimp(fnam)
     run(`$gimp_path "$fnam"`)
 end
 
-function get_random_color(i)
+function get_consistent_random_color(i)
     Random.seed!(i) # For consistentency between runs
     rand(RGB{N0f8})
 end

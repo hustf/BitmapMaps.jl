@@ -38,6 +38,7 @@ end
 function _elev_contours(fofo, cell_iter, cell2utm, minlen, vthick, vdist)
     # Read elevation
     g = readclose(joinpath(fofo, CONSOLIDATED_FNAM))
+    @assert g isa GeoArray{Float32, Array{Float32, 3}} "$(typeof(g))"
     #
     # Prepare iterators and buffers, reduce source resolution
     #
@@ -51,8 +52,8 @@ function _elev_contours(fofo, cell_iter, cell2utm, minlen, vthick, vdist)
     # Note that although we use the full resolution for identifying forest,
     # we reduce the resolution in this three-channel image:
     img = RGB{Float32}.(Float32.(bumpy_patch(g, si)), # red
-            transpose(g.A[:, :, 1])[si],           # green
-            Float32.(imfilter(transpose(g.A[:, :, 1])[si], Kernel.gaussian(49)))) # blue
+            permutedims(g.A[:, :, 1])[si],           # green
+            Float32.(imfilter(permutedims(g.A[:, :, 1])[si], Kernel.gaussian(49)))) # blue
     # Boolean countours image:
     res = __elev_contours(img, minlen, vthick, vdist)
     # An alternative topo colour which would show better on green:
@@ -109,7 +110,7 @@ function strokeify(bw, thickness, minlen)
     # Reduce regions to one pixel width.
     stroked = reinterpret(Gray{Bool}, thinning(reinterpret(Bool, bw), algo = GuoAlgo()))
     # Remove too short contours, (typically, minlen = 5)
-    remove_small_islands!(stroked, minlen)
+    remove_small_strokes!(stroked, minlen)
     # Make all the thin regions as thick as specified
     thickness == 1 && return stroked
     dilate(stroked; r = thickness ÷ 2)
@@ -185,7 +186,7 @@ function func_elev_contour(Δc::Float32)
 end
 
 
-function remove_small_islands!(img, max_pixels)
+function remove_small_strokes!(img, max_pixels)
     segments = felzenszwalb(reinterpret(Bool, img), 1.0, 2)
     labels = labels_map(segments)
     # A dictionary of pixels in each segment no.

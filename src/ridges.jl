@@ -11,8 +11,6 @@
 # The ridge and dieder lines are not generated in bumpy patches.
 #
 # Output is an image file per sheet, for manual touch-up.
-# Consider TODO: Many artifacts have a very even, small, positive curvature.
-# We might identify those in a similar way as we do with lakes? 
 
 """
     ridge_overlay(sb::SheetBuilder)
@@ -43,6 +41,7 @@ end
 function _ridge(fofo, cell_iter, cell2utm)
     # Get elevation matrix. This samples every point regardless of cell_to_utm_factor
     g = readclose(joinpath(fofo, CONSOLIDATED_FNAM))
+    @assert g isa GeoArray{Float32, Array{Float32, 3}} "$(typeof(g))"
     @debug "    Render ridge"
     # Define output size and colours
     ny, nx = size(cell_iter)
@@ -102,32 +101,20 @@ Use this for identifying cone-like summits, conifers or towers which have negati
 Use this for identifying holes in the ground or bowls, which have positive values.
 """
 function σm(z::Matrix{Float32})
-    # The Hessian components are used to determine the principal tensile stress equivalent
-    σ11, _, _, σ22 = hessian_components(z)
-    # Return a scalar matrix representing the mean stress at each index
-    (σ11 .+ σ22) ./ 2
+    divergence_of_gradients(z) ./ 2
 end
 
 
-function principal_stresses(σ11, σ12, σ22)
-    trace = (σ11 .+ σ22) ./ 2
-    determinant = sqrt.(((σ11 .- σ22) ./ 2).^2 .+ σ12.^2)
-    λ1 = trace .+ determinant
-    λ2 = trace .- determinant
-    λ1, λ2
-end
-function principal_stresses(z)
-    σ11, _, σ12, σ22 = hessian_components(z)
-    # Disregarding roundoff, σ21 == σ22
-    principal_stresses(σ11, σ12, σ22)
-end
+"""
+   divergence_of_gradients(z)
 
-principal_stress_min(z) = min.(principal_stresses(z))
-principal_stress_max(z) = max.(principal_stresses(z))
-
-function principal_min_max_stress(z)
-    λ1, λ2 = principal_stresses(z)
-    min.(λ1, λ2), max.(λ1, λ2)
+z is a matrix of scalars.
+Output is also called the Laplacian, or ∇²z.
+"""
+function divergence_of_gradients(z)
+    # Two-time partial derivatives with Bickley kernels
+    z11, z21, z12, z22 = hessian_components(z)
+    z11 .+ z22
 end
 
 
@@ -135,13 +122,18 @@ end
 
 """
    smooth_laplacian(g, source_indices::CartesianIndices)
+   smooth_laplacian(z)
    ---> Matrix{scalar}
 
 We can interpret the gradient of elevation z as a vector field.
 
 If that vector field represented a quasi-static, incompressible
 fluid flow, we would call the result 'divergence': How much
-fluid would be entering (from outside) at this point? 
+fluid would be entering (from outside) at this point?
+
+A more apt explanation is "two times the mean curvature". 'Mean' because
+curvature on a surface can have two principal directions - we're calculating curvature 
+components along g's axes, then averaging those.
 """
 function smooth_laplacian(g, source_indices::CartesianIndices)
     # Smooth surface
@@ -152,8 +144,10 @@ function smooth_laplacian(g, source_indices::CartesianIndices)
     # Return the needed resolution only.
     g11[source_indices] .+ g22[source_indices]
 end
-
-jacobian_components(z) = imgradients(z, KernelFactors.prewitt)
+function smooth_laplacian(z)
+    smooth_laplacian(z, CartesianIndices(axes(z)))
+end
+jacobian_components(z) = imgradients(z, KernelFactors.bickley)
 
 """
     hessian_components(g1, g2)
@@ -162,18 +156,18 @@ jacobian_components(z) = imgradients(z, KernelFactors.prewitt)
 g1, g2 are intended to be matrices containing orthogonal gradient components.
 
 Output is matrices of the same form, representing second order derivatives.
-These are based on the Prewitt algorithm, i.e. they are 'smoothed sideways'.
+These are based on the Bickley algorithm, i.e. they are 'smoothed sideways'.
 
 Each point [0,0] is affected by region [-2:2, 2:2].
 """
 function hessian_components(g1, g2)
     # Hessian matrix elements (g12 and g21 are supposedly equal)
-    g11, g12 = imgradients(g1, KernelFactors.prewitt)
-    g21, g22 = imgradients(g2, KernelFactors.prewitt)
+    g11, g12 = imgradients(g1, KernelFactors.bickley)
+    g21, g22 = imgradients(g2, KernelFactors.bickley)
     g11, g21, g12, g22
 end
 function hessian_components(z::Matrix{T}) where T
     # Jacobian matrix elements
-    g1, g2 = jacobian_components((z))
+    g1, g2 = jacobian_components(z)
     hessian_components(g1, g2)
 end
