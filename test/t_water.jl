@@ -30,7 +30,7 @@ fna = first(tif_full_filenames_buried_in_folder(tmpdir_water))
 # not to test the pipeline, so we test on the level inside `water_overlay` first.
 elevations = let
     z = readclose(fna)
-    transpose(z.A[:, :, 1])
+    transpose(z.A[:, :])
 end
 @test maximum(elevations) == 553.9368f0
 @test eltype(elevations) == Float32

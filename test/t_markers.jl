@@ -10,7 +10,7 @@ w, h = 100, 100
 bw = zeros(Gray{Bool}, h, w)
 x1, y1 = 5, 5
 x2, y2 = 20, 50
-# Pixel indexes - name hints at the y, then x sequence (row, column)
+# Pixel indices - name hints at the y, then x sequence (row, column)
 pis = [CartesianIndex((y1, x1)), CartesianIndex((y2, x2))]
 p_nw = CartesianIndex((1,1))
 ########################

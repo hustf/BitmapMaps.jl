@@ -1,3 +1,5 @@
+# Used by steps in the pipeline.
+#
 # Utilties concerning ImageSegmentation.SegmentedImage.
 # Functions relating segmentation of an image with data,
 # primarily dictionaries of those data.
@@ -37,7 +39,7 @@ function mean_index_dictionary(segments)
         if mean ∉ R
             @show mean cum count R
             throw("Find out why")
-        end 
+        end
         push!(dicmean, label => mean)
     end
     dicmean
@@ -58,7 +60,4 @@ function bbox_internal_indices_dictionary(segments)
     dic
 end
 
-function bbox_diagonal_length_dictionary(segments)
-    bbdic = bbox_internal_indices_dictionary(segments)
-    Dict([label=> hypot((bb[end] - bb[1]).I...) for (label, bb) in bbdic])
-end
+bbox_diagonal_length_dictionary(segments, bbdic) = Dict([label=> hypot((bb[end] - bb[1]).I...) for (label, bb) in bbdic])

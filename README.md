@@ -67,47 +67,63 @@ Rendering the finished bitmaps is not realistically expected to run in one step.
 
 Steps in the pipeline are :
 
-0) Pre-process: Make an .svg file which links to each sheet. You can open this in a brownser. At first, it will contain empty rectangles for each sheet. Later, thumbnails of each sheet are shown (`make_vector_graphics`).
-
-1) Define a specification object for the regional map, which has type `SheetMatrixBuilder`. Print Repl feedback for a preview of the bitmap's geographical extent and division into sheets (`define_builder`). If you call `smb = define_builder()` directly, 
+1) Define a specification object for the regional map, a `SheetMatrixBuilder`. Print Repl feedback for a preview of the bitmap's geographical extent and division into sheets (`define_builder`). If you call `smb = define_builder()` directly, 
 you can check details,  or details for individual sheets (e.g. `smb[2, 2]`)
 
-The following steps are functions, called with a `SheetBuilder` argument at a time. A `SheetBuilder` is a subdivision of a `SheetMatrixBuilder`.
+0) Pre-process: Make an .svg file which links to each sheet. You can open this in a browser. At first, it will contain empty rectangles for each sheet. Later, thumbnails of each sheet are shown (`make_vector_graphics`). Click on a thumbnail to navigate to that sheet.
 
-2) Establish a folder (`establish_folder`).
 
-3) Unzip elevation data (`unzip_tif`) from the project folder.
 
-4) Consolidate elevation data (`consolidate_elevation_data`), i.e. copy elevation data from input .tif files to a smaller .tif file in a sheet's folder. 
+1) Define a `SheetMatrixBuilder` for the regional map (`define_builder`), and print a summary to the REPL. 
+    Its properties are taken from `BitmapMaps.ini`, which can be overruled by keyword arguments.
 
-5) Identify water surfaces (`water_overlay`).
+2) Make an .svg file which links to each sheet (`make_vector_graphics(smb)`). You can open this in a browser. At first, it will contain empty rectangles for each sheet, reload to update
+while the sheets are bein made. Click on a thumbnail to navigate to that sheet.
 
-6) Make topographic reliefs (`topo_relief`), that is, the colorful bitmap without other details.
+The following steps are functions called with a `SheetBuilder` argument. A `SheetBuilder` is a subdivision of a `SheetMatrixBuilder`.
 
-7) Make elevation contours (`contour_lines_overlay`).
+3) Establish a folder (`establish_folder`).
 
-8) Add UTM grid (`grid_overlay`). Typically, the local UTM zone is overlain, while the map projection follows the countrywide UTM zone.
+4) Unzip elevation data (`unzip_tif`) from the project folder.
 
-9) Mark ridges and dieders (`ridge_overlay`).
+5) Consolidate elevation data (`consolidate_elevation_data`), i.e. copy elevation data from input .tif files to a smaller .tif file in a sheet's folder. 
 
-10) Make a preliminary summit identification (`summits_on_sheet`), write to a preliminary text file and summit markers image. 
+6) Identify water surfaces (`water_overlay`).
+
+7) Make topographic reliefs (`topo_relief`), that is, the colorful bitmap without other details.
+
+8) Make elevation contours (`contour_lines_overlay`).
+
+9) Add UTM grid (`grid_overlay`). Typically, the local UTM zone is overlain, while the map projection follows the countrywide UTM zone.
+
+10) Mark ridges and dieders (`ridge_overlay`).
+
+11) Make a preliminary summit identification (`summits_on_sheet`), write to a preliminary text file and summit markers image. 
     Also add the sheet local elevation graph to the regional elevation graph. See description below.
 
-11) Make a composite bitmap from layers (`join_layers`), 'Composite.png'. This will be an external resource to step 14, which overlays text on top of the bitmap.
+12) Make a composite bitmap from layers (`join_layers`), 'Composite.png'. This will be an external resource to step 15, which overlays text on top of the bitmap.
 
-12) Make a composite bitmap (`make_thumbnail`), without grids and contours. This will be an external resource to `(name varies).svg', the mosaic of all sheets created in step 0. 
+13) Make a smaller composite bitmap (`make_thumbnail`), without grids and contours. This will be an external resource to `(name varies).svg', the mosaic of all sheets created in step 2. 
 
-13) (Run only after 1-12 is completed for all sheets): 
-    Calculate summit prominence (`summits_regional_update`). Update the preliminary `Summits.csv' text files and the preliminary 'Markers.png'. By default we use filled triangles for peaks with prominence > 100 m.
+The following steps are run only after 1-13 is complete for all sheets:
 
-    We have now narrowed down the number of summits to a realistic level. This is when we make calls to an online API (indirectly, 'Stadnamn.jl` makes the calls) to retrieve names for each summit.
+14) Update files with summit prominence (`summits_regional_update`). From prominence, reduce the list of summits. Retrieve geographical names (indirectly, `Stadnamn.jl` makes the calls). Update the `Summits.csv' text files and the preliminary 'Markers.png'. Replace preliminary markers symbols. By default we use filled triangles for peaks with prominence > 100 m.
 
-14) Call `make_vector_graphics`. Step 0 already did this for the regional map. We now call call it with indiviual sheets as argument. This creates `Composite.svg`. You can navigate to this file using the browser from the tiled mosaic of sheet thumbnails.
+15) Call `make_vector_graphics`. Step 2 already did this for the regional map. We now make `Composite.svg` files for individual sheets. You can navigate here using the browser from the regional map. 
 
-15) Re-make the composite bitmap (`join_layers`) because `Markers.png` was updated with some fewer summit marks in step 15. 
+16) Re-make the composite bitmap (`join_layers`) if `Markers.png` was updated in step 14. 
 
 
 # Current state
+
+Version 0.3.1:
+Added detailed reporting for summit prominence checking.
+Added detailed feedback for water body identification at specific coordinates.
+Added utilties for touching up elevation files manually with the open-source Gimp editor.
+Added parameters for disabling online retrieval of geographical names, due to discovered throttling.
+Use version "0.9.4" of GeoArrays. 
+Improve speed by using static arrays and dropping support of 'Missing' values in consolidated elevation files.
+
 
 Version 0.3.0:
 Rework water detection fundamentally. This approach detects most artifacts and colors those as water if close to
@@ -126,7 +142,7 @@ Version 0.2.0:
 
 Rework prominence calculation, since the previous algorithm was incorrect in some cases and required multiple pipeline runs. See description below.
 
-Step 12 now requires more arguments than just the sheet builder to step 12. Instead of adding more fields to `SheetBuilder`, we made closure functions in the calling context (`process_job`).
+Step 13 now requires more arguments than just the sheet builder to step 13. Instead of adding more fields to `SheetBuilder`, we made closure functions in the calling context (`process_job`).
 The new step `make_thumbnail` also needed more information. Rather than adding more fields to `SheetBuilder` we made closure functions in the calling context.
 These closures have the downside that user can not as easily call individual steps in the pipeline.
 
@@ -176,7 +192,7 @@ Version 0.1.7:
 Version 0.1.6:
 
 - Add .ini parameter 'Behaviour when data is missing', for sheets completely filled with water surface.
-- In step 6, use a temporary dictionary for storing non-zero boundary boxes for input files.
+- Use a temporary dictionary for storing non-zero boundary boxes for input files.
 
 Version 0.1.5:
  - change the palette to have a more uniform lightness, and an increasing red-yellow-ish tint between altitudes 500 m and 1500 m. Also change from using the colorspace RGB to XYZ while
@@ -323,7 +339,7 @@ In order to do the local and preliminary filtering above, we'll use a local elev
 ## Re-form what we have to a local elevation graph
 
 - Form a directed metagraph. That is, a graph where each vertex has a label and a property.
-- From our still very long list of summit candidates, take all indexes into the matrix z.
+- From our still very long list of summit candidates, take all indices into the matrix z.
 - Each index in the matrices map to an utm coordinate. Use the utm coordinate as a label. This is necessary for combining multiple sheets later.
 - Each index in the matrixes point to an exact elevation. This will be our vertex property.
 - Follow all ascendants of our candidates in the maxtree. Add those, along with edges between.

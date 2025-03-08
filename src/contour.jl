@@ -1,10 +1,13 @@
 # Step in pipeline.
 # Creates elevation contour lines overlay from elevation data.
-# # Output is an image file per sheet, for manual touch-up.
+# Output is an image file per sheet, for manual touch-up.
+# Applies smoothing to terrain where that is needed, but
+# keeps details where there is no forest, buildings and the like.
 
 """
     contour_lines_overlay(sb::SheetBuilder)
     contour_lines_overlay(fofo, cell_iter, cell_to_utm_factor)
+    ---> Bool
 
 """
 function contour_lines_overlay(sb::SheetBuilder)
@@ -37,8 +40,7 @@ function contour_lines_overlay(fofo, cell_iter, cell2utm, minlen, vthick, vdist)
 end
 function _elev_contours(fofo, cell_iter, cell2utm, minlen, vthick, vdist)
     # Read elevation
-    g = readclose(joinpath(fofo, CONSOLIDATED_FNAM))
-    @assert g isa GeoArray{Float32, Array{Float32, 3}} "$(typeof(g))"
+    z = elevation_full_res(fofo)
     #
     # Prepare iterators and buffers, reduce source resolution
     #
@@ -47,13 +49,14 @@ function _elev_contours(fofo, cell_iter, cell2utm, minlen, vthick, vdist)
     si = CartesianIndices(source_indices)
     # We store three arrays in an 'image' in order to use the fast image filtering functions later.
     #    red:   bumpy_patch
+    rr = Float32.(bumpy_patch(z, si))
     #    green: unfiltered elevation
+    gg = z[si]
     #    blue:  highly smoothed elevation
-    # Note that although we use the full resolution for identifying forest,
+    bb = Float32.(imfilter(z, Kernel.gaussian(49))[si])
+    # Note that although we use the full resolution for identifying bumpy patches,
     # we reduce the resolution in this three-channel image:
-    img = RGB{Float32}.(Float32.(bumpy_patch(g, si)), # red
-            permutedims(g.A[:, :, 1])[si],           # green
-            Float32.(imfilter(permutedims(g.A[:, :, 1])[si], Kernel.gaussian(49)))) # blue
+    img = RGB{Float32}.(rr, gg,  bb) # blue
     # Boolean countours image:
     res = __elev_contours(img, minlen, vthick, vdist)
     # An alternative topo colour which would show better on green:
@@ -75,7 +78,7 @@ function __elev_contours(img, minlen, vthick, vdist)
     _elev_contours!(res, img, bbuf, minlen, vthick, vdist)
     res
 end
-function _elev_contours!(res::T1, img::T2, 
+function _elev_contours!(res::T1, img::T2,
     bbuf::T1, minlen::Int64, vthick::T3, elevation_spacings::T3) where {T1 <: Matrix{Gray{Bool}},
         T2 <: Matrix{RGB{Float32}},
         T3 <: Vector{Int64}}
@@ -98,7 +101,7 @@ end
     strokeify(bw, thickness, minlen)
 
 Applies a series of filters that change a collection of adjacent pixels to
-'pen strokes' with the given thickness in pixels. 
+'pen strokes' with the given thickness in pixels.
 
 Increase minlen to drop 'dashed elevation contours' in forests, built-up areas.
 """
@@ -127,7 +130,7 @@ function func_elev_contour(Δc::Float32)
     max_from_contour = 3.0f0
     isnot =  Gray{Bool}(false)
     is = Gray{Bool}(true)
-    # 
+    #
     f = let Δc = Δc, max_from_contour = max_from_contour, isnot =  isnot, is = is
         (M) -> let
             #    red:   bumpy_patch
@@ -137,14 +140,14 @@ function func_elev_contour(Δc::Float32)
             # If rows in M correspond to south -> north
             # and cols in M correspond to west -> east
             # _ n _
-            # w z e  
+            # w z e
             # _ s _
-            # 
+            #
             # If all pixels are in the forest, we apply the blue channel fully.
             # Otherwise, we interpolate according to 'forest factor':
             forest_factor = sum(x -> x > 0, red.(M)) / 9
             # Interpolate from forest_factor.
-            # Note that we subtract 4 m from the elevation in bumpy patches. This is 
+            # Note that we subtract 4 m from the elevation in bumpy patches. This is
             # often too much in upper elevations, and too little in lower elevations
             # with tall forest and houses. We aren't able to estimate the actual
             # height of the forest.
@@ -157,7 +160,7 @@ function func_elev_contour(Δc::Float32)
             Δz = mod(z - Δc / 2, Δc) - Δc / 2
             # Are we even roughly close to the contour? If not, we can decide fast.
             abs(Δz) > max_from_contour  && return isnot
-            # Are any of the neighbours not on the same 'sawtooth'? 
+            # Are any of the neighbours not on the same 'sawtooth'?
             # That might lead to artifacts, and we better judge that this is no contour.
             # This will reduce the overlapping contour pixels in very steep parts.
             abs(z - e) >= Δc / 2 && return isnot

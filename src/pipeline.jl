@@ -1,4 +1,10 @@
 # This pipeline is the most central part of the package.
+# Most steps are an operation with parameters defined by a SheetBuilder.
+# Operations can be called step-by-step or sheet-by-sheet order.
+# After all such steps have finished,
+# a set of 'regional post-steps' are run. They rely on regionally calculated
+# properties.
+
 """
     run_bitmapmap_pipeline(; complete_sheets_first = true, skip_summits = false, kwds...)
     ---> SheetMatrixBuilder
@@ -8,12 +14,12 @@ The job is defined in file BitmapMaps.ini, in user's home directory. Call `less(
 # Arguments
 
 You can overrule parameters from the .ini file with identical keywords, but changing the .ini file
-is recommended. 
+is recommended.
 
 - `example_keyword` (would appear as `:example_keyword`) in the file.
 - `complete_sheets_first`=true   'true' means one sheet is fully processed, then the next sheet.
                                  'false' means that each operation is finished for all sheets before the next operation.
-- `skip_summits`=false           'true' skips the prominence (re-)calculation, which can save time. A few iteration is 
+- `skip_summits`=false           'true' skips the prominence (re-)calculation, which can save time. A few iteration is
                                  needed for correct boundary conditions between sheets.
 
 # Example
@@ -27,7 +33,7 @@ SheetMatrixBuilder((35425, 6920995), # southwest_corner
                                191, # sheet_width_mm
                                275, # sheet_height_mm
                              11811, # density_pt_m⁻¹
-              "bitmapmaps/default") # pth
+              "BitmapMaps/default") # pth
         [easting, northing] derived properties:
           Bounding Box (BB) SE-NW            = (35425 6920995)-(48955 6940483)
           Northeast internal corner          = (48952, 6940483) - most northeastern sample point
@@ -46,9 +52,9 @@ SheetMatrixBuilder((35425, 6920995), # southwest_corner
                    ((35425 6930739, 42190 6930739, 42190 6940483, 35425 6940483, 35425 6930739)),
                    ((42190 6920995, 48955 6920995, 48955 6930739, 42190 6930739, 42190 6920995)),
                    ((42190 6930739, 48955 6930739, 48955 6940483, 42190 6940483, 42190 6930739)))
-[ Info: No .tif files in C:\\Users\\f\bitmapmaps/default\\1 1  35425 6920995  42190 6930739 to consolidate. Exiting.
-[ Info: Could not make Consolidated.tif for sheet  with folder path bitmapmaps/default\1 1  35425 6920995  42190 6930739. Download and unzip .tif files? Exiting.
-┌ Warning: Could not finish consolidate_elevation_data(SheetBuilder((0, 3248), (1:3248, 1:2255), (35425, 6930739)@(1, 1), 1, 11811, "bitmapmaps/default\\1 1  35425 6920995  42190 6930739")
+[ Info: No .tif files in C:\\Users\\f\\BitmapMaps/default\\1 1  35425 6920995  42190 6930739 to consolidate. Exiting.
+[ Info: Could not make Consolidated.tif for sheet  with folder path BitmapMaps/default\1 1  35425 6920995  42190 6930739. Download and unzip .tif files? Exiting.
+┌ Warning: Could not finish consolidate_elevation_data(SheetBuilder((0, 3248), (1:3248, 1:2255), (35425, 6930739)@(1, 1), 1, 11811, "BitmapMaps/default\\1 1  35425 6920995  42190 6930739")
 │ ) with success. Exiting
 ```
 """
@@ -78,11 +84,15 @@ end
 
 
 """
-    function define_builder(; kwds...)
+    define_builder(; kwds...)
+    ---> SheetMatrixBuilder
 
-Make a grid for individual printed pages. Each page is associated with an utm coordinate bounding box.
+Create a job specification for a map consisting of sheets. Keywords will override pararameters
+set in the .ini file.
 
-Parameters from .ini file will be overridden by keywords. See `run_bitmapmap_pipeline`.
+Call this instead of `run_bitmapmap_pipeline(; kwds...)` when you don't want to build the map just now.
+
+The resulting SheetMatrixBuilder can be used as an argument to `run_bitmapmap_pipeline`.
 """
 function define_builder(; kwds...)
     allowed_keywords = [:southwest_corner, :cell_to_utm_factor, :sheet_width_mm, :sheet_height_mm, :density_pt_m⁻¹,
@@ -128,7 +138,7 @@ function process_job(smb, complete_sheets_first, skip_summits)
     make_vector_graphics(smb)
     #
     # Closure for making thumbnails. Note, it would be cleaner to add another field to the
-    # SheetBuilder type, but making thumbnails is sort of an add-on functionality, so we 
+    # SheetBuilder type, but making thumbnails is sort of an add-on functionality, so we
     # don't revise the type (at this late revision).
     n_governing = max(size(smb)...)
     make_thumbnail(sb) = make_thumbnail_image(full_folder_path(sb), sb.density_pt_m⁻¹, n_governing)
@@ -161,7 +171,7 @@ function process_job(smb, complete_sheets_first, skip_summits)
     # Do the sheet steps depth-first or width-first.
     if complete_sheets_first
         for sb in smb
-            @info "Sheet $(cartesian_index_string(smb, sb.sheet_number)) of up to $(cartesian_index_string(smb))"
+            @info "Sheet $(cartesian_index_string(smb, sb.sheet_number)) of up to $(cartesian_index_string(smb)), at $(nowstring())"
             for (i, fn) in enumerate(operations_order)
                 call_func(fn, sb, skip_summits, i) || return false
             end
@@ -169,19 +179,19 @@ function process_job(smb, complete_sheets_first, skip_summits)
     else
         for (i, fn) in enumerate(operations_order)
             for sb in smb
-                @info "Sheet $(cartesian_index_string(smb, sb.sheet_number)) of up to $(cartesian_index_string(smb))"
+                @info "Sheet $(cartesian_index_string(smb, sb.sheet_number)) of up to $(cartesian_index_string(smb)), , at $(nowstring())"
                 call_func(fn, sb, skip_summits, i) || return false
             end
         end
     end
     #
-    # Sheet interaction, or 'regional' step. Requires that `summits_on_sheet` have been run for 
-    # all sheets first. 
+    # Sheet interaction, or 'regional' step. Requires that `summits_on_sheet` have been run for
+    # all sheets first.
     #
-    @info "Summits regional update (find names and prominence)"
+    @info "Summits regional update (find names and prominence), at $(nowstring())"
     summits_regional_update(smb, ffna_graph)
     #
-    @info "Update vector graphics and joining layers for sheets [1, 1] to $(cartesian_index_string(smb))"
+    @info "Update vector graphics and joining layers for sheets [1, 1] to $(cartesian_index_string(smb)), at $(nowstring())"
     for sb in smb
         call_func(make_vector_graphics, sb, skip_summits, length(operations_order) + 2) || return false
         call_func(join_layers, sb, skip_summits, length(operations_order) + 3) || return false
@@ -190,7 +200,7 @@ function process_job(smb, complete_sheets_first, skip_summits)
 end
 function call_func(fn, sb, skip_summits, i)
     if !skip_summits || fn !== summits_on_sheet
-        @debug "$(lpad(i, 2)) `$fn`. $(full_folder_path(sb))"
+        @debug "$(lpad(i, 2)) `$fn` at $(nowstring()). $(full_folder_path(sb))"
         ok_res = fn(sb)
         if ! ok_res
             @warn "Could not finish step $i $fn($sb) with success. Exiting"

@@ -75,7 +75,7 @@ let
         # Get elevation matrix
         za = let
             z = readclose(fna)
-            transpose(z.A[:, :, 1])
+            transpose(z.A[:, :])
         end
         @test sum(za) > 0
     end
@@ -108,7 +108,7 @@ let
     g = readclose(consfnam)
     # We're transposing the source data here, because
     # it makes it easier to reason about north, south, east west.
-    za = transpose(g.A[:, :, 1])
+    za = transpose(g.A[:, :])
     img = BitmapMaps.__topo_relief(za, sb.cell_iter, cell2utm)
     display_if_vscode(img)
 end
@@ -130,7 +130,7 @@ let
     g = readclose(consfnam)
     # We're transposing the source data here, because
     # it makes it easier to reason about north, south, east west.
-    za = transpose(g.A[:, :, 1])
+    za = transpose(g.A[:, :])
     display_if_vscode(za)
     function f_verif(M::Matrix)
         @assert size(M) == (3, 3)

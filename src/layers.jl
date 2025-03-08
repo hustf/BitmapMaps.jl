@@ -1,10 +1,10 @@
-# Contains two steps in pipeline.
+# Contains two steps in pipeline. Also: `downsize` and `downsample`.
 #
-# 1. join_layers
+# 1. Join_layers
 # Merges foreground layers onto background using the α / opacity channel.
 # Output is an image file per sheet.
 #
-# 2. make_thumbnail_image
+# 2. Make_thumbnail_image
 # Unlike other pipeline functions, this takes a second, captured argument.
 
 """
@@ -20,7 +20,7 @@ function join_layers(fofo, density_pt_m⁻¹)
     true
 end
 function make_composite_image(fofo, density_pt_m⁻¹)
-    # Prepare 
+    # Prepare
     ffna = joinpath(homedir(), fofo, COMPOSITE_FNAM)
     layerstack  = [TOPORELIEF_FNAM    Nothing
                     CONTOUR_FNAM      CompositeDestinationOver
@@ -72,9 +72,16 @@ function composite_on_top!(res, layer, modefunc)
     res
 end
 
-# This is called by by the generated function `make_thumbnail`, which captures n_governing
+"""
+    make_thumbnail_image(fofo, density_pt_m⁻¹, n_governing)
+    ---> Bool
+
+Called by by the generated function `make_thumbnail`, which captures n_governing.
+
+The thumbnail contains fewer detail layers, and uses downsizing instead of downsampling.
+"""
 function make_thumbnail_image(fofo, density_pt_m⁻¹, n_governing)
-    # Prepare 
+    # Prepare
     ffna = joinpath(homedir(), fofo, THUMBNAIL_FNAM)
     layerstack  = [TOPORELIEF_FNAM    Nothing
                     RIDGE_FNAM        BlendMultiply
@@ -88,7 +95,9 @@ function make_thumbnail_image(fofo, density_pt_m⁻¹, n_governing)
             @debug "    $THUMBNAIL_FNAM in $fofo\n           already exists (not all layer files, though). Exiting `make_thumbnail`"
             return true # We should continue with other sheets, no prob here
         end
-        layermodtimes = mtime.(layerfnas)
+        # We will not update the thumbnail just because MARKERS_FNAM is newer than the composite image.
+        # The reason why is that 'MARKERS_FNAM' will be updated in 'summits_regional_poststep'.
+        layermodtimes = mtime.(layerfnas[1:end - 1])
         compmodtime = mtime(ffna)
         if ! any(layermodtimes .> compmodtime)
             @debug "    $THUMBNAIL_FNAM in $fofo\n           already exists and is newer than layers. Exiting `make_thumbnail`"
@@ -125,12 +134,11 @@ end
     ---> typeof(img)
 
 Downsizing returns the mean of the original pixels for an output pixel.
-    
-For colors, it averages in the XYZ colorspace, since linear operations in RGB do not 
+
+For colors, it averages in the XYZ colorspace, since linear operations in RGB do not
 match visual perception.
 
 """
-
 function downsize(img::Matrix{T}, n_governing) where T
     ny, nx = size(img)
     iter = (1:n_governing:ny, 1:n_governing:nx)
@@ -140,7 +148,7 @@ end
 function downsize(img::Matrix{T}, n_governing) where T<:Union{Float32, Float64}
     ny, nx = size(img)
     iter = (1:n_governing:ny, 1:n_governing:nx)
-    # A pure downsampling would result in a 'speckled' appearance. 
+    # A pure downsampling would result in a 'speckled' appearance.
     # Averaging over the influencing pixels
     odd_size = 2 * div(n_governing, 2) + 1
     mapwindow(mean, img, (odd_size, odd_size); indices = iter)
@@ -148,8 +156,8 @@ end
 
 """
     downsample(img, n_governing)
-    
-Downsampling retains sharpness and is preferrable to 
+
+Downsampling retains sharpness and is preferrable to
 `downsize` when the result is going to be compared to a threshold.
 """
 function downsample(img, n_governing)

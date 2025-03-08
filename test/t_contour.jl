@@ -122,7 +122,7 @@ ny, nx = size(sb.cell_iter)
 source_indices = (1:cell_to_utm_factor(sb):(ny  * cell_to_utm_factor(sb)), 1:cell_to_utm_factor(sb):(nx * cell_to_utm_factor(sb)))
 si = CartesianIndices(source_indices)
 sicr = CartesianIndices((4500:1:(4500  * cell_to_utm_factor(sb)), 2000:1:(nx * cell_to_utm_factor(sb))))
-bump = bumpiness(transpose(g.A[:, :, 1])[sicr])
+bump = bumpiness(transpose(g.A[:, :])[sicr])
 inds = CartesianIndices((1750:2050, 350:1100))
 bump[inds]
 map(x -> Gray{N0f8}(x > 0.6), smooth_surface_fir(bump; nyquist_denom = 4, w = 49))[inds]
@@ -160,7 +160,7 @@ begin
     #p = lineplot(Float32.(d[600:1050, 1500]))
 end
 
-mask = bumpy_patch(transpose(g.A[:, :, 1])[sicr])
+mask = bumpy_patch(transpose(g.A[:, :])[sicr])
 open_as_temp_in_gimp(mask)
 mask
 conto = _elev_contours(full_folder_path(sb), sb.cell_iter, cell_to_utm_factor(sb), minlen, vthick, vdist)

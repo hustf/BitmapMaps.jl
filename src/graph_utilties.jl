@@ -1,9 +1,9 @@
 # Utilties concerning building and restructuring local and regional elevation graphs.
-# Note that the MaxTree is a local elevation graph (and a DAG), but it is also a dense matrix 
+# Note that the MaxTree is a local elevation graph (and a DAG), but it is also a dense matrix
 # which is too large to process for a whole region.
 #
-# The regional graph is indexed with utm indexes instead of image indexes. 
-# 
+# The regional graph is indexed with utm indices instead of image indices.
+#
 # Maxtree-only methods like `leaf_indices`, `parent_of_leaf_indices` and
 # `core_family_dictionary`, `distinct_summit_indices` are defined in `summits_on_sheet`.
 
@@ -11,18 +11,18 @@
     build_and_save_sheet_graph(ffna_graph, maxtree, z, vI, f_I_to_utm, border_sides, min_prominence)
 """
 function build_and_save_sheet_graph(ffna_graph, maxtree, z, vI, f_I_to_utm, border_sides, min_prominence)
-    # We're building a meta graph, i.e. vertices encode geographical position and elevation as metadata and 
+    # We're building a meta graph, i.e. vertices encode geographical position and elevation as metadata and
     # meta-labels.
-    # We build the graph from a pre-existing dense "matrix-graph", the maxtree, but we will 
-    # only include the vertices needed for finding topographical summit prominence in a region of 
+    # We build the graph from a pre-existing dense "matrix-graph", the maxtree, but we will
+    # only include the vertices needed for finding topographical summit prominence in a region of
     # multiple sheets.
     # Borders between sheets are treated differently, since vertices on borders will connect
     # the different sheet graphs later.
     internal_bbox = bbox_internal(z, f_I_to_utm)
     # The first sheet in a region will have borders on the North and East sides only.
-    # Expanding the internal_bbox on the South and West will reduce the vertex density on 
+    # Expanding the internal_bbox on the South and West will reduce the vertex density on
     # those borders, because the matree has no vertices on the moved borders.
-    limiting_bbox = grow_bbox_on_sides_excepting(internal_bbox, border_sides) 
+    limiting_bbox = grow_bbox_on_sides_excepting(internal_bbox, border_sides)
     # Graph to add into
     gl = get_new_unsaved_graph()
     # Add vertices, ancestors and descendants, including edges between
@@ -58,7 +58,7 @@ end
 """
     reduce_and_prune!(g, limiting_bbox, min_prominence)
 
-Simplifies graph 'g' while preserving more info where vertex labels 
+Simplifies graph 'g' while preserving more info where vertex labels
 border on 'limiting_bbox'.
 
 We have two operations, 'reduce' (r) and 'prune' (p). The optimum order
@@ -96,7 +96,7 @@ end
 Modifies the graph g, and returns the total number of vertices added.
 
 Starting at each index in vI, we add direct ascendants and direct descendants. The relationships are taken from maxtree,
-and we modify the directed graph g. 
+and we modify the directed graph g.
 
 # Definitions
 
@@ -120,7 +120,7 @@ Descendant D of B:
 
 (A member of) direct lineage E of B:
    - identified by its index `iE` in the matrices `parent_indices` and 'z'.
-   - ascendant or descendant of B. There is a path B <-> E, either through parent-> child 
+   - ascendant or descendant of B. There is a path B <-> E, either through parent-> child
      or child -> parent, with no not reversal of direction.
 """
 function add_indices_and_direct_lineage!(g::MetaGraph, maxtree::MaxTree, z, vI::Vector{CartesianIndex{2}}, f_I_to_utm)
@@ -131,7 +131,7 @@ function add_indices_and_direct_lineage!(g::MetaGraph, maxtree::MaxTree, z, vI::
     f_i_to_utm = i -> f_I_to_utm(R[i])
     # We already have the table for parents
     parent_indices = maxtree.parentindices
-    # We store a lookup table for children as a dictionary. 
+    # We store a lookup table for children as a dictionary.
     pc_dic = _parent_child_dictionary(parent_indices)
     for i in Rlin[vI]
         this_index_count = add_index_and_direct_ascendants!(g, parent_indices, z, f_i_to_utm, i)
@@ -179,7 +179,7 @@ function add_index_and_direct_ascendants!(g, parent_indices, z, f_i_to_utm, i::I
         count += 1
     end
     # The maxtree parent of this vertex is most likely on a rounded same elevation and has index
-    ip = parent_indices[i] 
+    ip = parent_indices[i]
     # If no self-parenting
     if i !== ip
         utmp = f_i_to_utm(ip)
@@ -224,7 +224,7 @@ function add_index_and_direct_descendants!(g, pc_dic, z, f_i_to_utm, i::Int)
         count += 1
     end
     # The maxtree children of this vertex is most likely on a higher elevation
-    set_ic = pc_dic[i] 
+    set_ic = pc_dic[i]
     for ic in set_ic
         if i !== ic
             utmc = f_i_to_utm(ic)
@@ -261,7 +261,7 @@ haskey(gr, ((56345, 6949028))) checks if a vertex is registered for this positio
 gr[(56345, 6949028)] returns its value e.g. 43.2f0
 
 """
-function get_graph(ffna_graph)
+function get_graph(ffna_graph)::ElevationGraph
     # Look for it on disk.
     if isfile(ffna_graph)
         loadgraph(ffna_graph, "Elevation_graph", MGFormat())
@@ -313,8 +313,8 @@ pruning to first branch.
 """
 function prune_low_prominence!(g, min_prominence)
     bb = bbox_internal(g)
-    limiting_bbox = grow_bbox_on_sides_excepting(bb, Symbol[]) 
-    prune_low_prominence!(g, limiting_bbox, min_prominence) 
+    limiting_bbox = grow_bbox_on_sides_excepting(bb, Symbol[])
+    prune_low_prominence!(g, limiting_bbox, min_prominence)
 end
 function prune_low_prominence!(g, limiting_bbox, min_prominence)
     # All leaves, except those on edges of limiting_bbox
@@ -337,7 +337,7 @@ end
     prune_to_first_branch!(gr, limiting_bbox, utm::Tuple{Int64, Int64})
     prune_to_first_branch!(gr, vertex_no::Int64)
     prune_to_first_branch!(gr, utm::Tuple{Int64, Int64})
-    
+
 
 Just snip the edges. Remove free vertices in bulk later.
 """
@@ -350,14 +350,14 @@ function prune_to_first_branch!(gr, limiting_bbox, vertex_no::Int64)
     # Caller knows there are no children / outneighbors.
     # Where sheets have been connected in a regional graph, some vertices will have multiple
     # parents / inneigbors. The graph is still acyclic.
-    #if indegree(gr, vertex_no) !== 1 
+    #if indegree(gr, vertex_no) !== 1
     #    throw(ArgumentError("Vertex no $(vertex_no) at utm $(label_for(gr, vertex_no)) has $(indegree(gr, vertex_no)) parents (inneigbors)"))
     #end
     parent_no = first(inneighbors(gr, vertex_no))
     # Snip this edge, leave the vertex unconnected. Vertex numbers remain unchanged.
     rem_edge!(gr, parent_no, vertex_no) || throw(ErrorException("Failed to remove edge (parent_no, vertex_no) = $((parent_no, vertex_no)) at utm $(label_for(gr, vertex_no))."))
     # Check the parent's edges.
-    # We have removed our edge to parent already. 
+    # We have removed our edge to parent already.
     if outdegree(gr, parent_no) > 0
         # Parent has other children. This, vertex_no, was the last pruned, the vertices are removed in `remove_isolated_vertices`.
         return 1
@@ -373,7 +373,7 @@ function prune_to_first_branch!(gr, limiting_bbox, vertex_no::Int64)
         end
     end
 end
-function prune_to_first_branch!(gr, vutm::Vector{Tuple{Int64, Int64}}) 
+function prune_to_first_branch!(gr, vutm::Vector{Tuple{Int64, Int64}})
     foreach(utm -> prune_to_first_branch!(gr, utm),  vutm)
     gr
 end
@@ -384,7 +384,7 @@ function prune_to_first_branch!(gr, vertex_no::Int64)
     # Snip this edge, leave the vertex unconnected. Vertex numbers remain unchanged.
     rem_edge!(gr, parent_no, vertex_no) || throw(ErrorException("Failed to remove edge (parent_no, vertex_no) = $((parent_no, vertex_no)) at utm $(label_for(gr, vertex_no))."))
     # Check the parent's edges.
-    # We have removed our edge to parent already. 
+    # We have removed our edge to parent already.
     if outdegree(gr, parent_no) > 0
         # Parent has other children. This, vertex_no, was the last pruned, the vertices are removed in `remove_isolated_vertices`.
         return 1
@@ -426,7 +426,7 @@ Remove vertices with one in and one out connection,
 provided that the vertex and its two neighbors are not on a border.
 """
 function chain_reduce!(g, limiting_bbox)
-    # We'll remove superfluous vertices, 
+    # We'll remove superfluous vertices,
     # i.e. those with one neighbor in each direction.
     remove_links = Vector{Tuple{Int64, Int64}}()
     for v in reverse(vertices(g))
@@ -463,16 +463,16 @@ end
     merge_into!(gr, gl, cell_iter, f_I_to_utm, border_sides)
 
 gr is the regional (larger) elevation graph
-gl is the local graph 
+gl is the local graph
 
-border_sides indicates which sides of the local graph 'gl' have borders with 
-any sheet. 
+border_sides indicates which sides of the local graph 'gl' have borders with
+any sheet.
 
 , gl. E.g. pairs_of_border_neighbors(gr, cell_iter, f_I_to_utm, border_sides)
 
 Connects edges where relevant, enabling longer downhill and uphill paths.
 
-Of course, labels from different sheets are necessarily unique, 
+Of course, labels from different sheets are necessarily unique,
 describing geographical position. For the same reason, edges are unique.
 """
 function merge_into!(gr, gl, cell_iter, f_I_to_utm, border_sides)
@@ -489,9 +489,9 @@ function merge_into!(gr, gl, cell_iter, f_I_to_utm, border_sides)
     # We bypass destination vertices that are leaf nodes, and instead
     # connect to it's reference node. That way, we can follow paths uphill across the
     # border while iteratively going source -> destination.
-    # 
+    #
     @debug "            Find source => destination for $(length(bp)) pairs"
-    @time "Pair directions" bp_directed = directed_pairs_of_border_neighbors(gl, gr, bp)
+    bp_directed = directed_pairs_of_border_neighbors(gl, gr, bp)
     # Now change the regional graph gr by adding edges across the border(sides).
     @debug "            Making $(length(bp_directed)) edges across border. $(length(bp) - length(bp_directed)) connections discarded"
     for (s, d) in bp_directed
@@ -499,7 +499,7 @@ function merge_into!(gr, gl, cell_iter, f_I_to_utm, border_sides)
     end
     # Clean up: Remove leaf nodes still remaining on the border. Most of these occur because a reference node was targeted
     # instead of the vertex on the border.
-    # It would be difficult to determine the prominence of leaves on the border at this point. 
+    # It would be difficult to determine the prominence of leaves on the border at this point.
     # However, the likelihood of actual summits with prominence > min_prominence is miniscule.
     # We simply prune all branches with leaves on the border.
     while true
@@ -527,7 +527,7 @@ function make_connection!(gr, s, d)
         @show haskey(gr, s, d)
         throw(ErrorException("Failed to add edge s =$s , d = $d. Consider deleting the regional graph *.z file!"))
     end
-    gr    
+    gr
 end
 
 function destination_proxy(gr, d::Tuple{Int64, Int64})
@@ -638,11 +638,11 @@ function neighbor_delta_utm(cell2utm, border_side)
     @assert cell2utm > 0
     if :n == border_side
         (0, cell2utm)
-    elseif :s == border_side 
+    elseif :s == border_side
         (0, -cell2utm)
-    elseif :w == border_side 
+    elseif :w == border_side
         (-cell2utm, 0)
-    elseif :e == border_side 
+    elseif :e == border_side
         (cell2utm, 0)
     else
         throw(ArgumentError("border_side is $border_side, not :n, :s, :e:, :w"))
@@ -656,7 +656,7 @@ tallest_elevation_above(g, utm) = tallest_descendant(g, utm, destination_proxy(g
 
 """
     directed_pairs_of_border_neighbors(g1, g2, bp)
-    ---> Vector{Pair{Tuple{Int64, Int64}, Tuple{Int64, Int64}}} 
+    ---> Vector{Pair{Tuple{Int64, Int64}, Tuple{Int64, Int64}}}
 
 g1 and g2 are neighbouring elevation graphs.
 bp is a vector with (utm1 => utm2)
@@ -677,7 +677,7 @@ function directed_pairs_of_border_neighbors(g1, g2, bp)
     # Prepare
     #
     # We need to move towards ascdendants many times,
-    # which is slower than towards descendants. 
+    # which is slower than towards descendants.
     # An equivalent operation is to reverse the graph, then
     # walk towards ascendants. We reverse the graph once
     # and capture the reversed graphs in these closures:
@@ -687,8 +687,12 @@ function directed_pairs_of_border_neighbors(g1, g2, bp)
     lowest_elevation_below_2 = let g2r = reverse(g2)
         (utm) -> lowest_descendant(g2r, utm)
     end
+    # CONSIDER
+    # This is terribly slow at times. It might be easier to build
+    # a 'cumulative' graph, where each vertex data contained it's own
+    # lowest descendant value, and then use that for lookup.
     _directed_pairs_of_border_neighbors = let g1 = g1, g2 = g2
-        (utm_pair) -> let 
+        (utm_pair) -> let
             utm1, utm2 = utm_pair
             z_pair = round(Int64, g1[utm1]) => round(Int64, g2[utm2])
             if z_pair == (0 => 0)
@@ -701,7 +705,7 @@ function directed_pairs_of_border_neighbors(g1, g2, bp)
                     dp = destination_proxy(g1, utm1)
                 elseif d == utm2
                     dp = destination_proxy(g2, utm2)
-                else 
+                else
                     @assert s == (nothing, nothing) && d == (nothing, nothing)
                     dp = d
                 end
@@ -725,7 +729,7 @@ the graphs without creating loops. Don't use it directly as an edge! Replace
 ascendants only.
 
 `source_utm` will be utm1 or utm2
-`destination_utm` will be the remaining utm1 or utm2. 
+`destination_utm` will be the remaining utm1 or utm2.
 """
 function source_destination(utm_pair, z_pair, tallest_above_pair, lowest_below_pair)
     utm1, utm2 = utm_pair
@@ -739,7 +743,7 @@ function source_destination(utm_pair, z_pair, tallest_above_pair, lowest_below_p
         s = utm1
         d = utm2
     else
-        # s and d are on the same elevation. 
+        # s and d are on the same elevation.
         # Cases considering highest elevation above and lowest elevation below:
         # 1) utm1 or its reference node has tallest elevation above
         #    => s = utm2, d = utm1
@@ -755,7 +759,7 @@ function source_destination(utm_pair, z_pair, tallest_above_pair, lowest_below_p
         #
         # Note alternative approach: Link directly to the tallest descendant or lowest ascendant, not
         # allowing border crossing. This should work well if we only had two regions, but we're stitching
-        # others later. 
+        # others later.
         if >(tallest_above_pair...) # 1)
             s = utm2
             d = utm1
@@ -778,4 +782,3 @@ function source_destination(utm_pair, z_pair, tallest_above_pair, lowest_below_p
     end
     return s => d
 end
-

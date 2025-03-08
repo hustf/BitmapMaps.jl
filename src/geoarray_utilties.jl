@@ -1,8 +1,12 @@
+# Utiltiy functions for GeoArrays.
+# Some extend functions defined for SheetBuilder and SheetMatrixBuilder
+
+
 """
     readclose(fna)
 
 A barrier for a possible issue with GeoArrays. Keyword arguments not included.
- Because calling `read` sometimes leaves a file 'open', runs in a separate thread.
+Because calling `read` sometimes leaves a file 'open', runs in a separate thread.
 """
 function readclose(fna)::GeoArray # Type annotation for the compiler, just like `read`
     file_task = Threads.@spawn GeoArrays.read(fna)
@@ -15,7 +19,7 @@ function readclose(fna)::GeoArray # Type annotation for the compiler, just like 
     contents
 end
 
-# Docstring in builders_utilties
+# See docstring in builders_utilties, this extends.
 function closed_polygon_string(fnas::Vector{String})
     s = ""
     n = length(fnas)
@@ -77,7 +81,6 @@ end
 """
     nonzero_raster_rect(fna::String)
     nonzero_raster_rect(g::GeoArray)
-
     ---> @NamedTuple{min_x::Int64, min_y::Int64, max_x::Int64, max_y::Int64}
 
 This returns the geographical external boundaries of the cells containing data other than zero.
@@ -166,7 +169,7 @@ function unpadded_indices(matrix)
     end
 end
 function unpadded_indices(g::GeoArray)
-    is, js = unpadded_indices(g.A[:, :, 1])
+    is, js = unpadded_indices(g.A[:, :])
     @assert is !== nothing
     @assert js !== nothing
     CartesianIndices((is, js))

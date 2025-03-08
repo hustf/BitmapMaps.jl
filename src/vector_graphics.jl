@@ -1,11 +1,14 @@
+# Step in pipeline.
 # Called prior to the sheets pipeline with a SheetMatrixBuilder to make a navigable .svg file.
-# Step in sheet pipeline.
 # This file copies and modifies an existing .svg file,
 # so as to include by reference the bitmap,
 # and adds text for the foreground, based on 'Summits.csv'.
 # The advantage to this approach over the previous one
 # (LuxorLayout) is scriptable, searchable graphics files,
 # and we avoid depending on the Cairo / Pango library.
+#
+# We make vector graphics files because it works better with searchable text.
+# A bitmap is referred (included in) each vector graphics.
 
 """
     make_vector_graphics(smb::SheetMatrixBuilder)
@@ -13,7 +16,7 @@
     make_vector_graphics(fofo, cell_iter, sheet_width_mm, sheet_height_mm, density_pt_m⁻¹; revise_names = false))
     --> Bool
 
-Create an svg file. 
+Create an svg file.
 
 - When called with a SheetMatrixBuilder, makes an .svg mosaic from the sheets.
 The mosaic tiles show the topographic relief without overlays, but links to the composite images.
@@ -90,7 +93,7 @@ TODO make inclusion of prominence configureable.
 """
 function _make_vector_graphics(ffna_svg, ffna_css, ffna_csv_summits, ffna_csv_lakes, cell_iter, sheet_width_mm, sheet_height_mm, density_pt_m⁻¹, font_pt, limit_left_align)
     # Early exit
-    if isempty(readdlm(ffna_csv_summits, '\t')[2:end,:])
+    if isempty(readdlm(ffna_csv_summits, '\t')[2:end,:]) && isfile(ffna_svg)
         @debug "    No summits in csv file => no text to add."
         return
     end
@@ -145,7 +148,7 @@ function modify_svg_text(ffna_svg, ffna_csv_summits, ffna_csv_lakes, lineheight_
     svg = EzXML.root(doc)
     # Remove the dummy text element in the template.
     unlink!(findfirst("x:text", svg, ns))
-    # Add summit and lakes text 
+    # Add summit and lakes text
     add_summit_text(svg, ffna_csv_summits, lineheight_px, max_x_left_align)
     add_lake_text(svg, ffna_csv_lakes)
     #
@@ -155,7 +158,7 @@ function modify_svg_text(ffna_svg, ffna_csv_summits, ffna_csv_lakes, lineheight_
     nothing
 end
 function add_summit_text(svg, ffna_csv_summits, lineheight_px, max_x_left_align)
-    # Prepare 
+    # Prepare
     class = "fjell"
     subclass = "fjell_alt"
     dx = 0.2 * lineheight_px
@@ -164,11 +167,11 @@ function add_summit_text(svg, ffna_csv_summits, lineheight_px, max_x_left_align)
     summits_data = readdlm(ffna_csv_summits, '\t')[2:end,:]
     if isempty(summits_data)
         @debug "    No summits in file $(joinpath(splitpath(ffna_csv_summits)[end - 1: end])) \n\t\t => no text to add."
-        return 
+        return
     end
     if size(summits_data, 2) < 6
         @debug "    No summit names in file $(joinpath(splitpath(ffna_csv_summits)[end - 1: end])) \n\t\t => no text to add."
-        return 
+        return
     end
     vz = Int.(summits_data[:, 1])
     vpr = Int.(round.(summits_data[:, 2]))
@@ -254,10 +257,10 @@ end
 
 """
     inject_tspan!(parent, text; dx = nothing, text_anchor = nothing,
-        x = nothing, y = nothing, lineheight_px = nothing, 
+        x = nothing, y = nothing, lineheight_px = nothing,
         class = nothing, subclass = nothing, tab_lev = 1)
 
-# Arguments 
+# Arguments
 
 - 'class' applies to the element itself
 - 'subclass' applies to the recursive call when enclosed paranthesises are part of 'text'.
@@ -265,7 +268,7 @@ end
    a tspan is injected within the tspan element through a recursive call.
 """
 function inject_tspan!(parent, text; dx = nothing, text_anchor = nothing,
-    x = nothing, y = nothing, lineheight_px = nothing, 
+    x = nothing, y = nothing, lineheight_px = nothing,
     class = nothing, subclass = nothing, tab_lev = 1)
     #
     link!(parent, TextNode('\n' * repeat("    ", tab_lev))) # line break and indent for xml readability

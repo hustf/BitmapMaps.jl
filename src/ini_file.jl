@@ -1,3 +1,10 @@
+#
+# Read values from the BitmapMaps.ini file.
+# If the file doesn't exist, it is created and
+# fillled with default values.
+# To change the file, manually edit it.
+# Also, a function to delete the current .ini file.
+#
 function _prepare_init_file_configuration(io)
     # Add a comment at top (IniFile.jl has no functions for comments)
     msg = """
@@ -19,7 +26,7 @@ function _prepare_init_file_configuration(io)
         """
     println(io, msg)
     # Note, we're creating several 'IniFile' below, for sequential writing to the same file.
-    # The sequence keeps the order of heading consistent as planned. We want all those variables 
+    # The sequence keeps the order of heading consistent as planned. We want all those variables
     # that can't be overruled last.
     # At reading, they are of course parsed as the same Ini File.
     ini = Inifile()
@@ -38,7 +45,7 @@ function _prepare_init_file_configuration(io)
     entry("Geographical area", "Cell to utm factor, i.e. utm unit distance between elevation sampling points", "3"; comm = ":cell_to_utm_factor\r\n  #    How many 'utm metres' does a 'cell' / 'dot' / 'point' or 'pixel' side represent?")
     println(io, ini)
     ini = Inifile()
-    entry("File folder", "Top folders path under homedir()", "bitmapmaps/default"; comm = ":pth \r\n  #    Folder hierarchy will be created under homedir().\r\n  #    For copying in files, see 'copy_relevant_tifs_to_folder'")
+    entry("File folder", "Top folders path under homedir()", "BitmapMaps/default"; comm = ":pth \r\n  #    Folder hierarchy will be created under homedir().\r\n  #    For copying in files, see 'copy_relevant_tifs_to_folder'")
     println(io, ini)
 
     # Sections which can not be overruled by keywords to `run_bitmapmap_pipeline`
@@ -51,6 +58,7 @@ function _prepare_init_file_configuration(io)
 
     ini = Inifile()
     entry("Behaviour when data is missing", "Fill with elevation zero (true or false)", "false")
+    entry("Behaviour when data is missing", "Allow online geographical name collection", "true"; comm = "\r\n  #  Set to false if API load limiter kicks in.\r\n  #   Alternatively move collected names to local definitions Stadnamn.csv")
     println(io, ini)
     ini = Inifile()
     entry("Elevation contour lines", "Thickness 20m", "1  "; comm = "\r\n  #  Values: 0, 1, 3, 5...")
@@ -63,19 +71,19 @@ function _prepare_init_file_configuration(io)
 
     entry("Water detection", "Sea level max [m]", "0.7"; comm = "\r\n  #   All elevations below level is considered sea")
     entry("Water detection", "Minimum area [m²]", "5193"; comm = "\r\n  #   All smaller lakes (including artifacts) are disregarded")
-    entry("Water detection", "Local slopes [rad] limit", "0.015"; 
+    entry("Water detection", "Local slopes [rad] limit", "0.015";
            comm = "\r\n  #   Max local steepness, √(z1² + z2²), where derivatives zᵢ are\r\n  #   blurred (i.e. smoothed) over a standard deviation radius")
     entry("Water detection", "Radius [m], standard dev. for slopes blurring", "1"; comm = "\r\n  #   For smoothing nearby derivatives zᵢ = dz / di")
-    entry("Water detection", "Artifact [m⁻²] limit", "0.17"; 
+    entry("Water detection", "Artifact [m⁻²] limit", "0.17";
            comm = "\r\n  #   Criterion for local curvature change, where the change is restricted by a\r\n  #   hardcoded length window. Areas with higher values are candidates for water surface")
     entry("Water detection", "Radius [m] for artifact criterion blurring", "5"; comm = "\r\n  #   For smoothing nearby artifact indicator")
-    entry("Water detection", "Elevation range [m] limit for a water body",  "1.2"; 
+    entry("Water detection", "Elevation range [m] limit for a water body",  "1.2";
            comm = "\r\n  #   If the water body's bounding box diagonal is shorter \r\n  #   than the length defined nearby, range is reduced proportionately")
-    entry("Water detection", "Bounding box diagonal length [m] limit", "2231"; 
+    entry("Water detection", "Bounding box diagonal length [m] limit", "2231";
            comm = "\r\n  #   A water body can have the elevation range above at    \r\n  #   this and larger lengths")
-    entry("Water detection", "Flux [m] limit",  "-0.328"; 
+    entry("Water detection", "Flux [m] limit",  "-0.328";
            comm = "\r\n  #   Flux limit of the elevation gradient field across the water boundary. \r\n  #   More negative area flux is a negative indicator for lakes")
-  
+
     entry("Markers", "Prominence level [m], prominent summit", "100")
     entry("Markers", "Prominence level [m], obscure summit", "50")
     entry("Markers", "Symbol prominent summit", "in_triangle"; comm = "

@@ -1,3 +1,14 @@
+# This file defines the structs SheetMatrixBuilder and SheetBuiler.
+# These are job defintions for the pipeline.
+#
+# Also extends Base methods for these types,
+# and defines some internal methods.
+
+
+#
+# SheetBuilder
+#
+
 """
     SheetBuilder
 
@@ -33,9 +44,7 @@ The path to both input and output files for this sheet.
 ```
 julia> using BitmapMaps
 
-julia> smb = run_bitmapmap_pipeline(); # No matter how early the pipeline exits, 'smb' is generated.
-...
-...
+julia> smb = define_builder(); # Such a call would be the first step in `run_bitmapmap_pipeline()`
 
 julia> smb[2, 2]  # Let's examine one of the sheets
 SheetBuilder(;pixel_origin_ref_to_bitmapmap = (2255, 3248),
@@ -43,7 +52,7 @@ SheetBuilder(;pixel_origin_ref_to_bitmapmap = (2255, 3248),
                         f_I_to_utm = func_I_to_utm((42190, 6930739), 3248, 3),
                       sheet_number = 5,
                     density_pt_m⁻¹ = 11811,
-                             pthsh = "bitmapmaps/default\\2 2  42190 6930739  48955 6940483")
+                             pthsh = "BitmapMaps/default\\2 2  42190 6930739  48955 6940483")
 
 julia> show_derived_properties(smb[2, 2]) # Let's see more human-readable details.
 
@@ -74,23 +83,14 @@ julia> show_derived_properties(smb[2, 2]) # Let's see more human-readable detail
 end
 
 
-function func_I_to_utm(sheet_lower_left_utm, ny, cell_to_utm_factor)
-    f = let ny = ny, cell2utm = cell_to_utm_factor, utm_left = sheet_lower_left_utm[1], utm_lower = sheet_lower_left_utm[2]
-        I::CartesianIndex -> (
-            (I[2] - 1) * cell2utm + utm_left, 
-                         (ny - I[1] + 1) * cell_to_utm_factor + utm_lower
-        )
-    end
-    f
-end
-
-
 function SheetBuilder(pixel_origin_ref_to_bitmapmap, cell_iter, sheet_lower_left_utm, cell_to_utm_factor, sheet_number, density_pt_m⁻¹, pthsh)
     ny = size(cell_iter)[1]
     f_I_to_utm = func_I_to_utm(sheet_lower_left_utm, ny, cell_to_utm_factor)
     SheetBuilder(;pixel_origin_ref_to_bitmapmap, cell_iter, f_I_to_utm, sheet_number, density_pt_m⁻¹, pthsh)
 end
-
+#
+# Extend Base methods for SheetBuilder
+#
 function Base.show(io::IO, ::MIME"text/plain", sb::SheetBuilder)
     # Parseable print
     print(io, "SheetBuilder(;")
@@ -128,7 +128,11 @@ function Base.show(io::IO, sb::SheetBuilder)
     print(io, repr(sb.pthsh))
     println(io, ")")
 end
+Base.axes(sb::SheetBuilder) = map(Base.oneto, size(sb))
 
+#
+# SheetMatrixBuilder
+#
 
 
 """
@@ -184,21 +188,6 @@ function SheetMatrixBuilder(southwest_corner::Tuple{Int, Int},
     SheetMatrixBuilder(southwest_corner, sheet_indices, cell_to_utm_factor, sheet_width_mm, sheet_height_mm, density_pt_m⁻¹, pth)
 end
 
-function Base.show(io::IO, ::MIME"text/plain", smb::SheetMatrixBuilder)
-    print(io, "SheetMatrixBuilder(")
-    for sy in fieldnames(SheetMatrixBuilder)
-        va = getfield(smb, sy)
-        colwi = sy == :southwest_corner ? 9 : 34
-        print(io, lpad(repr(va), colwi))
-        if sy !== :pth
-            println(io, ", # ", "$sy")
-        else
-            print(io, ") # ", "$sy")
-        end
-    end
-end
-
-
 function _SheetBuilder(smb::SheetMatrixBuilder, sheet_number::Int)
     # No bounds in this "private" function, 'iterate' and 'getindex' should do that.
     nx = sheet_width_cell(smb)
@@ -214,8 +203,27 @@ function _SheetBuilder(smb::SheetMatrixBuilder, sheet_number::Int)
     min_easting, min_northing = sheet_lower_left_utm
     max_easting_external = min_easting + sheet_width_cell(smb) * smb.cell_to_utm_factor
     max_northing_external = min_northing + sheet_height_cell(smb) * smb.cell_to_utm_factor
-    pthsh = joinpath(smb.pth, "$r $c  $min_easting $min_northing  $max_easting_external $max_northing_external")
+    pthsh = joinpath(smb.pth, "$(r)-$(c)__$(min_easting)-$(min_northing)__$(max_easting_external)-$(max_northing_external)")
     SheetBuilder(pixel_origin_ref_to_bitmapmap, cell_iter, sheet_lower_left_utm, smb.cell_to_utm_factor, sheet_number, smb.density_pt_m⁻¹, pthsh)
+end
+
+
+#
+# Extend Base methods for SheetMatrixBuilder
+#
+
+function Base.show(io::IO, ::MIME"text/plain", smb::SheetMatrixBuilder)
+    print(io, "SheetMatrixBuilder(")
+    for sy in fieldnames(SheetMatrixBuilder)
+        va = getfield(smb, sy)
+        colwi = sy == :southwest_corner ? 9 : 34
+        print(io, lpad(repr(va), colwi))
+        if sy !== :pth
+            println(io, ", # ", "$sy")
+        else
+            print(io, ") # ", "$sy")
+        end
+    end
 end
 
 Base.iterate(smb::SheetMatrixBuilder) = _SheetBuilder(smb, 1), _SheetBuilder(smb, 2)
@@ -230,9 +238,22 @@ end
 Base.length(smb::SheetMatrixBuilder) = nrows(smb) * ncols(smb)
 Base.size(smb::SheetMatrixBuilder) = (nrows(smb), ncols(smb))
 Base.axes(smb::SheetMatrixBuilder, d) = axes(smb)[d]
-Base.axes(smb::SheetBuilder) = map(Base.oneto, size(smb))
 
 
+
+"""
+    func_I_to_utm(sheet_lower_left_utm, ny, cell_to_utm_factor)
+    ---> Function
+"""
+function func_I_to_utm(sheet_lower_left_utm, ny, cell_to_utm_factor)
+    f = let ny = ny, cell2utm = cell_to_utm_factor, utm_left = sheet_lower_left_utm[1], utm_lower = sheet_lower_left_utm[2]
+        I::CartesianIndex -> (
+            (I[2] - 1) * cell2utm + utm_left,
+                         (ny - I[1] + 1) * cell_to_utm_factor + utm_lower
+        )
+    end
+    f
+end
 
 row_col_of_sheet(smb::SheetMatrixBuilder, sheet_number::Int) = row_col_of_sheet(nrows(smb), sheet_number)
 row_col_of_sheet(nrows::Int, sheetnumber::Int) = mod1(sheetnumber, nrows), div(sheetnumber - 1, nrows) + 1
@@ -241,7 +262,6 @@ function Base.getindex(smb::SheetMatrixBuilder, i::Int)
     1 <= i <= ncols(smb) * nrows(smb) || throw(BoundsError(smb, i))
     _SheetBuilder(smb, i)
 end
-
 
 function Base.getindex(smb::SheetMatrixBuilder, r::Int, c::Int)
     1 <= r <= nrows(smb) || throw(BoundsError(smb, (r, c)))

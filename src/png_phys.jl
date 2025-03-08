@@ -1,4 +1,5 @@
-# Utility for saving pngs 
+# Utility for saving pngs with control over detail
+# parameters like how large the printed bitmap will be.
 """
     save_png_with_phys(ffna::String,
         image::S;
@@ -22,7 +23,7 @@ Default density is
 
     300 dpi == 300 dots per inch == 300 dots inch⁻¹ == 300 * / (0.0254 m) == 11811 dots·m⁻¹
 
-# Example 
+# Example
 
 If the A4 printable width is 0.191 m and the number of pixels or dots in the image is 640:
 

@@ -1,10 +1,13 @@
 # Utilty functions for smoothing, used in 'contour.jl' and 'ridges.jl'
 # - Windowed Finite Impulse Response Filter
 # - General terrain smoothing
-# - Quantify roughness 
+# - Quantify roughness
 # - Group patches based on roughness
 
-"    highpass_coefficients(n; nyquist_denom::Int = 2)"
+"""
+    highpass_coefficients(n; nyquist_denom::Int = 2)
+    ---> Vector{Float64}
+"""
 function highpass_coefficients(n; nyquist_denom::Int = 2)
     isodd(n) && n > 1 || throw(ArgumentError("n"))
     nyquist_denom > 1 || throw(ArgumentError("nyquist_denom"))
@@ -20,7 +23,10 @@ function highpass_coefficients(n; nyquist_denom::Int = 2)
     append!(h, reverse(h[1:m]))
 end
 
-"    lowpass_coefficients(n; nyquist_denom::Int = 2)"
+"""
+    lowpass_coefficients(n; nyquist_denom::Int = 2)
+    ---> Vector{Float64}
+"""
 function lowpass_coefficients(n; nyquist_denom::Int = 2)
     isodd(n) && n > 1 || throw(ArgumentError("n"))
     nyquist_denom > 1 || throw(ArgumentError("nyquist_denom"))
@@ -37,7 +43,12 @@ function lowpass_coefficients(n; nyquist_denom::Int = 2)
 end
 
 
-"Blackman window coefficients, n is an odd number"
+"""
+    blackman_coefficients(n)
+    ---> Vector{Float64}
+
+Blackman window coefficients, n is an odd number.
+"""
 function blackman_coefficients(n)
     @assert isodd(n) && n > 1
     freqs = (0:(n - 1)) .* 2π / (n - 1)
@@ -55,7 +66,7 @@ cutoff wave length when samples are spaced evenly. By cutoff, we mean -6dB atten
 
 In terms of critical wave length:
 
-    λc = 2ν 
+    λc = 2ν
 """
 function fir_lp_coefficients(n; nyquist_denom::Int = 10)
     c = lowpass_coefficients(n; nyquist_denom) .* blackman_coefficients(n)
@@ -76,7 +87,7 @@ cutoff wave length when samples are spaced evenly. By cutoff, we mean -6dB atten
 
 In terms of critical wave length:
 
-    λc = 2ν 
+    λc = 2ν
 """
 function fir_hp_coefficients(n;  nyquist_denom::Int = 10)
     c = highpass_coefficients(n; nyquist_denom) .* blackman_coefficients(n)
@@ -84,30 +95,14 @@ function fir_hp_coefficients(n;  nyquist_denom::Int = 10)
     centered(c)
 end
 
-function conv(signal::Vector{T}, kernel::Vector{T}) where T
-    len_signal = length(signal)
-    len_kernel = length(kernel)
-    @assert len_signal === len_kernel
-    len_result = len_signal + len_kernel - 1
-    result = zeros(T, len_result)
-    for i in 1:len_signal
-        for j in 1:len_kernel
-            result[i + j - 1] += signal[i] * kernel[j]
-        end
-    end
-    start_idx = div(len_kernel, 2) + 1
-    end_idx = start_idx + len_signal - 1
-    result[start_idx:end_idx]
-end
 
- 
 """
     smooth_surface_fir(z; w = 101, nyquist_denom::Int = 10)
 
-Apply a FIR low-pass filter with Blackman window. The intention is to avoid 
+Apply a FIR low-pass filter with Blackman window. The intention is to avoid
 phase-distortion while working with something familiar. A Gaussian filter
-likely would do the job "better" (with no overshoot), but the parameters are 
-less intuitive for me to quantify. We use the Gaussian 'low-pass' filter for 
+likely would do the job "better" (with no overshoot), but the parameters are
+less intuitive for me to quantify. We use the Gaussian 'low-pass' filter for
 general blurring.
 
 w is window length, an odd number.
@@ -119,13 +114,12 @@ function smooth_surface_fir(z; w = 101, nyquist_denom::Int = 10)
     # Elevations smoothed by lp-filter
     imfilter(z, (c, permutedims(c)), FIRTiled())
 end
-smooth_surface_fir(g::GeoArray; w = 101, nyquist_denom::Int = 10) = smooth_surface_fir(permutedims(g.A[:, :, 1]); w, nyquist_denom)
 
 
 """
     roughness_of_surface_fir(z;  w = 49, nyquist_denom::Int = 10)
 
-Apply a FIR high-pass filter with Blackman window. The intention is to avoid 
+Apply a FIR high-pass filter with Blackman window. The intention is to avoid
 phase-distortion and to work with something familiar.
 
 w is window length, an odd number.
@@ -144,7 +138,7 @@ end
     ---> Matrix{Gray{Float32}} (shape and size like z)
 
 Returns positive values defined by a high-pass filter with length w, Blackman window.
-Values defined as non-interesting by the other keywords are set to zero. 
+Values defined as non-interesting by the other keywords are set to zero.
 
 After smoothing, would represent an amplitude of elevation variation inside the forest.
 """
@@ -154,7 +148,7 @@ function bumpiness(z; w = 75, amp_cut⁻ = 0.5, amp_cut⁺ =  3f0, z_max = 680f0
     r = roughness_of_surface_fir(z; w, nyquist_denom)
     r1 = r .* (z .< z_max)
     # Take absolute value, and drop the large values, which are most likely artifacts
-    # or houses. 
+    # or houses.
     Gray{Float32}.(map(r1) do ρ
         bump = abs(ρ)
         bump < amp_cut⁻ ? 0f0 : bump > amp_cut⁺ ? 0f0 : bump
@@ -166,7 +160,6 @@ end
 
 """
     bumpy_patch(z, source_indices; cell_count_min_m² = 9062, w = 75, amp_cut⁻ = 0.5, amp_cut⁺ =  3f0, z_max = 680f0, nyquist_denom::Int = 15)
-    bumpy_patch(g::GeoArray, source_indices::CartesianIndices)
     ---> typeof(z)
 
 Used by 'ridges' and 'contours'.
@@ -203,10 +196,14 @@ function bumpy_patch(z, source_indices; cell_count_min_m² = 9062, w = 75, amp_c
         amp_cut⁻ < segment_mean(h, j) < amp_cut⁺ ? 1f0 : 0f0
     end
 end
-# TODO: Use 'elevation_...' function in caller
-bumpy_patch(g::GeoArray, source_indices::CartesianIndices) = bumpy_patch(transpose(g.A[:, :, 1]), source_indices)
 
 
+"""
+    prune_iterations(g::SegmentedImage, cell_count_min; iterations = 3)
+    ---> typeof(g)
+
+Merges smaller segments that cell_count_min in g with neighbours, iteratively.
+"""
 function prune_iterations(g::SegmentedImage, cell_count_min; iterations = 3)
     h = g
     i = 0

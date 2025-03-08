@@ -1,10 +1,11 @@
-# Utilty functions
+# Utilty functions for SheetMatrixBuilder and SheetBuilder.
+#
 # Argument names
 # - smb::SheetMatrixBuilder
 # - sb::SheetBuilder
 # - p - duck typed, can be a GeoArray or a SheetBuilder.
 #
-# A few functions are extended with methods for GeoArray in `geoarray_utilties`
+# A few of these functions are extended with methods for GeoArray in `geoarray_utilties`
 
 
 sheet_width_cell(smb::SheetMatrixBuilder) = Int(floor(smb.sheet_width_mm * smb.density_pt_m⁻¹ / 1000))
@@ -403,7 +404,7 @@ Prints to stdout, used by `run_bitmapmap_pipeline` > `define_builder` > `show_au
 # Example
 ```
 julia> show_derived_properties(smb[2,2])
-        
+
         [easting, northing] derived properties:
           Bounding Box (BB) SE-NW            = (42190 6930739)-(48955 6940483)
           Northeast internal corner          = (48952, 6940483) - most northeastern sample point
@@ -519,9 +520,10 @@ cartesian_index_string(smb::SheetMatrixBuilder) = replace(string(CartesianIndice
 
 """
     func_utm_to_sheet_index(smb::SheetMatrixBuilder)
+    ---> Function
 
 Generate a function which returns on which sheet the utm coordinate belongs. Also see
-`func_I_to_utm` and `func_utm_to_cell_index`.
+`SheetBuilder.f_I_to_utm` and `func_utm_to_cell_index`.
 """
 function func_utm_to_sheet_index(smb::SheetMatrixBuilder)
     sw_easting, sw_northing = southwest_external_corner(smb)
@@ -529,7 +531,7 @@ function func_utm_to_sheet_index(smb::SheetMatrixBuilder)
     nc = ncols(smb)
     ws_utm, hs_utm = geo_width_height(smb[1]) # Sheet width, height
     f = let sw_easting = sw_easting, sw_northing = sw_northing, nr = nr,  nc = nc, hs_utm = hs_utm, ws_utm = ws_utm
-        utm::Tuple{Int64, Int64} -> let 
+        utm::Tuple{Int64, Int64} -> let
             i, j = (div((utm[2] - sw_northing), hs_utm, RoundUp), div((utm[1] - sw_easting), ws_utm) + 1)
             i < 1 && throw(ArgumentError("Northing $(utm[2]) would coorespond to sheet [$i, j]. sw_northing = $(sw_northing) and hs_utm = $(hs_utm)"))
             j < 1 && throw(ArgumentError("Easting $(utm[1]) would coorespond to sheet [i, $j]. sw_easting = $(sw_easting) and ws_utm = $(hs_utm)"))
@@ -543,11 +545,12 @@ end
 
 """
     func_utm_to_cell_index(p)
+    ---> Function
 
 p can be a SheetMatrixBuilder or a SheetBuilder.
 
-Generate a function which returns the sheet local index corresponding to the utm coordinate. 
-Also see `func_I_to_utm` and `func_utm_to_sheet_index`.
+Generate a function which returns the sheet local index corresponding to the utm coordinate.
+Also see `SheetBuilder.f_I_to_utm` and `func_utm_to_sheet_index`.
 """
 function func_utm_to_cell_index(p)
     # In the northwest, external and internal corners are the same.
@@ -559,7 +562,7 @@ function func_utm_to_cell_index(p)
     end
     cell2utm = cell_to_utm_factor(p)
     f = let nw_easting = nw_easting, nw_northing = nw_northing, w_utm = w_utm, h_utm = h_utm, cell2utm = cell2utm
-        utm::Tuple{Int64, Int64} -> let 
+        utm::Tuple{Int64, Int64} -> let
             i_utm, j_utm = (mod(nw_northing - utm[2], h_utm) + 1, mod(utm[1] - nw_easting, w_utm) + 1)
             return div(i_utm, cell2utm, RoundUp), div(j_utm, cell2utm, RoundUp)
         end
@@ -569,8 +572,8 @@ end
 
 
 
-# NOTE we have kept 'neighbor_folder_dict'.
-# We may perhaps reuse neighbor_folder if we will be linking sheet svgs to each other. 
+# NOTE we have kept 'neighbor_folder_dict', although it's not currently used.
+# We may perhaps reuse neighbor_folder if we will be linking sheet svgs to each other.
 # For other uses, see `sides_with_border(smb, sb)`
 
 """

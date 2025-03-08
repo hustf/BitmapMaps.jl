@@ -1,5 +1,6 @@
-# Step in pipeline. 
-# Downloaded elevation data is usually zipped.
+# Step in pipeline.
+# Downloaded elevation data is usually zipped. Even so, it might be better
+# to drop this step and trust the user to control input .tif files.
 """
     unzip_tif(sb::SheetBuilder)
     unzip_tif(fofo)
@@ -134,8 +135,8 @@ function tif_full_filenames_in_parent_folder(pth)
 end
 
 
-function read_TIFDIC(fofo)
-    fnam = joinpath(fofo, TIFDIC_FNAM)
+function read_TIFDIC(fo)
+    fnam = joinpath(fo, TIFDIC_FNAM)
     if isfile(fnam)
         tmpdic = deserialize(fnam)
         for (ke, va) in tmpdic
@@ -143,7 +144,7 @@ function read_TIFDIC(fofo)
         end
     end
 end
-function save_TIFDIC(fofo)
-    fnam = joinpath(fofo, TIFDIC_FNAM)
+function save_TIFDIC(fo)
+    fnam = joinpath(fo, TIFDIC_FNAM)
     serialize(fnam, TIFDIC)
 end

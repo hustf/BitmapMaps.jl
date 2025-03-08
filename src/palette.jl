@@ -1,6 +1,6 @@
 # Used by topo_relief, a step in pipeline.
 # Elevations map into three hypsometric colour palettes.
-# The palettes are hard-coded so you must like them.
+# The palettes and how they map to elevation are hard-coded.
 
 """
     func_directional_pallette()
@@ -85,7 +85,7 @@ end
 
 function easter_map_sunny_colors()
     XYZ{Float32}[
-        XYZ{Float32}(1.4746368f0,1.5771875f0,2.5789008f0)
+        XYZ{Float32}(0.3226512f0,0.3441505f0,0.565619f0) # (1.4746368f0,1.5771875f0,2.5789008f0)
         XYZ{Float32}(0.88518596f0,0.9f0,0.77778375f0)
         XYZ{Float32}(0.9741367f0,1.0f0,0.8988308f0)
         XYZ{Float32}(0.8999617f0,0.97f0,0.575656f0)
@@ -99,7 +99,7 @@ end
 
 function easter_map_shadow_colors()
     XYZ{Float32}[
-        XYZ{Float32}(1.4746368f0,1.5771875f0,2.5789008f0)
+        XYZ{Float32}(0.3226512f0,0.3441505f0,0.565619f0) # (1.4746368f0,1.5771875f0,2.5789008f0)
         XYZ{Float32}(0.19882682f0,0.2f0,0.34958988f0)
         XYZ{Float32}(0.24421817f0,0.25f0,0.4397158f0)
         XYZ{Float32}(0.17501558f0,0.19f0,0.21608494f0)

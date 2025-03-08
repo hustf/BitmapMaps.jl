@@ -1,15 +1,15 @@
-# Markers is a lightweight utility in BitmapMaps used for drawing on
-# existing images.
-# 
-# See `line!` and `mark_at!`
-
+# Lightweight utilities used for drawing lines and
+# geometric symbols on existing bitmap images.
+# Primarily used for drawing summit markers,
+# in steps `summits_on_sheet` and `summits_regional_poststep`.
+#
 
 """
     mark_at!(img, inds::AbstractArray{CartesianIndex{2}}, side, shapename::String)
     mark_at!(img, inds::AbstractArray{CartesianIndex{2}}; side::Int = 3, f_is_filled = func_is_on_square)
     mark_at!(img, I::CartesianIndex{2}; side::Int = 3, f_is_filled = func_is_on_square)
 
-Mark in-place 
+Mark in-place
 - a shape centered on cartesian index 'I'.
 - identical shapes centered on a collection 'inds'.
 
@@ -21,7 +21,7 @@ Mark in-place
   The generated function take a tuple of indices and returns a Bool.
 
 Predefined (not exported):
-``` 
+```
 func_is_on_square
 func_is_on_triangle
 func_is_on_circle
@@ -32,7 +32,7 @@ func_is_on_cross
 func_is_on_xcross
 func_is_on_hline
 func_is_on_vline
-``` 
+```
 """
 function mark_at!(img, inds::AbstractArray{CartesianIndex{2}}, side, shapename::String)
     dic = Dict(
@@ -161,7 +161,7 @@ function func_is_on_line(A::T, B::T) where T <: Tuple{Int64, Int64}
 end
 
 ###################
-# Shape definitions 
+# Shape definitions
 ##################
 
 func_is_on_square(maxoff) = (i, j) -> abs(i) == maxoff || abs(j) == maxoff
@@ -191,7 +191,7 @@ function func_is_on_circle(maxoff)
     end
 end
 
-func_is_on_hline(maxoff) =  (i, j) -> i == 0 
+func_is_on_hline(maxoff) =  (i, j) -> i == 0
 func_is_on_vline(maxoff) =  (i, j) -> j == 0
 function func_is_on_cross(maxoff)
     fh = func_is_on_hline(maxoff)

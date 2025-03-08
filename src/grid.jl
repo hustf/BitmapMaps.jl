@@ -1,7 +1,10 @@
 # Step in pipeline.
 # Creates utm grid lines overlay.
 # Output is an image file per sheet, for manual touch-up.
-# Consider TODO: Break up lengths of 200 m, the distance btw. 100m-countours for 30° steepness.
+# Consider TODO:
+# 1) Break up grid lines to lengths of 200 m, the distance between
+#     100m-countours for 27° steepness.
+# 2) Change the color over water, either by using another color or color blending mode.
 
 """
     grid_overlay(sb::SheetBuilder)
@@ -12,7 +15,7 @@ function grid_overlay(sb::SheetBuilder)
     thick_grid = cell_to_utm_factor(sb) * get_config_value("UTM grid", "Grid line thickness", Int)
     spacing_grid = get_config_value("UTM grid", "Grid spacing [m]", Int)
     zone_no = get_config_value("UTM grid", "Zone for elevation data", Int)
-    # And maybe one for wgs84?? 
+    # And maybe one for wgs84??
     grid_overlay(full_folder_path(sb), sb.cell_iter, sb.f_I_to_utm, thick_grid, spacing_grid, zone_no)
 end
 function grid_overlay(fofo, cell_iter, f_I_to_utm, thick_grid, spacing_grid, zone_no)
@@ -37,12 +40,16 @@ function _grid_utm(cell_iter, f_I_to_utm, thick_grid, spacing_grid, zone_no)
     map(fg, cell_iter)
 end
 
+"""
+    func_grid_utm(linecol, transpcol, f_I_to_utm, thick_grid, spacing_grid, zone_no)
+    ---> Function
+"""
 function func_grid_utm(linecol, transpcol, f_I_to_utm, thick_grid, spacing_grid, zone_no)
     # This function is a CoordinateTransformations.ComposedTransformation.
     # It could be inverted for faster (more complicated) code.
-    # This ineffective approach takes ~9 seconds per A4 sheet, 
-    # but seldom needs repetition. This is neglectible compared to 
-    # finding water surfaces.
+    # This ineffective approach takes ~9 seconds per A4 sheet,
+    # but seldom needs repetition. This is neglectible compared to
+    # finding water surfaces or summit prominences.
     transform = UTMZfromLLA(wgs84) ∘ LLAfromUTMZ(wgs84)
     function to_localgrid(I)
         a = UTMZ(UTM(f_I_to_utm(I)...), zone_no, true)

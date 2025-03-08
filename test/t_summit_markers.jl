@@ -119,7 +119,7 @@ utmsw = Int.(southwest_external_corner(g))
 @test parse.(Int, split(splitdir(fofo)[end])[3:4]) .- utmsw == [0, 0]
 utmcen = (utmne .+ utmsw) .÷ 2
 icen_g = length(g.A) ÷ 2
-@test Int.(g.f(CartesianIndices(g.A[:, :, 1])[icen_g].I)) .- utmcen == [0, 0]
+@test Int.(g.f(CartesianIndices(g.A[:, :])[icen_g].I)) .- utmcen == [0, 0]
 
 # Downsample elevations z
 cell_iter = CartesianIndices((1:4583, 1:3183))

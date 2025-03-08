@@ -1,11 +1,16 @@
+# Utilty functions for
+#     - managing and inspecting GeoArray .tif files
+#     - loading GeoArrays with guarantee of no Missing values. This speeds things up.
+#     - inspecting bitmap and segmentation images in VsCode.
+#     - geodesy (utm) coordinate transformations
+#
 # The pipeline has a consolidation step, but the pipeline requires that user download relevant elevation data from online.
 #
 # However, if data already exists locally for another bitmapmap, some of these functions
 # can help with local file management. Some others are used by the pipeline.
 #
-# To build the folder structure first, you can either `run_bitmapmap_pipeline()`,
-# which aborts the run when not finding data, or run
-# `establish_folder.(sheet_matrix_builder)`
+# For manual modifcation of .tif file values, see `utilties_edit_with_gimp`. That would ideally not be necessary at all.
+
 
 """
     copy_relevant_tifs_to_folder((source_folder, destination_folder; recurse = true)
@@ -43,7 +48,7 @@ function copy_relevant_tifs_to_folder(source_folder, destination_folder; recurse
         if is_source_relevant(d, cafna)
             @debug "    Found relevant file $cafna"
             dfna = file_name_at_dest(cafna, destination_folder)
-            if isfile(dfna) 
+            if isfile(dfna)
                 @warn "Existing file: $dfna, hinders copying $cafna "
             else
                 @debug "    Destination file $dfna"
@@ -151,7 +156,7 @@ function display_if_vscode(M)
     end
 end
 
-function display_if_vscode(M::Matrix{T}) where T <: Union{RGBA{N0f8}, RGB{N0f8}, XYZ{Float32}, XYZA{Float32}}
+function display_if_vscode(M::Matrix{T}) where T <: Union{RGBA{N0f8}, RGB{N0f8}, XYZ{Float32}, XYZA{Float32}, RGB{Float32}}
     if isinteractive()
         if get(ENV, "TERM_PROGRAM", "") == "vscode"
             # Display
@@ -245,11 +250,10 @@ end
     elevation_at_output(fofo, cell_iter, cell2utm)
     ---> Matrix{Float32}
 """
-function elevation_at_output(fofo, cell_iter, cell2utm)
+function elevation_at_output(fofo, cell_iter, cell2utm)::Matrix{Float32}
     ny, nx = size(cell_iter)
     si = CartesianIndices((1:cell2utm:(ny  * cell2utm), 1:cell2utm:(nx * cell2utm)))
-    z = permutedims(readclose(joinpath(fofo, CONSOLIDATED_FNAM)).A[:,:,1])[si]
-    z::Matrix{Float32}
+    permutedims(readclose(joinpath(fofo, CONSOLIDATED_FNAM)).A[:,:,1])[si]
 end
 
 function elevation_at_output(sb::SheetBuilder)
@@ -266,28 +270,72 @@ end
 
 """
     elevation_full_res(fofo)
+    elevation_full_res(sb::SheetBuilder; display_sources = false)
+     ---> Matrix{Float32}
 
-    ---> Matrix{Float32}
+If `display_sources` = true, prints .tif file names to stdout.
 """
 elevation_full_res(fofo) = permutedims(readclose(joinpath(fofo, CONSOLIDATED_FNAM)).A[:,:,1])::Matrix{Float32}
 
-
-
-
-function open_as_temp_in_gimp(img)
-    @async let
-        fnam = tempname()
-        save_png_with_phys(fnam, img)
-        open_in_gimp(fnam)
+function elevation_full_res(sb::SheetBuilder; display_sources = false)
+    fofo = full_folder_path(sb)
+    z = elevation_full_res(fofo)
+    if display_sources
+        display_source_files(sb)
+    end
+    permutedims(readclose(joinpath(fofo, CONSOLIDATED_FNAM)).A[:,:,1])::Matrix{Float32}
+end
+function display_source_files(sb)
+    display_source_files(full_folder_path(sb), bbox_internal(sb))
+end
+function display_source_files(fofo, bbi::NamedTuple)
+    printstyled("Warning, this is based on $TIFDIC_FNAM only\n", color= :yellow)
+    println("Folder for consolidated file: $fofo")
+    println("Consolidated file internal bounding box, utm coordinates: $bbi")
+    println("Probable source files for this bounding box: $bbi")
+    if isempty(TIFDIC)
+        # Update from file
+        read_TIFDIC(abspath(joinpath(fofo, "..")))
+    end
+    sources = tif_full_filenames_buried_in_folder(fofo)
+    append!(sources, tif_full_filenames_in_parent_folder(fofo))
+    for (ke, va) in TIFDIC
+        if bbox_external_overlap(bbi, va)
+            println(ke, "    Bounding box $va)")
+        end
     end
 end
-function open_in_gimp(fnam)
-    gimp_path = "C:\\Program Files\\GIMP 2\\bin\\gimp-2.10.exe"
-    run(`$gimp_path "$fnam"`)
-end
 
+
+"""
+    get_consistent_random_color(i)
+    ---> RGB{N0f8}
+
+Used by 'display_if_vscode(img::SegmentedImage).
+"""
 function get_consistent_random_color(i)
     Random.seed!(i) # For consistentency between runs
     rand(RGB{N0f8})
 end
 
+
+nowstring() = Dates.format(now(), "HH:MM:SS")
+
+# Convenience geodesy transformations (not optimized)
+
+function utm33_to_32(easting, northing)
+    plla = utm_to_lla(easting, northing; utm_zone = 33)
+    utm = lat_lon_to_utm(plla; utm_zone = 32)
+        Int64(round(utm.x)), Int64(round(utm.y))
+end
+
+function utm32_to_33(easting, northing)
+    plla = utm_to_lla(easting, northing; utm_zone = 32)
+    utm = lat_lon_to_utm(plla)
+    Int64(round(utm.x)), Int64(round(utm.y))
+end
+
+function lat_lon_to_utm(point_lla; utm_zone = 33)
+    t = UTMfromLLA(utm_zone, true, Geodesy.wgs84)
+    t(point_lla)
+end

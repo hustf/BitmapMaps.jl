@@ -45,7 +45,7 @@ end
     w = max_x - min_x
     h = max_y - min_y
     g = let
-        A = zeros(Float32, w, h, 1)
+        A = zeros(Float32, w, h)
         f = BitmapMaps.GeoArrays.AffineMap([1.0 0.0; 0.0 -1.0], 1.0 .* [min_x, max_y])
         BitmapMaps.GeoArray(A, f)
     end
@@ -67,7 +67,7 @@ for p in [smb[2,2], smb[1,1] ]
     # Get consolidated geoarray
     g = readclose(fnam_out)
     # Not empty
-    @test sum(g.A[:, :, 1]) > 0
+    @test sum(g.A[:, :]) > 0
     # We lack elevation data for two sides
     @test sum(iszero.(g)) == 13
     if p == smb[2, 2]
@@ -124,7 +124,7 @@ for p in [smb[2,2], smb[1,1] ]
     # Get consolidated geoarray
     g = readclose(fnam_out)
     # Not empty
-    @test sum(g.A[:, :, 1]) > 0
+    @test sum(g.A[:, :]) > 0
     # We have full elevation data
     @test sum(iszero.(g)) == 0
     @test polygon_string(g) == polygon_string(p)

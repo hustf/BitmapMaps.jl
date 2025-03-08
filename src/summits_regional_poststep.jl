@@ -1,11 +1,45 @@
-# This file contains a 'regional' or 'postprocessing' step in the pipeline, 
-# which requires that all `summits_on_sheet` have been run for all sheets. 
-# Summit prominence and position is used for a re-run of certain steps in the pipeline.
-# 
-function summits_regional_update(smb, ffna_graph)
+# A 'regional' or 'postprocessing' step in the pipeline,
+# which requires that all `summits_on_sheet` have been run for all sheets.
+# Reduces the summits list based on prominence, and harvests geographical names.
+#
+# The regionally calculated summit prominence and position is used to:
+# 1) Update Summits.csv and Markers.png (in this step)
+# 2) From the calling context(the pipeline), re-run `make_vector_graphics` and `join_layers`.
+#
+
+"""
+    summits_regional_update(smb::SheetMatrixBuilder, ffna_graph)
+    ---> Bool
+
+1) Harvest summit prominence & etc. from the regional elevation graph.
+2) Reduces the list of summits based on prominence.
+3) Retrieves names for the shorter list of summits
+4) Distributes info to Summits.csv
+5) Distributes info to Markers.png
+"""
+function summits_regional_update(smb::SheetMatrixBuilder, ffna_graph)
     # Early exit
     isfile(ffna_graph) || throw(ErrorException("$ffna_graph is missing"))
-    # TODO: Early exit based on age of youngest SUMMITS_FNAM, ffna_graph 
+    graphtime = mtime(ffna_graph)
+    summitsfiles = [joinpath(full_folder_path(sb), SUMMITS_FNAM) for sb in smb]
+    summits_newer_than_regional_graph  = mtime.(summitsfiles) .> graphtime
+    if all(summits_newer_than_regional_graph  )
+        @debug "    The regional elevation graph $(splitpath(ffna_graph)[end]) exists and is older than all $(SUMMITS_FNAM). Exiting `summits_regional_update`"
+        return true
+    else
+        # Some SUMMITS_FNAM are older than the regional graph.
+        # Still, if those are empty (no summits at all in those sheets), we can early exit.
+        sheet_nos_of_older = findall(iszero, summits_newer_than_regional_graph )
+        sheet_nos_of_older_with_content = filter(sheet_nos_of_older) do shno
+            ffna_sum = summitsfiles[shno]
+            summits_data = readdlm(ffna_sum, '\t')[2:end,:]
+            size(summits_data)[1] !== 0
+        end
+        if isempty(sheet_nos_of_older_with_content)
+            @debug "    The regional elevation graph $(splitpath(ffna_graph)[end]) exists and is older than all $(SUMMITS_FNAM) with content. Exiting `summits_regional_update`"
+            return true
+        end
+    end
     # Configuration pararameters
     promlev_prom = get_config_value("Markers", "Prominence level [m], prominent summit", Int)
     promlev_obsc = get_config_value("Markers", "Prominence level [m], obscure summit", Int)
@@ -16,25 +50,25 @@ function summits_regional_update(smb, ffna_graph)
     symbol_size_obsc = get_config_value("Markers", "Size obscure summit symbol", Int)
     summit_symbols = [symbol_obsc, symbol_prom]
     symbol_sizes = [symbol_size_obsc, symbol_size_prom]
-    # Get the regional graph. 
+    # Get the regional graph.
     gr = get_graph(ffna_graph)
     @assert bbox_internal(gr) == bbox_internal(smb)
     # Get elevation, prominence, position in utm from the graph.
-    # A few summits will be 'doubled up' due to rounding & etc. 
-    # For such 'fake' summits, we will not find a corresponding 'σ' stress 
+    # A few summits will be 'doubled up' due to rounding & etc.
+    # For such 'fake' summits, we will not find a corresponding 'σ' stress
     # value in the SUMMITS_FNAM file.
-    @debug "    Harvest summits data from regional graph"
-    vz, vprom, vutm = harvest_summits_data_from_graph(gr)
+    @debug "    Harvest summits data from regional graph, at $(nowstring())"
+    vz, vutm, vprom, vsaddle, vtaller = harvest_summits_data_from_graph(gr)
     # Get sheet indices, cell indices, names
-    @debug "    Harvest other summits data, including online"
+    @debug "    Harvest other summits data, including online if config allows, at $(nowstring())"
     vsheet_ij, vcell_ij, vσ, vname  = harvest_other_summits_data(smb, vutm)
     # Place the vectors in a dictionary indexed by vsheet_ij.
-    @debug "    Distribute summits data to summits text files and markers layer"
+    @debug "    Distribute summits data to summits text files and markers layer, at $(nowstring())"
     # We drop the vectors which were not present in the preliminary SUMMITS_FNAM
     # file. Those now have σ = NaN32.
-    # We also drop the few summits which were included in the preliminary SUMMITS_FNAM 
+    # We also drop the few summits which were included in the preliminary SUMMITS_FNAM
     # because their dominating summit was on a neighbouring sheet, but have too low
-    # prominence when calculated from the regional elevation graph. 
+    # prominence when calculated from the regional elevation graph.
     dic = Dict{Tuple{Int64, Int64}, Vector{Any}}()
     for ij in unique(vsheet_ij)
         for (sheet_ij, z, prom, utm, cell_ij, σ, name) in zip(vsheet_ij, vz, vprom, vutm, vcell_ij, vσ, vname)
@@ -93,7 +127,7 @@ function distribute_summits_data(smb, dic, prom_levels, summit_symbols, symbol_s
     end
     #
     # Update the preliminary file MARKERS_FNAM which was generated by `summits_on_sheet`.
-    # 
+    #
     for (sheet_ij, v) in dic
         sb = smb[sheet_ij...]
         mffna = joinpath(full_folder_path(sb), MARKERS_FNAM)
@@ -115,11 +149,12 @@ function distribute_summits_data(smb, dic, prom_levels, summit_symbols, symbol_s
             RGBA{N0f8}(0., 0, 0, 0)
         end)
     end
+    true
 end
 
 
 function harvest_other_summits_data(smb, vutm)
-    # Get indices of which sheet number each summit belongs to 
+    # Get indices of which sheet number each summit belongs to
     f_utm_to_sheet_index = func_utm_to_sheet_index(smb)
     vsheet_ij =  map(f_utm_to_sheet_index, vutm) # Tuples
     vsb = [smb[sij...] for (sij, utm) in zip(vsheet_ij, vutm)] # Sheet builders
@@ -127,12 +162,13 @@ function harvest_other_summits_data(smb, vutm)
     vcell_ij = [func_utm_to_cell_index(sb)(utm) for (sb, utm) in zip(vsb, vutm)]
     # Strings, for 'Stadnamn' interface: utm positions as a vector of strings like "3,233"
     vsutm = map(utm -> "$(utm[1]),$(utm[2])", vutm)
-    vfoundnames = point_names(vsutm)
+    sonline = get_config_value("Behaviour when data is missing", "Allow online geographical name collection", String)
+    vfoundnames = point_names(vsutm; online = sonline == "false" ? false : true)
     vname = [n == "" ? sutm : n   for (n, sutm) in zip(vfoundnames, vsutm)]
     # Read 'surface bending' σ from csv files. This is for manual filtering or other adjustment of pararameters.
-    vσ = read_σ_from_csvs(smb, vutm) 
+    vσ = read_σ_from_csvs(smb, vutm)
     vsheet_ij, vcell_ij, vσ, vname
-end 
+end
 
 function read_σ_from_csvs(smb, vutm)
     # Read from all existing csv files into a dictionary utm => σ (position => stress)
@@ -148,7 +184,7 @@ function read_σ_from_csvs(smb, vutm)
             push!(dic, p)
         end
     end
-    # 
+    #
     Float32.(map(vutm) do utm
         get(dic, CartesianIndex(utm), NaN32)
     end)

@@ -6,7 +6,18 @@
     topo_relief(fofo, cell_iter, cell2utm)
     ---> Bool
 
-Output is an RGB .png image file.
+Output is an RGB colorspace .png image file.
+
+Each rendered pixel is selected from four candidates, namely the lightest one.
+
+Each candidate is calculated thus:
+
+    Light source position & terrain normal vector => Lambertian reflection coefficient
+    Elevation & lambertian reflection coefficient => reflection coefficient
+    Light source colour * reflection coefficient => candidate colour & lightness
+
+Note that the multiplication and lightness calculation is done in the XYZ colorspace.
+The colours are defined in `pallette.jl`.
 """
 function topo_relief(sb::SheetBuilder)
     topo_relief(full_folder_path(sb), sb.cell_iter, cell_to_utm_factor(sb))
@@ -31,12 +42,7 @@ function topo_relief(fofo, cell_iter, cell2utm)
 end
 function _topo_relief(fofo, cell_iter, cell2utm)
     # Get elevation matrix. This samples every point regardless of cell_to_utm_factor
-    g = readclose(joinpath(fofo, CONSOLIDATED_FNAM))
-    @assert g isa GeoArray{Float32, Array{Float32, 3}} "$(typeof(g))"
-    eltype(g) == Float32 || throw(TypeError(:g, "unexpected .tif image eltype", GeoArrays.GeoArray{Float32, Array{Float32, 3}}, typeof(g)))
-    # We're transposing the source data here, because
-    # it makes it easier to reason about north, south, east west.
-    za = permutedims(g.A[:, :, 1])
+    za = elevation_full_res(fofo)
     __topo_relief(za, cell_iter, cell2utm)
 end
 
@@ -63,7 +69,7 @@ function func_render(f_hypso)
         # If rows in M correspond to south -> north
         # and cols in M correspond to west -> east
         # _ n _
-        # w z e  
+        # w z e
         # _ s _
         _, w, _, n, z, s, _, e, _ = M
         deriv_east_west = (e - w) / 2
@@ -97,12 +103,12 @@ function reflection_coefficient(direction_no, z, n_ew, n_sn, n_up)
     # Azimuth of π     <=> Light from south, vector points south
     # Elevation 0      <=> Light from horizon
     # Elevation π / 2  <=> Light from above
-    # 
+    #
     # Unit vector of the light source.
     l_ew = cos(elev) * sin(azim)
     l_sn = cos(elev) * cos(azim)
     l_up = sin(elev)
-    # The dot product of light and surface normal is the fraction of light 
+    # The dot product of light and surface normal is the fraction of light
     # reflected towards the observer
     lambert_reflection = lambert_shade(n_ew, n_sn, n_up, l_ew, l_sn, l_up)
     # We want a wider spread of reflected light further up, where snow is.
@@ -144,7 +150,7 @@ function luminance(col::ColorTypes.RGB{N0f8})
     r_lin = r <= 0.04045 ? r / 12.92 : ((r + 0.055) / 1.055) ^ 2.4
     g_lin = g <= 0.04045 ? g / 12.92 : ((g + 0.055) / 1.055) ^ 2.4
     b_lin = b <= 0.04045 ? b / 12.92 : ((b + 0.055) / 1.055) ^ 2.4
-    # These coefficients reflect the human eye's sensitivity to different 
+    # These coefficients reflect the human eye's sensitivity to different
     # wavelengths of light, as defined by the Rec. 709 standard.
     0.2126 * r_lin + 0.7152 * g_lin + 0.0722 * b_lin
 end

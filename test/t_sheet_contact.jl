@@ -32,12 +32,12 @@ Output density, i.e. 'cells' / 'dots' / 'points' or 'pixels' per paper meter=166
 Cell to utm factor, i.e. utm unit distance between elevation sampling points=2 # :cell_to_utm_factor
   #    How many 'utm metres' does a 'cell' / 'dot' / 'point' or 'pixel' side represent?
 [File folder]
-Top folders path under homedir()=bitmapmaps/proj 47675 6929520 57224 6947852 # :pth 
+Top folders path under homedir()=BitmapMaps/proj 47675 6929520 57224 6947852 # :pth 
 =#
 
 # Establish 3x3 sheet folder structure (or make a full iteration)
 smb = define_builder(cell_to_utm_factor = 1, nrc = (3, 3), southwest_corner = (47675, 6929520), 
-    density_pt_m⁻¹ = 16667, pth = "bitmapmaps/proj 47675 6929520 57224 6947852")
+    density_pt_m⁻¹ = 16667, pth = "BitmapMaps/proj 47675 6929520 57224 6947852")
 @test smb.southwest_corner == (47675, 6929520)
 smb = run_bitmapmap_pipeline(smb)
 

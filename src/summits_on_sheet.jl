@@ -1,13 +1,13 @@
 # Step in pipeline.
 #
-# Unlike other pipeline functions, this takes a second, captured argument.
+# Unlike most other pipeline functions, this takes captured arguments in addition to a SheetBuilder.
 #
-# We can't find summit prominence correctly without involving all sheets. This step condenses the data
-# from one sheet to a form where we can later combine sheets data.
+# We can't find summit prominence correctly without involving all sheets, since the taller summit may lie there.
+# This step condenses the data from one sheet to a graph format, with which we can later combine sheets data.
 #
-# We output temporary Markers.png, Summits.csv and *.z files to this folder, and update the regional *.z file
+# We output temporary Markers.png, Summits.csv and *.z files to this folder, and update the regional graph *.z file
 # in the folder above.
-# 
+#
 
 """
     summits_on_sheet(sb::SheetBuilder, ffna_graph, f_sides_with_border)
@@ -18,8 +18,8 @@
 
 - Mark symbols in a temporary image MARKERS_FNAM.
 - Summarize in a temporary .csv file for potential name tagging: SUMMITS_FNAM.
-- Find the maxtree graph for every pixel, then extract data relevant to summits 
-- Merge the sheet's data with a regional graph, stored with file name `ffna_graph`, which finally 
+- Find the maxtree graph for every pixel, then extract data relevant to summits
+- Merge the sheet's data with a regional graph, stored with file name `ffna_graph`, which finally
   will hold all the data required for finding summit prominence.
 - Simplify the regional graph whenever its geographical outline is rectangular
 """
@@ -50,13 +50,15 @@ function summits_on_sheet(fofo, cell_iter, cell2utm, f_I_to_utm, min_prominence,
         vI, maxtree, z = condense_summit_candidates_data(fofo, cell_iter, cell2utm, f_I_to_utm, min_stress, border_sides)
     elseif ! isfile(ffna_loc_graph)
         @debug "    Re-using $SUMMITS_FNAM  to build local elevation graph"
-        # We shall add to regional elevation graph. 
+        # We shall add to regional elevation graph.
         # We can re-use the sheet indices from summits file:
         vI = read_indices_from_column(ffna_sum, 4)
         # Also add sheet borders to vI, regardless of if they are not included in the summits file.
         append_indices_of_borders!(vI, CartesianIndices(cell_iter), border_sides)
-        # Load z for every cell (not the full source).  # TODO use elevation_at_output elsewhere in the pipeline.
+        # Load z for every cell (not the full source).
         z = elevation_at_output(fofo, cell_iter, cell2utm)
+        # Limit z to minimum (will be rounded to 0)
+        map!(ζ -> max(0.5f0, ζ), z, copy(z))
         # Calculating MaxTree once more is reasonably fast.
         maxtree = MaxTree(round.(z))
     else
@@ -77,7 +79,7 @@ function summits_on_sheet(fofo, cell_iter, cell2utm, f_I_to_utm, min_prominence,
                         update_marker_file(fofo, vI, cell_iter)
                     end
                     # Late exit, knowing that
-                    # files in the folder are as nominal after this step. 
+                    # files in the folder are as nominal after this step.
                     @debug "    $SUMMITS_FNAM and local *.z file exists and was already merged with regional elevation graph. Exiting"
                     return true
                 else
@@ -94,7 +96,7 @@ function summits_on_sheet(fofo, cell_iter, cell2utm, f_I_to_utm, min_prominence,
     if ! @isdefined gl
          @debug "    Building local graph from maxtree"
          # Add summits and relevant border to the regional elevation graph.
-        # Many of the summit prominences can be determined locally, 
+        # Many of the summit prominences can be determined locally,
         # and those with low prominece are filtered out in this first pass.
         # When more regions are added, we can filter out more low-prominence summits.
         gl = build_and_save_sheet_graph(ffna_loc_graph, maxtree, z, vI, f_I_to_utm, border_sides, min_prominence)
@@ -105,25 +107,25 @@ function summits_on_sheet(fofo, cell_iter, cell2utm, f_I_to_utm, min_prominence,
     # Update Markers.png, using squares to indicate the temporary state.
     # A large number of stones and trees will be close to the border in the graph
     update_marker_file(fofo, vIr, cell_iter)
-    # 
+    #
     # Merge the sheet local graph into the region graph
     #
     # Get the (larger) regional graph, if it was not already loaded to check metadata.
     if ! @isdefined gr
         gr = get_graph(ffna_graph)
     end
-    # Merge 
+    # Merge
     @debug "    Merging local into regional graph, starting with $(nv(gr)) regional vertices"
     merge_into!(gr, gl, cell_iter, f_I_to_utm, border_sides)
     # If `border_sides` does not include :n, this sheet is the topmost in its column.
     # Which also means that the regional graph  is rectangular.
     # And if the regional graph is rectangular, we can apply `reduce_and_prune!`,
-    # without harming the external connections. `reduce_and_prune!` will remove 'diamonds' 
+    # without harming the external connections. `reduce_and_prune!` will remove 'diamonds'
     # on the sheet borders which are not not external to the region.
     if :n ∉ border_sides || :w ∉ border_sides
         # When more sheets are added to the regional graph, we can determine
         # the prominence for more of the summits. Hence, we can cull some more
-        # even if the graph is not complete. But we only do that when the regional 
+        # even if the graph is not complete. But we only do that when the regional
         # graph is in a state where it is rectangular.
         @debug "    Regional outline is rectangular.  `reduce_and_prune!`"
         # We won't prune vertices on the sides that are yet to be connected.
@@ -145,13 +147,13 @@ end
     update_summits_file(ffna_sum, g, f_I_to_utm, cell_iter)
     --> Vector{CartesianIndex{2}}
 
-Eliminate lines in the summits file `ffna_sum` by keeping those lines that are 
+Eliminate lines in the summits file `ffna_sum` by keeping those lines that are
 leaves in the graph `g` (but do not lie on the border of the sheet).
 
 Return cell indices for the kept summits.
 """
 function update_summits_file(ffna_sum, g, f_I_to_utm, cell_iter)
-    # Find coordinates of summits on this sheet, except "summits" on borders 
+    # Find coordinates of summits on this sheet, except "summits" on borders
     # with other sheets.
     crop_west, crop_north = f_I_to_utm(CartesianIndex(2, 2))
     crop_east, crop_south,  = f_I_to_utm(CartesianIndex(cell_iter[end].I .- (1, 1)))
@@ -176,10 +178,10 @@ function update_summits_file(ffna_sum, g, f_I_to_utm, cell_iter)
         utm ∈ set_utm
     end
     # For storage in a modified .csv file, we'll nest by columns instead of by rows.
-    # Initialize the new structure, then populate it. 
+    # Initialize the new structure, then populate it.
     if ! isempty(pruned_summits_data)
         vectors = [Vector{typeof(pruned_summits_data[1][i])}(undef, length(pruned_summits_data)) for i in 1:5]
-        # Populate the vectors. 
+        # Populate the vectors.
         for i in 1:length(pruned_summits_data)
             for j in 1:5
                 vectors[j][i] = pruned_summits_data[i][j]
@@ -200,7 +202,7 @@ end
     update_marker_file(fofo, vI, cell_iter)
     update_marker_file(fofo, vI, cell_iter, prom_levels, symbols, symbol_sizes)
 
-Use the last method when summit prominence is actually known exactly, which we can't 
+Use the last method when summit prominence is actually known exactly, which we can't
 before all sheets have been processed once.
 """
 function update_marker_file(fofo, vI, cell_iter)
@@ -235,20 +237,21 @@ This is the first step:
 #- Mark symbols in output image:  MARKERS_FNAM. TODO: Take this from graph, not from Summits.csv
 - Update relevant values in regional (sheet matrix) graph: ffna_graph
 
-The relevant indices for the graph is: summit candidates and sheet borders where they are adjacent to other sheets. 
+The relevant indices for the graph is: summit candidates and sheet borders where they are adjacent to other sheets.
 """
 function condense_summit_candidates_data(fofo, cell_iter, cell2utm, f_I_to_utm, min_stress, border_sides)
     ny, nx = size(cell_iter)
     # We need the full source matrix in this function. It's size is size(cell_iter) * cell2utm^2,
-    # so performance is low with this function. Drop unnecessary calls!
-    g = permutedims(readclose(joinpath(fofo, CONSOLIDATED_FNAM)).A[:,:,1])
-    @assert g isa Array{Float32, 2} "$(typeof(g))"
+    # so performance is low with this function.
+    zf = elevation_full_res(fofo)
+    # Limit z to minimum (will be rounded to 0)
+    map!(ζ -> max(0.5f0, ζ), zf, copy(zf))
     # Source index into the transposed source
     si = CartesianIndices((1:cell2utm:(ny  * cell2utm), 1:cell2utm:(nx * cell2utm)))
     #
     # We keep the full value precision here, so that we
     # are able to pick the very topmost cell.
-    z = g[si]
+    z = zf[si]
     R = CartesianIndices(z)
     # Make the maxtree, which is an effective elevation graph format for images.
     # We reduce the elevation precision to whole meters here. This is in order to avoid oversegmentation,
@@ -260,26 +263,26 @@ function condense_summit_candidates_data(fofo, cell_iter, cell2utm, f_I_to_utm, 
     # This set does not contain summits in immediate proximity to each other.
     summit_i_set = distinct_summit_indices(z, maxtree)
     # Reduce the set a little:
-    #   1) Drop elevation < 200 m, hardcoded. This removes a lot of power-line "summits", waves and other artifacts.
+    #   1) Drop summit elevation < 200 m, hardcoded. This removes a lot of power-line "summits", waves and other artifacts.
     #      (we now may have 1 in 150 out of all R)
     filter!(i -> z[i] > 200, summit_i_set)
     #
-    # 
+    #
     #   2) Remove some more false peaks based on user-defined min_stress,
     #      i.e. very large negative amplitude Hessian components.
-    #      This removes artifacts, most power lines, and large conifers. 
-    #      Most large conifer trees were already filtered out by the elevation filter above. 
-    # 
+    #      This removes artifacts, most power lines, and large conifers.
+    #      Most large conifer trees were already filtered out by the elevation filter above.
+    #
     #  Tensile stress is negative on top of summits, positive in valleys.
     #  We use the full resolution for calculating stress, so results won't be affected by cell2utm.
     #
     #  Unsmoothed mean stress, downsampled from the full resolution source data
-    σ = σm(g)[si]
+    σ = σm(zf)[si]
     filter!(i -> 0 > σ[i] > min_stress, summit_i_set)
     # Make an ordered vector of CartesianIndex from the large summit candidates list.
     vI = R[collect(summit_i_set)]
     # We have not as of yet an idea of the peak prominence, which may well be a metre only.
-    # For calculation of prominence (often influenced by neigbouring sheets), we need 
+    # For calculation of prominence (often influenced by neigbouring sheets), we need
     # vertices on the borders which has a neighbour. These will be connected to neighbouring
     # sheet while the local graph is merged into the regional graph.
     append_indices_of_borders!(vI, R, border_sides)
@@ -287,8 +290,8 @@ function condense_summit_candidates_data(fofo, cell_iter, cell2utm, f_I_to_utm, 
     # The stress result is stored in a corresponding vector. This will be useful for results inspection
     # after further filtering.
     vσ = [σ[I] for I in vI]
-    # 
-    # Store the results. Most of these summit candidates are probably trees, and will be discarded later 
+    #
+    # Store the results. Most of these summit candidates are probably trees, and will be discarded later
     # due to low prominence. However, we want to avoid calculating the mean stress again since it takes ~15 seconds.
     waschanged = write_prominence_to_csv(zeros(length(vI)), round.(z[vI]), map(f_I_to_utm, vI), vI, vσ, joinpath(fofo, SUMMITS_FNAM))
     vI, maxtree, z
@@ -299,7 +302,7 @@ end
 function draw_summit_marks(prominence, indices, prom_levels, symbols, symbol_sizes)
     length(prom_levels) == length(symbols) == length(symbol_sizes) == 2 || throw(ArgumentError("Length not 2"))
     #
-    @debug "    Draw summit marks"
+    @debug "    Draw summit marks $symbols"
     # Equilateral triangles are drawn with a horizontal line at bottom.
     #
     # Allocate black-and white image.
@@ -463,7 +466,7 @@ function write_prominence_to_csv(vpr, vz, vutm, indices, σ, ffnam)
     #  2) elevation
     promlev_prom = get_config_value("Markers", "Prominence level [m], prominent summit", Int)
     sortval = [z + (p > promlev_prom ? 10000 : 0) for (z, p) in zip(vz, vpr)]
-    # Order 
+    # Order
     order = sortperm(sortval; rev = true)
     #
     # Prior to saving, look for changes compared to existing file.
@@ -513,7 +516,7 @@ end
 
 Append indices of borders, return unique indices.
 
-vI is a vector of CartesianIndices in R. 
+vI is a vector of CartesianIndices in R.
 
 border_sides is e.g. [:n, :s, :e], indicating North (up), etc.
 
@@ -533,7 +536,7 @@ end
     indices_of_border(R, border_side)
     --->  Vector{CartesianIndex{2}}
 
-R is CartesianIndices, e.g. 
+R is CartesianIndices, e.g.
 ```
 julia> R = CartesianIndices((5500, 3820));
 
@@ -545,11 +548,11 @@ Also see `pairs_of_border_neighbors`.
 function indices_of_border(R, border_side)
     if :n == border_side
         R[1, :]
-    elseif :s == border_side 
+    elseif :s == border_side
         R[end, :]
-    elseif :w == border_side 
+    elseif :w == border_side
         R[:, 1]
-    elseif :e == border_side 
+    elseif :e == border_side
         R[:, end]
     else
         throw(ArgumentError("border_side is $border_side, not :n, :s, :e:, :w"))

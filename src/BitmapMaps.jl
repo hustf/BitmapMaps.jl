@@ -27,11 +27,16 @@ import SHA
 import Serialization
 using Serialization: serialize, deserialize
 using SHA: sha256
-# GeoArray, hypsometric colors
+# GeoArrays
 import GeoArrays
-using GeoArrays: GeoArray, bbox, bbox_overlap, Vertex, coords, indices, crop
+using GeoArrays: GeoArray, AffineMap, bbox
+import Extents
+using Extents: bounds
+import StaticArrays
+using StaticArrays: SMatrix, SVector, SA
 # Feedback
 import Dates
+using Dates: now, format
 # Calculating gradients, topo map, artifact detection
 import ImageFiltering
 using ImageFiltering: imgradients, KernelFactors, mapwindow, mapwindow!, Kernel, imfilter, centered
@@ -60,7 +65,7 @@ using DelimitedFiles: readdlm, writedlm
 import Stadnamn
 using Stadnamn: point_names
 import MetaGraphsNext
-using MetaGraphsNext: loadgraph, savegraph, MetaGraph, DiGraph, labels, nv, ne, add_edge!, MGFormat
+using MetaGraphsNext: loadgraph, savegraph, MetaGraph, DiGraph, labels, nv, ne, add_edge!, MGFormat, SimpleDiGraph
 using MetaGraphsNext: all_neighbors, neighbor_labels, inneighbor_labels, outneighbor_labels, all_neighbor_labels
 using MetaGraphsNext: neighbors, indegree, outdegree, rem_edge!, rem_vertex!, vertices, label_for, code_for
 using MetaGraphsNext: inneighbors, outneighbors, has_edge, edge_labels, is_cyclic # TODO clean unused graph things
@@ -85,17 +90,20 @@ export run_bitmapmap_pipeline, define_builder
 export establish_folder, unzip_tif, consolidate_elevation_data, water_overlay
 export topo_relief, contour_lines_overlay, grid_overlay, ridge_overlay, summits_and_prominence
 export join_layers, make_thumbnail_image, summits_regional_update, make_vector_graphics
-# Export of builders and and utilties
+# Export of builders and utilties
 export SheetBuilder, SheetMatrixBuilder, full_folder_path
 export northeast_corner, northeast_external_corner, northeast_internal_corner
 export northwest_corner
 export southeast_corner, southeast_external_corner, southeast_internal_corner
 export southwest_corner, southwest_external_corner, southwest_internal_corner
-
 export geo_grid_centre_single, geo_centre, bbox_external_string, polygon_string, show_augmented
 export geo_area, nonzero_raster_closed_polygon_string, raster_polygon_string, nonzero_raster_rect
 export copy_relevant_tifs_to_folder, tif_full_filenames_buried_in_folder, unzip_tif
-export show_derived_properties, readclose, display_if_vscode
+export show_derived_properties, readclose
+export utm32_to_33
+# Export of manual edit tools:
+export edit_in_gimp, open_as_temp_in_gimp, display_if_vscode
+
 #
 # Not exported because it's too generic: mark_at! and line!
 
@@ -110,7 +118,7 @@ const THUMBNAIL_FNAM = "Thumbnail.png"
 const SUMMITS_FNAM = "Summits.csv"
 const COMPOSITE_FNAM = "Composite.png"
 const PARSEABLE_FNAM = "Parse_builder.jl"
-
+const ElevationGraph = MetaGraph{Int64, SimpleDiGraph{Int64}, Tuple{Int64, Int64}, Float32, Nothing, Set{@NamedTuple{min_x::Int64, min_y::Int64, max_x::Int64, max_y::Int64}}, typeof(identity), Nothing}
 
 """
 TIFDIC :: Dict[String, NamedTuple}()
@@ -154,6 +162,7 @@ include("vector_graphics.jl")
 include("graph_utilties.jl")
 include("graph_harvest.jl")
 include("utilties_segmentation.jl")
+include("utilties_edit_with_gimp.jl")
 
 
 end
