@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="stylesheet" href="Index.css">
+  <title>BitmapMaps with pan, zoom and links</title>
+</head>
+<body>
+<div id="svg-screen" style="border:1px solid;">
+  <div id="svg-wrapper" style="display: inline-block;"> 
+</div></div>
+<!-- Definitions
+ A map is divided into clickable parts.
+ Depending on context, we may refer to those as
+ sheet, partition or tile.
+ When we use 'sheet', the sheet indexing (row, column),
+ where (1, 1) is the bottom left sheet is retained.
+-->
+<!-- Load the panzoom library. Refer to  https://github.com/timmywil/panzoom-->
+<script src="https://unpkg.com/@panzoom/panzoom@4.5.1/dist/panzoom.min.js"></script>
+<!-- Function definitions only in this script block-->
+<script>
+    // Sugar functions (for brevity below)
+  function screenRect() {
+    const svgScreen = document.getElementById('svg-screen');
+    return svgScreen.getBoundingClientRect();
+  }
+  function wrapRect() {
+    const svgWrap = document.getElementById('svg-wrapper');
+    return svgWrap.getBoundingClientRect();
+  }
+  async function waitForDOMUpdate() {
+    await new Promise(resolve => requestAnimationFrame(resolve));
+    await new Promise(resolve => requestAnimationFrame(resolve));
+  }
+  function activatePanZoom() {
+    const svgWrapper = document.getElementById('svg-wrapper');
+    panzoom = Panzoom(svgWrapper, {
+        maxScale: 400,
+        minScale: 0.125,
+        initialZoom: 1,
+        onStartEvent: (event) => { 
+            event.preventDefault()
+          }
+        });
+    svgWrapper.addEventListener('wheel', panzoom.zoomWithWheel);
+    return panzoom;
+    }
+  // Parse
+  function get_folder_svgfile_from_url() {
+      const url = new URL(window.location.href);
+      const params = url.searchParams;
+      const svgDest = params.get('dest') || '';
+      // If we have no 'dest' parameters,
+      // return the default svg placed in this documents' folder.
+      return svgDest === ''
+        ? ['', defaultSvgFile]
+        : svgDest.split('/');
+    }
+  // Fetch SVG text (where references are implicitly to within folder)
+  async function loadFolderBasedSVG(folder, file) {
+      // Make proper path (avoid leading/trailing slashes issues)
+      const path = (folder ? folder + '/' : '') + file;
+      try {
+        const response = await fetch(path);
+        if (!response.ok) {
+        throw new Error(`HTTP error! Status: ${response.status}`);
+        }
+        const svgText = await response.text();
+        return svgText; // ✅ Return on success
+      } catch (err) {
+        // Handle fetch errors
+        console.error('Failed to load SVG:', err);
+        document.getElementById('svg-wrapper').innerText = 'Failed to load SVG.';
+        return null; // ❗ Optional: Return null or empty string on failure to indicate failure
+      }
+    }
+  // Fetch SVG text and modify so that references are relative to this document
+  async function loadRebasedSVG() {
+    const [folder, file] = get_folder_svgfile_from_url();
+    const svgText = await loadFolderBasedSVG(folder, file);
+    if (folder == '') {
+      // Ok already
+      return svgText;
+    } {
+      // Insert folder in href parameters. Account for varying use of spaces.
+        const normalizedFolder = folder.endsWith('/') ? folder : folder + '/';
+        const updatedSvgText = svgText.replace(/ href\s*=\s*"/g, ' href="' + normalizedFolder);
+        return updatedSvgText;
+    }
+  }
+
+  // Retrieve the top left of the wrapper using 
+  // 'svg-screen' element coordinates [px], 
+  // origin at top-left.
+  // Works with zoom and pan (unlike pz.getPan()),
+  // but first, do call     await waitForDOMUpdate();
+  function get_top_left_wrapper() {
+    // Current pan and zoom state
+    const pa = pz.getPan();
+    const sc = pz.getScale();
+    // Wrap width and height when scaled, in wrapper's own unit
+    // of length
+    const ww = wrapRect().width;
+    const wh = wrapRect().height;
+    // Top left of wrapper in 'screen' element coordinates
+    const x = pa.x * sc + 0.5 * ww * ( 1  -  sc) / sc;
+    const y = pa.y * sc + 0.5 * wh * ( 1  -  sc) / sc;
+    return {x, y}
+  }
+
+  // Pan the top left of the wrapper using 
+  // 'svg-screen' element coordinates [px], 
+  // origin at top-left.
+  // Should work regardless the current zoom and pan.
+  async function pan_zoomed_top_left_wrapper(x, y) {
+    await waitForDOMUpdate();
+    const tl = get_top_left_wrapper();
+    // Translation in svg-wrapper coordinates
+    const sc = pz.getScale();
+    const dx = (x - tl.x) / sc;
+    const dy = (y - tl.y) / sc;
+    await pz.pan(dx, dy, {relative: true});
+  }
+
+  // Take the sheet row, col from url parameter
+  // Note that (1,1) is the lower left mosaic tile.
+  // If no url parameters (i.e. we're at the top level),
+  //  returns {r: tileRows, c: 1}, which is the top-left partition.
+  function getTargetSheetRowCol(){
+    const [s, _] = get_folder_svgfile_from_url()
+    const [r, c] = s === ''
+      ? [tileRows, 1]
+      : s.split('_')[0].split('-').map((x) => {
+        const n = Number(x);
+        if (Number.isNaN(n)) throw new Error(`Invalid number "${x}" in input "${s}"`);
+          return n;
+        });
+    return {r, c};
+  }
+  
+  // Coordinates of the top left of the target partition.
+  // Units are sheet width and sheet height.
+  // Origin is at the svg-wrapper's top left corner, positive 
+  // directions are right and down.
+  // The specified tile is taken from url parameters. 
+  // Note that these are the coordinates before the target tile is 
+  // loaded and rendered on screen.
+  function get_topleft_target_in_partition_units() {
+    // The url already reflects which sheet was picked, 
+    // no matter if the svg has been loaded and displayed yet.
+    const trc = getTargetSheetRowCol()
+    // Target partition coordinates
+    const px = trc.c - 1;
+    // trc.r is 1 at the bottom sheet, counting upwards
+    const py = tileRows - trc.r;
+    return {px, py};
+  }
+
+  // This function will be bound to all links, i.e. all 
+  // '<a href>' elements within the svg content.
+  async function onLinkClick(event) {
+    // Prevent normal navigation
+    event.preventDefault();
+    // A click event is triggered after  PointerUp.
+    // Since we're also dragging these elements with links, we are trying 
+    // to detect dragging with this global variable.
+    if (isDragging) {
+      event.stopPropagation();
+      return;
+    }
+    // Create a URL object from the current location
+    const url = new URL(window.location.href);
+    const strippedUrlToHere = url.origin + url.pathname;
+    // Extract the original link
+    const link = event.currentTarget; // The link that was clicked
+    const originalLink = link.getAttribute('href') || '';
+    // Modify the URL 
+    const modifiedLink = strippedUrlToHere + '?dest=' + originalLink;
+    // Change the url at the top, but don't reload the page yet.
+    // We can navigate back to the previous. (.replaceState would not log the previous url).
+    history.pushState({}, '', modifiedLink);
+    //
+    // Store pre-navigation geometry
+    // 
+    // Retrieve the pre-navigation top left of the wrapper using 
+    // 'svg-screen' element coordinates [px].
+    const wtl = get_top_left_wrapper()
+    // Retrieve pre-navigation target top left in partition units and in wrapper coordinate system
+    const ttl = get_topleft_target_in_partition_units()
+    // Wrap dims in pixel units (in the svg that was clicked, not the target)
+    const ww = wrapRect().width;
+    const wh = wrapRect().height;
+    // Partition dims in pixel units (i.e. sheet dims) 
+    const pw = ww / tileCols;
+    const ph = wh / tileRows;
+    // Calculate the post-navigation zoom scale.
+    // Note that the target is in a higher resolution.
+    const sc = pz.getScale() / Math.max(tileRows, tileCols);
+    // Calculate the post-navigation top left
+    tlx = wtl.x + ttl.px * pw;
+    tly = wtl.y + ttl.py * ph;
+    //
+    // Update and panzoom to visual correspondence 
+    //
+    // Update the svg part of this document
+    await injectSvgFromUrlParams();
+    // Post-navigation
+    await pz.zoom(sc);
+    await pan_zoomed_top_left_wrapper(tlx, tly);
+  }
+
+  // This function will be bound to the window later.
+  // It handles when user navigates backward.
+  async function onPopState(event) {
+    // Post-navigation zoom scale.
+    // Note that the target is in a lower resolution.
+    const sc = Math.min(1, pz.getScale() * Math.max(tileRows, tileCols));
+    injectSvgFromUrlParams();
+    // If the history entry being activated was created by a call to history.pushState(),
+    // the popstate event's state property contains a copy of the history entry's state object.
+    const statePrev = event.state || 'zoomed in';
+    if (statePrev == 'zoomed in') {
+      // This occurs if user navigate back from a sheet (a partition)
+      await pz.zoom(sc);
+      await pan_zoomed_top_left_wrapper(0, 0);
+    };
+  }
+
+  // In case the injected svg contains links, change what happens on pointer release over a link.
+  function modifyLinksAndBehavior() {
+      // Query all links
+      const svgWrapper = document.getElementById('svg-wrapper');
+      const links = svgWrapper.querySelectorAll('a');
+      links.forEach(link => {
+        link.addEventListener('click',  onLinkClick);
+      });
+   }
+
+  // Fetch and inject (actually, replace) SVG text in the document
+  // Also modifies what happens when clicking a link.
+  async function injectSvgFromUrlParams() {
+    const svgText = await loadRebasedSVG();
+    const svgWrapper = document.getElementById('svg-wrapper');
+    svgWrapper.innerHTML = svgText;
+    modifyLinksAndBehavior();
+  }
+
+  // The purpose of these events is to prevent following links
+  // unintentinally when ending a dragging operation.
+  // We're binding these events after PanZoom init, so PanZoom's 
+  // events will continue to trigger before these.
+  function onPointerDown(event) {
+    isDragging = false;
+    startX = event.clientX;
+    startY = event.clientY;
+  }
+  function onPointerMove(event) {
+    const dx = event.clientX - startX;
+    const dy = event.clientY - startY;
+    if (Math.sqrt(dx * dx + dy * dy) > dragThreshold) {
+      isDragging = true;
+    }
+  }
+  function onPointerUp(event) {
+    setTimeout(() => { isDragging = false; }, 50);
+  }
+  function makeClickGuardedFromDragging() {
+    const svgWrapper = document.getElementById('svg-wrapper');
+    svgWrapper.addEventListener('pointerdown', onPointerDown);
+    svgWrapper.addEventListener('pointermove', onPointerMove);
+    svgWrapper.addEventListener('pointerup', onPointerUp);
+    // The click event is added on each link elsewhere.
+  }
+</script>
+
+<!-- This script block runs once, further navigation is handled by events on svgWrapper -->
+<script>
+    // This should be modified for new BitmapMaps
+    const defaultSvgFile = '(18145 6894030)-(71623 6971028).svg';
+    const [tileRows, tileCols] = [7, 7];
+    // Bring in the svg content, add bells and whistles
+    injectSvgFromUrlParams();
+    // This adds some attributes and events to the svg-wrapper element,
+    // though the real magic lies in using css transforms.
+    // It continues to work even when we change the svg content.
+    // The returned handle is not the same as the element,
+    // but a reference to mostly functions like 'reset'
+    const pz = activatePanZoom();
+    // Add an event to update the svg contents 
+    // when user navigates 'back' or 'forward'.
+    window.addEventListener('popstate', onPopState);
+    // With PanZoom only, a 'click' event is triggered after a drag. 
+    // Preventing this behaviour requires some global variables:
+    let startX, startY;
+    let isDragging = false;
+    const dragThreshold = 5; // Minimum movement in pixels to consider as a drag
+    makeClickGuardedFromDragging();
+</script>
+</body>
+</html>

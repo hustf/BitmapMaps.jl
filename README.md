@@ -29,6 +29,8 @@ For navigating between sheets for inspection, we make a mosaic of sheets. It is 
 
 <img src="resource/thumbnail.png" alt = "resource/thumbnail.png" style="display: inline-block; margin: 0 auto; max-width: 640px">
 
+For better panning, zooming and navigation: Copy `resource/Index.html` into your project folder, and rename the variable `defaultSvgFile` to your .svg file in that same folder. We suggest serving with [LiveServer.jl](https://juliadocs.org/LiveServer.jl/dev/). This page automatically loads library [Panzoom](https://github.com/timmywil/panzoom).
+
 
 # Example
 
@@ -116,11 +118,15 @@ The following steps are run only after 1-13 is complete for all sheets:
 
 # Current state
 
+Version 0.3.2:
+Add `resource/Index.html`.
+Modify .svg links to use `/` instead of `\`.
+
 Version 0.3.1:
-Added detailed reporting for summit prominence checking.
-Added detailed feedback for water body identification at specific coordinates.
-Added utilties for touching up elevation files manually with the open-source Gimp editor.
-Added parameters for disabling online retrieval of geographical names, due to discovered throttling.
+Add detailed reporting for summit prominence checking.
+Add detailed feedback for water body identification at specific coordinates.
+Add utilties for touching up elevation files manually with the open-source Gimp editor.
+Add parameters for disabling online retrieval of geographical names, due to discovered throttling.
 Use version "0.9.4" of GeoArrays. 
 Improve speed by using static arrays and dropping support of 'Missing' values in consolidated elevation files.
 
@@ -159,7 +165,7 @@ Version 0.1.12:
 
 Version 0.1.11:
 
- - Added step 2, an overview file placed in the project directory.
+ - Add step 2, an overview file placed in the project directory.
 
 Version 0.1.10:
 
@@ -172,7 +178,7 @@ Version 0.1.10:
 
 Version 0.1.9:
 
- - Added forest detection and smooth contours in such areas.
+ - Add forest detection and smooth contours in such areas.
  This is in a temporary state. Currently, all forest is assumed to have a height offset of 4.0 metres.
  We consider using 'forest height' as an identifier of forests instead. If that does not work well, we
  might want to revert to this version.

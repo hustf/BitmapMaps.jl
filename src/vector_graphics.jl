@@ -359,8 +359,10 @@ function make_reference_mosaic(ffna_svg, smb)
     tile_height = Int(floor((ny - 1) / n_governing))
     # Add sheet tiles
     for sb in smb
-        imgpath = joinpath(splitpath(sb.pthsh)[end], THUMBNAIL_FNAM)
-        urlpath = joinpath(splitpath(sb.pthsh)[end], replace(COMPOSITE_FNAM, ".png" => ".svg"))
+        # Windows has no problems interpreting '/' as '\'. Here, we're making urls,
+        # so we use '/'.
+        imgpath = replace(joinpath(splitpath(sb.pthsh)[end], THUMBNAIL_FNAM), "\\" => "/")
+        urlpath = replace(joinpath(splitpath(sb.pthsh)[end], replace(COMPOSITE_FNAM, ".png" => ".svg")), "\\" => "/")
         r, c = row_col_of_sheet(smb, sb.sheet_number)
         x, y = Int.(round.(sb.pixel_origin_ref_to_bitmapmap ./ n_governing))
         add_sheet_tile!(svg, x, y, tile_width, tile_height, r, c, imgpath, urlpath, ns)
