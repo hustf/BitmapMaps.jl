@@ -32,6 +32,16 @@ For navigating between sheets for inspection, we make a mosaic of sheets. It is 
 For better panning, zooming and navigation: Copy `resource/Index.html` into your project folder, and rename the variable `defaultSvgFile` to your .svg file in that same folder. We suggest serving with [LiveServer.jl](https://juliadocs.org/LiveServer.jl/dev/). This page automatically loads library [Panzoom](https://github.com/timmywil/panzoom).
 
 
+# Installation
+
+In Julia v1.9+:
+
+```julia
+pkg> registry add https://github.com/hustf/M8
+pkg> add BitmapMaps
+```
+
+
 # Example
 
 Running the example will generate `BitmapMaps.ini`, which is human readable and editable.
@@ -257,11 +267,6 @@ Some nice to know:
 
 <img src="resource/matrix_sheet_cell_utm.svg" alt = "resource/matrix_sheet_cell_utm.svg" style="display: inline-block; margin: 0 auto; max-width: 640px">
 
-# Wishlist
-
-- Add a fifth light source more directly from above. Currently, flat unforested areas are too dark.
-- Define own summits names on a general basis.
-
 # Bounding box functions
  
 Bounding boxes have meaning for:
@@ -319,17 +324,17 @@ Second, we drop any summit candidates with elevation < 200 m. Those are not summ
 
 ## Candidates eliminated based on their curvature
 
-Third, candidates must fall within a curvature range. This effectively eliminates a lot of power lines and trees.
+Third, candidates must fall within a curvature range. This effectively eliminates a lot of power lines and trees. Let's just define curvature first:
 
-### Curvature is
+### Curvature definition
 
-The partial derivatives of pixel values with respect to rows and columns comprise the local gradient (g1, g2), or the Jacian components as some like to call it. This is the simplified version; we actually implement this with 'Bickley' kernel factors, which works out well for images. 
+The partial derivatives of cell elevation values with respect to rows and columns comprise the local gradient (g1, g2), often called the Jacian components. We actually implement this with 'Bickley' kernel factors for practical reasons. We then differentiate (g1, g2) once more with respect to the same directions, and we have (g11, g22).
 
-Don't stop yet. We differentiate (g1, g2) once more with respect to the same directions, and we have (g11, g22). There are all sorts of analogies here, so we could pick from mathematical books, fluid dynamics or material stress tensors, hence the inconsistent terminology in code comment. 
+So what we call 'curvature' is actually
 
-So what we imprecisely call 'curvature' because it works well is actually
-(g11 + g22) / 2.
+    (g11 + g22) / 2
 
+The same expression is used in most engineering disciplines under various names. For example, vector calculus itself, fluid dynamics, material stress and strain analysis, chemistry and biology. We had various analogies in mind when coding, so in the comments you could find some inconsistent terminology.
 
 # Prepare for prominence calculation
 

@@ -3,13 +3,21 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <link rel="stylesheet" href="Index.css">
+  <link rel="stylesheet" href="index.css">
   <title>BitmapMaps with pan, zoom and links</title>
 </head>
 <body>
 <div id="svg-screen" style="border:1px solid;">
-  <div id="svg-wrapper" style="display: inline-block;"> 
+  <div id="svg-wrapper" style="display: inline-block;border:1px solid;"> 
 </div></div>
+<div class="license-attribution">
+  Data provided by 
+  <a href="https://hoydedata.no/LaserInnsyn2/">© Kartverket</a>, licensed under
+  <a href="https://creativecommons.org/licenses/by/4.0/">CC BY 4.0</a>.
+  Processed using 
+  <a href="https://github.com/hustf/BitmapMaps.jl">[BitmapMaps]</a>, licensed under the
+  <a href="https://opensource.org/licenses/MIT">MIT License</a>.
+</div>
 <!-- Definitions
  A map is divided into clickable parts.
  Depending on context, we may refer to those as
@@ -67,7 +75,7 @@
         if (!response.ok) {
         throw new Error(`HTTP error! Status: ${response.status}`);
         }
-        const svgText = await response.text();
+        const svgText = "<p style='position:absolute;top:30%;left:10%;z-index:-1;font-size:xxx-large;'>Loading bitmap...</p>" + await response.text();
         return svgText; // ✅ Return on success
       } catch (err) {
         // Handle fetch errors
