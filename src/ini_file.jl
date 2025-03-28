@@ -108,7 +108,7 @@ end
 Instead of passing long argument lists, we store configuration in a text file.
 """
 function get_config_value(sect::String, key::String; nothing_if_not_found = false)
-    fna = _get_ini_fnam()
+    fna = _get_valid_ini_fnam()
     ini = read(Inifile(), fna)
     if sect ∉ keys(sections(ini))
         msg = """$sect not a section in $fna.
@@ -158,8 +158,13 @@ function get_config_value(sect, key, ::Type{Tuple{Int64, Int64}}; nothing_if_not
 end
 
 
-"Get an existing, readable ini file name, create it if necessary"
-function _get_ini_fnam()
+"""
+    _get_valid_ini_fnam()
+
+Get an existing, readable ini file name, create it if necessary.
+Looks in `homedir()`, or where environment variable \"BMM_CONFDIR\" specifies.
+"""
+function _get_valid_ini_fnam()
     fna = _get_fnam_but_dont_create_file()
     if !isfile(fna)
         open(_prepare_init_file_configuration, fna, "w+")
@@ -167,12 +172,17 @@ function _get_ini_fnam()
         if Sys.iswindows()
             run(`cmd /c $fna`; wait = false)
         end
-        println("Default settings stored in $fna")
+        @info "Default settings stored in $fna" maxlog = 2
+    else
+        @info "Default settings read from $fna" maxlog = 2
     end
     fna
 end
-_get_fnam_but_dont_create_file() =  joinpath(homedir(), "BitmapMaps.ini")
-
+function _get_fnam_but_dont_create_file()
+    inifold = get(ENV, "BMM_CONFDIR", homedir())
+    @assert isdir(inifold) "`get(ENV, \"BMM_CONFDIR\", homedir())` -> (Not a directory:) $(inifold) "
+    joinpath(inifold, "BitmapMaps.ini")
+end
 
 
 function set_section_key_string_comment(ini::Inifile, section::T, key::T, val::T, comment::T) where T<:String

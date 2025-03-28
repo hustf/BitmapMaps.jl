@@ -128,6 +128,9 @@ The following steps are run only after 1-13 is complete for all sheets:
 
 # Current state
 
+Version 0.3.3:
+Configuration file directory can now be specified with environment variable BMM_CONFDIR.
+
 Version 0.3.2:
 Add `resource/Index.html`.
 Modify .svg links to use `/` instead of `\`.
