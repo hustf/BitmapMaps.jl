@@ -128,7 +128,11 @@ The following steps are run only after 1-13 is complete for all sheets:
 
 # Current state
 
-Version 0.3.3:
+Version 0.3.5:
+Bugfix: Uncomment `smooth_laplacian`.
+Bugfix: Sleep 1 s prior to first saving with EzXML.
+
+Version 0.3.4:
 Configuration file directory can now be specified with environment variable BMM_CONFDIR.
 
 Version 0.3.2:

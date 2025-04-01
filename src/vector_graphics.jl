@@ -136,6 +136,26 @@ function modify_svg_to_sheet_size(ffna_svg, ffna_css, cell_iter, sheet_width_mm,
         The values in this svg file match the size of $COMPOSITE_FNAM with
         (w, h) = ($nx, $ny) pixels.
     """)
+    # This error occured two times at start-up:
+    #
+    # ┌ Debug: Pre-process: Make C:\Users\f\BitmapMaps/Stetind\(564923 7560195)-(567177 7563442).svg
+    # └ @ BitmapMaps C:\Users\f\.julia\packages\BitmapMaps\jlaPp\src\vector_graphics.jl:339
+    # ERROR: XMLError: Permission denied: C:\Users\f\BitmapMaps/Stetind\(564923 7560195)-(567177 7563442).svg from Input/Output stack (code: 1501, line: 0)
+    # Stacktrace:
+    #   [1] throw_xml_error()
+    #     @ EzXML C:\Users\f\.julia\packages\EzXML\qbIRq\src\error.jl:87
+    #   [2] macro expansion
+    #     @ C:\Users\f\.julia\packages\EzXML\qbIRq\src\error.jl:52 [inlined]
+    #   [3] write(filename::String, doc::EzXML.Document)
+    #     @ EzXML C:\Users\f\.julia\packages\EzXML\qbIRq\src\document.jl:247
+    #   [4] modify_svg_to_sheet_size(ffna_svg::String, ffna_css::String, cell_iter::CartesianIndices{2, Tuple{UnitRange{Int64}, UnitRange{Int64}}}, sheet_width_mm::Int64, sheet_height_mm::Int64)
+    #     @ BitmapMaps C:\Users\f\.julia\packages\BitmapMaps\jlaPp\src\vector_graphics.jl:139
+    #
+    #
+    # Since we are not able to re-create, we suspect it has something to do with compilation of EzXML,
+    # and desperately insert an arbitrary wait here:
+    sleep(1)
+    # This is where an error might trigger:
     write(ffna_svg, doc)
 end
 
@@ -337,11 +357,15 @@ Called via make_vector_graphics. We refer files not knowing if they're made yet.
 """
 function make_vector_mosaic(smb, ffna_svg)
     @debug "Pre-process: Make $(ffna_svg)"
-    # We curently don't use features from the .css style sheet, but
+    # The mosaic svg currently don't use features 
+    # from the .css style sheet, but
     # that may change in future. So make both .svg and .css
     ffna_css = splitext(ffna_svg)[1] * ".css"
     copy_templates_to_folder(ffna_svg, ffna_css)
+    println("jj--------------------------------------------------")
     modify_svg_to_sheet_size(ffna_svg, ffna_css, smb[1].cell_iter, smb.sheet_width_mm, smb.sheet_height_mm)
+    println("kk--------------------------------------------------")
+
     make_reference_mosaic(ffna_svg, smb)
 end
 function make_reference_mosaic(ffna_svg, smb)

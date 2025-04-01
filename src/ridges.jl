@@ -144,18 +144,20 @@ components along g's axes, then averaging those.
 function smooth_laplacian(z)
     smooth_laplacian(z, CartesianIndices(axes(z)))
 end
-# DEAD
-#=
 function smooth_laplacian(g, source_indices::CartesianIndices)
     # Smooth surface
     zf = smooth_surface_fir(g; w = 159, nyquist_denom = 16)
     g11, _, _, g22 = hessian_components(zf)
-
     # We have used the full resolution to determine the curvature.
     # Return the needed resolution only.
     g11[source_indices] .+ g22[source_indices]
 end
-=#
+
+
+"""
+    jacobian_components(z) 
+    --> Tuple{Matrix{Float64}, Matrix{Float64}} 
+"""
 jacobian_components(z) = imgradients(z, KernelFactors.bickley)
 
 """
