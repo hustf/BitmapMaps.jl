@@ -1,7 +1,7 @@
 # BitmapMaps.jl
 Make topographic relief bitmaps for printing from 32-bit elevation data, overlain with vector graphics. 
 
-**📘 Walkthrough:** [hustf.github.io/BitmapDoc](https://hustf.github.io/BitmapDoc/)
+** Walkthrough:** [hustf.github.io/BitmapDoc](https://hustf.github.io/BitmapDoc/)
 
 # What does it do?
 
@@ -137,6 +137,9 @@ The following steps are run only after 1-13 is complete for all sheets:
 
 
 # Current state
+
+Version 0.3.8:
+Re-use `retry_write` in `modify_css_font_size`. File permissions in Windows seem to be more lenient, sometimes, with a checked out package than with a downloaded one.
 
 Version 0.3.7:
 Ease topographic relief (step 7) customizing. User can refer custom render funcs at the top level.

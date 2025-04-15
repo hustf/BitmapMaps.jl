@@ -325,11 +325,25 @@ end
 function modify_css_font_size(ffna_css, fontsize_px)
     vs = readlines(ffna_css, keep = true)
     vs[2] = replace(vs[2], "fontsize: 78px;" => "fontsize: $(fontsize_px)px;")
-    open(ffna_css, "w") do io
-        foreach(vs) do s
-            write(io, s)
-        end
+    #
+    #open(ffna_css, "w") do io
+    #    foreach(vs) do s
+    #        write(io, s)
+    #    end
+    #end
+    #
+    # We had some permission denied errors, but hard to reproduce with
+    # a checked out package. We believe this has to do with permissions
+    # being slightly different when a package is checked out. Copying a 
+    # file ( the css template) and immediately writing to it is
+    # the issue. We call this confusing the anti-virus ghosts.
+    # Hence, we revise this func to use 'retry_write'.
+    iob = IOBuffer()
+    foreach(vs) do s
+        write(iob, s)
     end
+    st = String(take!(iob))
+    retry_write(ffna_css, st)
 end
 
 """
@@ -421,7 +435,7 @@ function add_linked_tile!(parent, x, y, tile_width, tile_height, r, c, urlpath, 
 end
 
 """
-    retry_write(filename::String, doc::EzXML.Document; attempts=30, delay=0.3)
+    retry_write(filename::String, doc; attempts=30, delay=0.3)
 
 This function replaces the ordinary 'write' after hard-to-repeat crashes like
 
@@ -435,7 +449,7 @@ On Windows specifically, many system services (e.g., antivirus, search indexer, 
 tools) can briefly lock a newly created or copied file, and they do so outside of your 
 process — meaning there’s no portable check like isready(ffna_svg).
 """
-function retry_write(filename::String, doc::EzXML.Document; attempts=30, delay=0.3)
+function retry_write(filename::String, doc; attempts=30, delay=0.3)
     for i in 1:attempts
         try
             write(filename, doc)
