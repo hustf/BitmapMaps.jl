@@ -113,6 +113,9 @@ end
     bbox_external_overlap(
         bbox_a::NamedTuple{(:min_x, :min_y, :max_x, :max_y)},
         bbox_b::NamedTuple{(:min_x, :min_y, :max_x, :max_y)})
+    bbox_external_overlap(
+        bbox_a::Extents.Extent,
+        bbox_b::Extents.Extent)
         ---> Bool
 
 This assumes the boundary boxes are 'external', i.e. enclosing cells that are part of it.
@@ -143,6 +146,9 @@ function bbox_external_overlap(
         return false
     end
     true
+end
+function bbox_external_overlap(bbox_a::Extents.Extent, bbox_b::Extents.Extent)
+    bbox_external_overlap(_convToNamedTuple(bbox_a), _convToNamedTuple(bbox_b))
 end
 
 function display_if_vscode(M)

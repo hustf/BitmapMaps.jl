@@ -165,6 +165,11 @@ function _bbox_external_string(bb::NamedTuple{(:min_x, :min_y, :max_x, :max_y)})
     y3 = Int(bb.max_y)
     "($x1 $y1)-($x3 $y3)"
 end
+function _bbox_external_string(bb::Extents.Extent)
+    _bbox_external_string(_convToNamedTuple(bb))
+end
+
+
 
 """
     bbox_external(p)
@@ -288,6 +293,7 @@ end
 
 """
     closed_box_string(bb::NamedTuple{(:min_x, :min_y, :max_x, :max_y)})
+    closed_box_string(bb::Extents.Extent)
     ---> String
 
 Used indirectly by `polygon_string`. Input must be convertable to integer numbers.
@@ -314,9 +320,13 @@ function closed_box_string(bb::NamedTuple{(:min_x, :min_y, :max_x, :max_y)})
     x4, y4 = x1, y3
     "(($x1 $y1, $x2 $y2, $x3 $y3, $x4 $y4, $x1 $y1))"
 end
+function closed_box_string(bb::Extents.Extent)
+    closed_box_string(_convToNamedTuple(bb))
+end
 
 """
     diagonal_string(bb::NamedTuple{(:min_x, :min_y, :max_x, :max_y)})
+    diagonal_string(bb::Extents.Extent)
     ---> String
 
 # Example
@@ -336,7 +346,9 @@ function diagonal_string(bb::NamedTuple{(:min_x, :min_y, :max_x, :max_y)})
     y4 = y3
     "(($x1 $y1, $x2 $y2, $x3 $y3, $x4 $y4, $x1 $y1))"
 end
-
+function diagonal_string(bb::Extents.Extent)
+    diagonal_string(_convToNamedTuple(bb))
+end
 
 """
     polygon_string(smb::SheetMatrixBuilder)

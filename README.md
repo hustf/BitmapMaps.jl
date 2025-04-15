@@ -1,5 +1,7 @@
 # BitmapMaps.jl
-Make topographic relief bitmaps for printing from 32-bit elevation data, overlain with vector graphics. No need for purchased software.
+Make topographic relief bitmaps for printing from 32-bit elevation data, overlain with vector graphics. 
+
+**📘 Walkthrough:** [hustf.github.io/BitmapDoc](https://hustf.github.io/BitmapDoc/)
 
 # What does it do?
 
@@ -29,7 +31,7 @@ For navigating between sheets for inspection, we make a mosaic of sheets. It is 
 
 <img src="resource/thumbnail.png" alt = "resource/thumbnail.png" style="display: inline-block; margin: 0 auto; max-width: 640px">
 
-For better panning, zooming and navigation: Copy `resource/Index.html` into your project folder, and rename the variable `defaultSvgFile` to your .svg file in that same folder. We suggest serving with [LiveServer.jl](https://juliadocs.org/LiveServer.jl/dev/). This page automatically loads library [Panzoom](https://github.com/timmywil/panzoom).
+For better panning, zooming and navigation: Copy `resource/index.html` into your project folder, and rename the variable `defaultSvgFile` to your .svg file in that same folder. We suggest serving with [LiveServer.jl](https://juliadocs.org/LiveServer.jl/dev/). This page automatically loads library [Panzoom](https://github.com/timmywil/panzoom).
 
 
 # Installation
@@ -57,6 +59,14 @@ julia> run_bitmapmap_pipeline()
 If you're running this from VSCode, many intermediate images will be displayed right after they are made.
 
 Functions are generally documented inline.
+
+# Walkthrough
+
+A detailed walkthrough using real data is available here:  
+👉 [BitmapDoc – Processing example](https://hustf.github.io/BitmapDoc/)
+
+It is targeted towards fresh Julia users and explains key concepts as they appear.
+
 
 # Pipeline for making a regional map
 
@@ -127,6 +137,9 @@ The following steps are run only after 1-13 is complete for all sheets:
 
 
 # Current state
+
+Version 0.3.7:
+Ease topographic relief (step 7) customizing. User can refer custom render funcs at the top level.
 
 Version 0.3.4-6:
 Bugfix: Uncomment `smooth_laplacian`.
@@ -263,7 +276,6 @@ julia> show_derived_properties(fnas[1])
 
 
 ## General
-`GeoArrays.jl` has breaking changes in  version 0.9 (we currently pin to 0.8.5). It could be fixed easily.
 
 Some nice to know:
 
@@ -274,12 +286,13 @@ Some nice to know:
 
 <img src="resource/matrix_sheet_cell_utm.svg" alt = "resource/matrix_sheet_cell_utm.svg" style="display: inline-block; margin: 0 auto; max-width: 640px">
 
-# Bounding box functions
+## Bounding box functions
  
 Bounding boxes have meaning for:
    - GeoArrays (this type is defined by `GeoArrays.jl`)
    - file names referring GeoArrays
    - SheetMatrixBuilder and SheetBuilder (this package's main types)
+   - Extents.Extent (introduced in later versions of GeoArrays.jl)
 
 If you're inspecting your own job definitions, you may only need `show_augmented(smb)`.
 
@@ -298,7 +311,7 @@ Why not just use `GeoArrays.bbox` and `GeoArrays.bbox_overlap`?
 First, you do the main work in downloading elevation data in your chosen folder, e.g. `your_homedir/BitmapMaps/your_project`. As mentioned, [data](https://github.com/peterkovesi/PerceptualColourMaps.jl): https://hoydedata.no/LaserInnsyn2/
 
 
-# Summit identification and prominence calculation
+# On summit identification and prominence calculation
 
 This describes the algorithm from version 0.2.0.
 
@@ -343,7 +356,7 @@ So what we call 'curvature' is actually
 
 The same expression is used in most engineering disciplines under various names. For example, vector calculus itself, fluid dynamics, material stress and strain analysis, chemistry and biology. We had various analogies in mind when coding, so in the comments you could find some inconsistent terminology.
 
-# Prepare for prominence calculation
+## Prepare for prominence calculation
 
 Even after filtering many candidates out, we have thousands of potential summits per sheet. The next step is calculating a local summit prominence for all, and filtering out those with too low values. The logic goes like this:
 

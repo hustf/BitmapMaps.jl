@@ -3,7 +3,7 @@
 
 """
     topo_relief(sb::SheetBuilder)
-    topo_relief(fofo, cell_iter, cell2utm)
+    topo_relief(fofo, cell_iter, cell2utm, f_hypso, f_reflect)
     ---> Bool
 
 Output is an RGB colorspace .png image file.
@@ -18,11 +18,22 @@ Each candidate is calculated thus:
 
 Note that the multiplication and lightness calculation is done in the XYZ colorspace.
 The colours are defined in `pallette.jl`.
+
+For customization of pallette, replace `f_hypso`. For customization of lighting, replace 
+`f_reflect`. The argument list must be equivalent to `func_directional_pallette` and 
+`func_reflection_coefficient`.
 """
 function topo_relief(sb::SheetBuilder)
-    topo_relief(full_folder_path(sb), sb.cell_iter, cell_to_utm_factor(sb))
+    # This function determines the color of the light source for a cell (a pixel in a raster)
+    # The color varies with elevation above sea and light source number 
+    f_hypso = func_directional_pallette()
+    # This function determines how much of that color is reflected, given light source number,
+    # the surface normal vector and elevation above sea.
+    f_reflect = func_reflection_coefficient()
+    #
+    topo_relief(full_folder_path(sb), sb.cell_iter, cell_to_utm_factor(sb), f_hypso, f_reflect)
 end
-function topo_relief(fofo, cell_iter, cell2utm)
+function topo_relief(fofo, cell_iter, cell2utm, f_hypso, f_reflect)
     if isfile(joinpath(fofo, TOPORELIEF_FNAM))
         @debug "    $TOPORELIEF_FNAM in $fofo\n           already exists. Exiting `topo_relief`"
         return true
@@ -31,7 +42,7 @@ function topo_relief(fofo, cell_iter, cell2utm)
         @debug "    $CONSOLIDATED_FNAM in $fofo\n           does not exist. Exiting `topo_relief`"
         return false
     end
-    res = RGB{N0f8}.(_topo_relief(fofo, cell_iter, cell2utm))
+    res = RGB{N0f8}.(_topo_relief(fofo, cell_iter, cell2utm, f_hypso, f_reflect))
     # Feedback
     display_if_vscode(res)
     # Save
@@ -40,17 +51,17 @@ function topo_relief(fofo, cell_iter, cell2utm)
     save_png_with_phys(ffna, res)
     true
 end
-function _topo_relief(fofo, cell_iter, cell2utm)
+function _topo_relief(fofo, cell_iter, cell2utm, f_hypso, f_reflect)
     # Get elevation matrix. This samples every point regardless of cell_to_utm_factor
     za = elevation_full_res(fofo)
-    __topo_relief(za, cell_iter, cell2utm)
+    __topo_relief(za, cell_iter, cell2utm, f_hypso, f_reflect)
 end
 
-function __topo_relief(za, cell_iter, cell2utm)
+function __topo_relief(za, cell_iter, cell2utm, f_hypso, f_reflect)
     # We need a 'render single output pixel function'. It changes a pixel at a time,
     # and its argument is its immediate surrounding in the source data.
     # It also needs to know more, but we're capturing that data.
-    fr = func_render(func_directional_pallette())
+    fr = func_render(f_hypso, f_reflect)
     # Now map the render function to an output image.
     @debug "    Render topo relief"
     # Output image size
@@ -61,7 +72,7 @@ function __topo_relief(za, cell_iter, cell2utm)
     mapwindow(fr, za, (3, 3); indices)
 end
 
-function func_render(f_hypso)
+function func_render(f_hypso, f_reflect)
     # f_hypso takes two arguments: elevation and direction number 1..4.
     # It returns an XYZ{Float32}.
     (M::Matrix) -> @inbounds begin
@@ -80,7 +91,7 @@ function func_render(f_hypso)
         n_sn = -deriv_south_north / mag
         n_up =  1 / mag
         # Find the reflected color for light sources 1 to 4.
-        vcol = reflected_color.(1:4, z, n_ew, n_sn, n_up, f_hypso)
+        vcol = reflected_color.(1:4, z, n_ew, n_sn, n_up, f_hypso, f_reflect)
         # We don't mix the light sources, but rather use the one
         # that is most luminous at this pixel.
         _, i = findmax(luminance, vcol)
@@ -88,41 +99,73 @@ function func_render(f_hypso)
     end
 end
 
-function reflection_coefficient(direction_no, z, n_ew, n_sn, n_up)
-    @assert 1 <= direction_no <= 4
-    sun = 202
-    azimuth_deg = [sun, sun -180 -60, sun - 180, sun - 180 + 60]
-    elevation_deg = [9, 30, 30, 30]
-    az_deg = azimuth_deg[direction_no]
-    el_deg = elevation_deg[direction_no]
-    azim = az_deg * π / 180
-    elev = el_deg * π / 180
-    # Convert azimuth and elevation to a lighting direction vector.
+"""
+    reflected_color(direction_no, z, n_ew, n_sn, n_up, f_hypso, f_reflect)
+    ---> XYZ{Float32}
+```
+"""
+function reflected_color(direction_no, z, n_ew, n_sn, n_up, f_hypso, f_reflect)
+    f_hypso(z, direction_no) * f_reflect(direction_no, z, n_ew, n_sn, n_up)
+end
+
+"""
+    func_reflection_coefficient(; sun_deg = 202, light_elev_deg = [9, 30, 30, 30])
+    ---> generic function (direction_no, z, n_ew, n_sn, n_up) ---> Float32
+"""
+function func_reflection_coefficient(; sun_deg = 202, light_elev_deg = [9, 30, 30, 30])
+    # Direction no: From sun, opposite sun, one side 60°, other side 60 °
+    Δazim_deg = [0, -180 - 60, - 180, - 180 + 60]
+    light_azim_deg = sun_deg .+ Δazim_deg
+    light_azim = light_azim_deg .* (π / 180)
+    light_elev = light_elev_deg .* (π / 180)
+    #
+    # Convert light azimuth and light elevation to x-y-z light unit vectors.
     # Azimuth of 0     <=> Light from north, vector points north
     # Azimuth of π / 2 <=> Light from east, vector points east
     # Azimuth of π     <=> Light from south, vector points south
     # Elevation 0      <=> Light from horizon
     # Elevation π / 2  <=> Light from above
     #
-    # Unit vector of the light source.
-    l_ew = cos(elev) * sin(azim)
-    l_sn = cos(elev) * cos(azim)
-    l_up = sin(elev)
-    # The dot product of light and surface normal is the fraction of light
-    # reflected towards the observer
-    lambert_reflection = lambert_shade(n_ew, n_sn, n_up, l_ew, l_sn, l_up)
-    # We want a wider spread of reflected light further up, where snow is.
-    # Note: lambert_reflection^shade_exponent(z) naively does not exceed 1.0. Thrust, but check.
-    convert(Float32, min(1.0f0, lambert_reflection^shade_exponent(z, direction_no)))
+    # Unit vector components of all the light sources
+    l_ew = cos.(light_elev) .* sin.(light_azim)
+    l_sn = cos.(light_elev) .* cos.(light_azim)
+    l_up = sin.(light_elev)
+    # Closure on the light source vectors
+    f = let l_ew = l_ew, l_sn = l_sn, l_up = l_up
+        (dno, z, n_ew, n_sn, n_up) -> begin
+            @assert 1 <= dno <= 4
+            # The dot product of light and surface normal is the fraction of light
+            # reflected towards the observer. This is 'lambert shade'.
+            #
+            # We modify the lambert shading where there is snow.
+            # Lambert_reflection^shade_exponent(z, dno) naively does not exceed 1.0. 
+            # Thrust, but check.
+            min(1.0f0, convert(Float32, lambert_shade(n_ew, n_sn, n_up, l_ew[dno], l_sn[dno], l_up[dno]) ^
+                shade_exponent(z, dno)))
+        end
+    end
 end
 
-function reflected_color(direction_no, z, n_ew, n_sn, n_up, f_hypso)
-    r = reflection_coefficient(direction_no, z, n_ew, n_sn, n_up)
-    r * f_hypso(z, direction_no)
-end
+
+"""
+    shade_exponent(z, direction_no)
+    ---> Float64
+
+Hard-coded values are:
+
+Elevation     z <= 400 --> 1.2 
+        400 < z < 500  --> interpolated
+        500 <= z       --> 0.4 for light sources 1 to 3
+                          1.2 for light source 3 (opposite sun)
+
+When used as an exponent to Lambertian shading, this means:
+
+Elevation     z <= 400 --> Slightly blank surface, reflects a little less all light angles considered
+        400 < z < 500  --> Transition
+        500 <= z       --> For light source 1-3: Matte appearance, reflects more  all light angles considered
+                           For light source 3 (opposite sun), same for all elevations
+"""
 function shade_exponent(z, direction_no)
-    # Elevation dependent exponent for Lambertian shading.
-    # We want the snow to return light from a wider cone.
     z1 = 400
     z2 = 500
     y1 = 1.2
@@ -135,6 +178,11 @@ function shade_exponent(z, direction_no)
         y2
     end
 end
+
+"""
+    lambert_shade(n_ew, n_sn, n_up, l_ew, l_sn, l_up)
+    ---> Float64
+"""
 function lambert_shade(n_ew, n_sn, n_up, l_ew, l_sn, l_up)
     # Pure Lambertian reflection: dot product between surface normal and light direction normal.
     r = l_sn * n_sn + l_ew * n_ew + l_up * n_up

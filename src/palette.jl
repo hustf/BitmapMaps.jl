@@ -4,7 +4,7 @@
 
 """
     func_directional_pallette()
-    ---> generic function (elevation, direction_no::Int64) ---> RGB{N0f8}
+    ---> generic function (elevation, direction_no::Int64) ---> ColorTypes.XYZ{Float32}
 
 These are the undiminished hue and luminosity. `relief_variable_exponent` modifies this colour based on terrain inclination.
 
@@ -24,7 +24,7 @@ julia> color_from_elevation_and_direction_no = func_directional_pallette()
 #11 (generic function with 1 method)
 
 julia> color_from_elevation_and_direction_no(10, 2)
-RGB{N0f8}(0.494,0.494,0.431)
+XYZ{Float32}(0.35775903f0,0.38666666f0,0.30674836f0)
 
 ```
 """

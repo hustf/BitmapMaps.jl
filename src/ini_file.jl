@@ -172,9 +172,9 @@ function _get_valid_ini_fnam()
         if Sys.iswindows()
             run(`cmd /c $fna`; wait = false)
         end
-        @info "Default settings stored in $fna" maxlog = 2
+        @info "Default settings stored in $fna" maxlog = 1
     else
-        @info "Default settings read from $fna" maxlog = 2
+        @info "Default settings read from $fna" maxlog = 1
     end
     fna
 end

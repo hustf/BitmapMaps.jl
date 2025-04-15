@@ -421,7 +421,7 @@ function add_linked_tile!(parent, x, y, tile_width, tile_height, r, c, urlpath, 
 end
 
 """
-    retry_write(filename::String, doc::EzXML.Document; attempts=10, delay=0.1)
+    retry_write(filename::String, doc::EzXML.Document; attempts=30, delay=0.3)
 
 This function replaces the ordinary 'write' after hard-to-repeat crashes like
 
@@ -435,7 +435,7 @@ On Windows specifically, many system services (e.g., antivirus, search indexer, 
 tools) can briefly lock a newly created or copied file, and they do so outside of your 
 process — meaning there’s no portable check like isready(ffna_svg).
 """
-function retry_write(filename::String, doc::EzXML.Document; attempts=10, delay=0.1)
+function retry_write(filename::String, doc::EzXML.Document; attempts=30, delay=0.3)
     for i in 1:attempts
         try
             write(filename, doc)

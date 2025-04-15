@@ -106,10 +106,10 @@ let
     consfnam = joinpath(full_folder_path(sb), BitmapMaps.CONSOLIDATED_FNAM)
     @assert isfile(consfnam)
     g = readclose(consfnam)
-    # We're transposing the source data here, because
-    # it makes it easier to reason about north, south, east west.
     za = transpose(g.A[:, :])
-    img = BitmapMaps.__topo_relief(za, sb.cell_iter, cell2utm)
+    f_hypso = BitmapMaps.func_directional_pallette()
+    f_reflect = BitmapMaps.func_reflection_coefficient()
+    img = BitmapMaps.__topo_relief(za, sb.cell_iter, cell2utm, f_hypso, f_reflect)
     display_if_vscode(img)
 end
 

@@ -60,7 +60,17 @@ function closed_polygon_string(g::GeoArray)
     end
 end
 
+"""
+    _convToNamedTuple(bb::Extents.Extent)
 
+We rely on GeoArrays.jl, which recently was revised to use Extents.jl instead of
+NamedTuple. This conversion is part of a minimal change solution.
+"""
+function _convToNamedTuple(bb::Extents.Extent)
+    #T = NamedTuple{(:min_x, :min_y, :max_x, :max_y)}
+    #(min_x = bb.X[1], min_y = bb.Y[1], max_x = bb.X[2], max_y = bb.Y[2])
+    NamedTuple{(:min_x, :min_y, :max_x, :max_y)}((bb.X[1], bb.Y[1], bb.X[2], bb.Y[2]))
+end
 # Docstring in builders_utilties
 function bbox_external_string(fna::String)
     g = readclose(fna)
