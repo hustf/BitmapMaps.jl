@@ -66,9 +66,9 @@ import Stadnamn
 using Stadnamn: point_names
 import MetaGraphsNext
 using MetaGraphsNext: loadgraph, savegraph, MetaGraph, DiGraph, labels, nv, ne, add_edge!, MGFormat, SimpleDiGraph
-using MetaGraphsNext: all_neighbors, neighbor_labels, inneighbor_labels, outneighbor_labels, all_neighbor_labels
-using MetaGraphsNext: neighbors, indegree, outdegree, rem_edge!, rem_vertex!, vertices, label_for, code_for
-using MetaGraphsNext: inneighbors, outneighbors, has_edge, edge_labels, is_cyclic # TODO clean unused graph things
+using MetaGraphsNext: inneighbor_labels, outneighbor_labels
+using MetaGraphsNext: indegree, outdegree, rem_edge!, vertices, label_for, code_for
+using MetaGraphsNext: inneighbors, has_edge, edge_labels, is_cyclic
 using MetaGraphsNext: DFSIterator
 # 
 # Overlays to composite
@@ -102,7 +102,7 @@ export copy_relevant_tifs_to_folder, tif_full_filenames_buried_in_folder, unzip_
 export show_derived_properties, readclose
 export utm32_to_33
 # Export of manual edit tools:
-export edit_in_gimp, open_as_temp_in_gimp, display_if_vscode
+export edit_in_imgedit, open_as_temp_in_imgedit, display_if_vscode
 
 #
 # Not exported because it's too generic: mark_at! and line!
@@ -136,6 +136,9 @@ is deleted.
 """
 const TIFDIC = Dict{String, NamedTuple}()
 const TIFDIC_FNAM = "tifdic.jls"
+# In Windows, normal exiting of the image editor may throw a ProcessFailedException,
+# which we actually want to ignore. See `utilties_image_editor`.
+const DETACH_CODE = 0xC0000409  # STATUS_STACK_BUFFER_OVERRUN (3221226505)
 
 include("ini_file.jl")
 include("png_phys.jl")
@@ -162,7 +165,7 @@ include("vector_graphics.jl")
 include("graph_utilties.jl")
 include("graph_harvest.jl")
 include("utilties_segmentation.jl")
-include("utilties_edit_with_gimp.jl")
+include("utilties_image_editor.jl")
 
 
 end

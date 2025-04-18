@@ -5,7 +5,7 @@
 # which can be downloaded without creating a user account.
 using Test
 using BitmapMaps
-using BitmapMaps: fir_lp_coefficients, centered, open_as_temp_in_gimp
+using BitmapMaps: fir_lp_coefficients, centered, open_as_temp_in_imgedit
 using BitmapMaps: imfilter, mapwindow, mapwindow!, define_builder, get_consistent_random_color
 using BitmapMaps: _elev_contours, __elev_contours, Gray, load, felzenszwalb
 using BitmapMaps: contour_lines_overlay, CONTOUR_FNAM, CONSOLIDATED_FNAM, TOPORELIEF_FNAM, COMPOSITE_FNAM

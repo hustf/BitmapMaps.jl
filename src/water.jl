@@ -1,7 +1,7 @@
 # Step in pipeline.
 # Identifying water surfaces is a time consuming operation.
 # Results look good, but may benefit from manual touch-up of the output file.
-# See `utilties_edit_with_gimp`.
+# See `utilties/edit_with_imgedit`.
 
 """
     water_overlay(sb::SheetBuilder; details_utm = (0,0), details_I = CartesianIndex(0, 0))

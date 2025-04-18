@@ -4,11 +4,11 @@
 # - aiding manual touch-up of elevation .tif files
 # - opening other image files or image matrices for editing or inspection
 #
-# Gimp is called as an external process or task.
+# Image editor is called as an external process or task. See .ini-file.
 
 
 """
-    edit_in_gimp(sb::SheetBuilder, mini, maxi)
+    edit_in_imgedit(sb::SheetBuilder, mini, maxi)
     ---> Matrix
 
 Use case:
@@ -25,11 +25,11 @@ If the elevation matrix contains Float32 values, it means that it distinguishes 
 curvature and other tricks to detect terrain features or glitches in the raw data, changing the numeric
 resolution may have consequences and should be avoided.
 
-Although `gimp` has some ability to deal with grayscale Float32, it's practically limited
+Although image editor 'Gimp' has some ability to deal with grayscale Float32, it's practically limited
 to easily working with grayscale numbers 0 (black) to 255 (white).
 
 DO:
-1) In the gimp editor, delete any pixels in areas that you're not interested in changing. Deleted pixels will not
+1) In the image editor, delete any pixels in areas that you're not interested in changing. Deleted pixels will not
    affect changes in the elevation file.
 2) Don't use unnecessarily large intervals `mini` to `maxi`. Five metres is usually enough to easily fix glitches.
 
@@ -40,7 +40,7 @@ This opens the consolidated elevation file for the SheetBuilder. Every pixel not
 
 When user saves, then closes the editor, every pixel not zero-valued will overwrite the corresponding elevation in the consolidated elevation file.
 ```
-julia> edit_in_gimp(sb, 1f0, 2f0)
+julia> edit_in_imgedit(sb, 1f0, 2f0)
 Reading values from Consolidated.tif
  Warning, this is based on tifdic.jls only
 Folder for consolidated file: C:\\Users\\f\\BitmapMaps/1 1 18145 6894028 71625 6971028\\7-7__63985-6960028__71625-6971028
@@ -57,42 +57,42 @@ Encoding to GrayA.
 1.8 m =  75.0 %      191 / 255
 2.0 m =   0.0 %        0 / 255
 Saving scratch file C:\\Users\\F\\AppData\\Local\\Temp\\jl_M3wRgjsf2N.png
-Opening scratch file in gimp. This process is blocking until Gimp is closed.
+Opening scratch file in image editor. This process is blocking until the editor is closed.
  If other files are already open, returns immediately
- ERROR: "No edit change registered - in Gimp, press Alt+F, W, Ctrl+Q, Ctrl+D to re-export, then exit. C:\\\\Users\\\\F\\\\AppData\\\\Local\\\\Temp\\\\jl_M3wRgjsf2N.png"
+ ERROR: "No edit change registered - if using Gimp, press Alt+F, W, Ctrl+Q, Ctrl+D to re-export, then exit. C:\\\\Users\\\\F\\\\AppData\\\\Local\\\\Temp\\\\jl_M3wRgjsf2N.png"
 ```
 """
-function edit_in_gimp(sb::SheetBuilder, mini, maxi)
+function edit_in_imgedit(sb::SheetBuilder, mini, maxi)
     printstyled("Reading values from $CONSOLIDATED_FNAM \n ", color = :green)
     z = elevation_full_res(sb; display_sources = true)
-    edit_in_gimp!(z, mini, maxi)
+    edit_in_imgedit!(z, mini, maxi)
     modify_consolidated_file(sb, permutedims(z))
     z
 end
 
 """
-    edit_in_gimp!(M::Matrix{S}, mini::S, maxi::S) where S
+    edit_in_imgedit!(M::Matrix{S}, mini::S, maxi::S) where S
     ---> typeof(M)
 
-Modifes M in-place based on user edits made in the editor `gimp`.
-Only non-zero-valued pixel will affect changes in M, so deleting pixels in the external
+Modifes M in-place based on user edits made in the image editor (e.g. 'Gimp').
+Only non-zero-valued pixels will affect changes in M, so deleting pixels in the external
 editor is harmless.
 """
-function edit_in_gimp!(M::Matrix{S}, mini::S, maxi::S) where S
+function edit_in_imgedit!(M::Matrix{S}, mini::S, maxi::S) where S
     printstyled("Encoding to GrayA. \n", color = :green)
     img = encode_GrayA(M, mini, maxi)
     ffnam = tempname() * ".png"
     printstyled("Saving scratch file $ffnam \n", color = :green)
     save_png_with_phys(ffnam, img)
     # This waits for the external process to end. Use ctrl-c to interrupt.
-    # Note that if gimp is already open, the process will return at once.
-    # If not, it waits for gimp.exe to close.
-    printstyled("Opening scratch file in gimp. This process is blocking until Gimp is closed. \n If other files are already open, returns immediately\n ", color = :green)
-    open_in_gimp(ffnam)
+    # Note that if image editor 'Gimp' is already open, the process will return at once.
+    # If not, it waits for the image editor to close.
+    printstyled("Opening scratch file in image editor. This process is blocking until the editor is closed. \n If other files are already open, returns immediately\n ", color = :green)
+    open_in_imgedit(ffnam)
     # Let's extract from the green channel (red and blue can be changed or not, no matter)
     mod = load(ffnam)
     if mod == img
-        throw("No edit change registered - in Gimp, press Alt+F, W, Ctrl+Q, Ctrl+D to re-export, then exit. $ffnam")
+        throw("No edit change registered - if using Gimp, press Alt+F, W, Ctrl+Q, Ctrl+D to re-export, then exit. $ffnam")
     else
         printstyled("Decoding GrayA to $S. The α channel is ignored.\n ", color = :green)
         decode_GrayA!(M, mod, mini, maxi)
@@ -121,76 +121,123 @@ end
 
 
 """
-    open_as_temp_in_gimp(img)
+    open_as_temp_in_imgedit(img)
     ---> Task
 
-Save the image `img` to a temporary file, and opens that file in `gimp` editor.
+Save the image `img` to a temporary file, and open that file in the image editor ('Gimp').
 
-Non-blocking. If `gimp` was already running, returns a done task. If not, returns
-a started task, which will be finished once `gimp` is closed.
+Non-blocking. If image editor ('Gimp' default) was already running, returns a done task. If not, returns
+a started task, which will be finished once the editor is closed.
 """
-function open_as_temp_in_gimp(img)
+function open_as_temp_in_imgedit(img)
     @async let
         fnam = tempname()
         save_png_with_phys(fnam, img)
-        open_in_gimp(fnam)
+        open_in_imgedit(fnam)
     end
 end
 
 
 """
-    open_in_gimp(fnam)
+    open_in_imgedit(fnam)
     ---> Process
 
-If `gimp` is not already open: Opens file name 'fnam' in the image editor `gimp` in a blocking manner.
+If the editor ('Gimp' is default) is not already open: Opens file name 'fnam' in the image editor in a blocking manner.
 
-If already open, possibly with another file, the process will exit immediately, and `gimp` will continue to run.
+If already open, possibly with another file, the process will exit immediately, and the image editor will continue to run.
 """
-function open_in_gimp(fnam)
-    # TODO Consider: Make the path to the application configureable.
-    #     If so, also change the function name.
+function open_in_imgedit(fnam)
     # Input check
     isfile(fnam) || throw(ErrorException("File does not exists: $fnam"))
+    imgedit_executable = get_image_editor_executable_path()
+    if imgedit_executable === ""
+        error("Image editor executable not found. Please ensure e.g. 'Gimp' is installed.")
+    end
+    # Run image editor with the specified file
+    try
+        run(`$imgedit_executable $fnam`)
+    catch e
+        # 1) ProcessFailedException (thrown by `run` on a non‐zero exit code)
+        if isa(e, ProcessFailedException)
+            # e.procs is a Vector{Process}; grab the first process
+            proc = e.procs[1]
+            @show proc
+            code = proc.exitcode
+            if code == DETACH_CODE
+                @info "Ignored known GIMP detach exit code $code; GIMP should be running."
+                return
+            end
+        # 2) IOError (e.g. if the stub launcher reports an I/O failure)
+        elseif isa(e, IOError)
+            if e.code == DETACH_CODE
+                @info "Ignored known GIMP I/O error code $(e.code): $(e.msg)"
+                return
+            end
+        end
+        # anything else—or a different code—rethrow
+        rethrow()
+    end
+end
+
+
+
+"""
+    get_image_editor_executable_path()
+    --> String
+"""
+function get_image_editor_executable_path()
+    # First try the value from .ini file
+    ffnam = get_config_value("Image editor", "Path to editor", String; nothing_if_not_found = true)
+    if ! isnothing(ffnam)
+        if !isfile(ffnam) 
+            throw(ArgumentError("Could not find the executable file from .ini file: $ffnam"))
+        else
+            if Sys.iswindows()
+                if contains(ffnam, "GIMP 3")
+                    @warn "Gimp 3 is known to crash when opening .png and .tif files (last tested with Gimp 3.02)"
+                end
+            end
+            return ffnam
+        end
+    end
     # Determine the operating system
     if Sys.iswindows()
         # Common GIMP installation paths on Windows
-        gimp_paths = [
+        # Note that Gimp 3.0 and 3.02 are excluded because of current crashes when
+        # reading grayscale (transparent) images. 
+        # Ticket 6501 in the GNOME/GIMP tracker may fix this.
+
+        imgedit_paths = [
             joinpath("C:\\", "Program Files", "GIMP 2", "bin", "gimp-2.10.exe"),
             joinpath("C:\\", "Program Files", "GIMP 2", "bin", "gimp-2.8.exe"),
             joinpath("C:\\", "Program Files", "GIMP 2", "bin", "gimp.exe"),
         ]
     elseif Sys.islinux()
-        # Common GIMP installation paths on Linux
-        gimp_paths = [
+        # Common installation paths on Linux
+        imgedit_paths = [
             "/usr/bin/gimp",
             "/usr/local/bin/gimp",
         ]
     elseif Sys.isapple()
-        # Common GIMP installation paths on macOS
-        gimp_paths = [
+        # Common installation paths on macOS
+        imgedit_paths = [
             "/Applications/GIMP.app/Contents/MacOS/gimp",
+            "/Applications/GIMP-3.0.app/Contents/MacOS/gimp",
             "/Applications/GIMP-2.10.app/Contents/MacOS/gimp",
         ]
     else
         error("Unsupported operating system")
     end
-    # Try to find the GIMP executable
-    gimp_executable = nothing
-    for path in gimp_paths
+    # Try to find the image editor  executable
+    imgedit_executable = ""
+    for path in imgedit_paths
         if isfile(path)
-            gimp_executable = path
+            imgedit_executable = path
             break
         end
     end
-    if gimp_executable === nothing
-        error("GIMP executable not found. Please ensure GIMP is installed.")
-    end
-    # Run GIMP with the specified file
-    run(`$gimp_executable $fnam`)
+    imgedit_executable
 end
-
-
-
 
 
 

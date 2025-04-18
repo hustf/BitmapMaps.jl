@@ -173,28 +173,24 @@ function update_summits_file(ffna_sum, g, f_I_to_utm, cell_iter)
         # Return the cell indices of the summits already in file.
         return read_indices_from_column(ffna_sum, 4)
     end
-    pruned_summits_data = filter(eachrow(summits_data)) do (z, pr, utm_string, I, σ)
-        utm = parse_as_int_tuple(utm_string)
-        utm ∈ set_utm
-    end
-    # For storage in a modified .csv file, we'll nest by columns instead of by rows.
-    # Initialize the new structure, then populate it.
-    if ! isempty(pruned_summits_data)
-        vectors = [Vector{typeof(pruned_summits_data[1][i])}(undef, length(pruned_summits_data)) for i in 1:5]
-        # Populate the vectors.
-        for i in 1:length(pruned_summits_data)
-            for j in 1:5
-                vectors[j][i] = pruned_summits_data[i][j]
-            end
-        end
-    else
-        # Oh, there are no summits on this sheet. Probably ocean?
-        vectors = [Float64[], Float64[], SubString{String}[], SubString{String}[], Float64[]]
-    end
-    widths = repeat([20], length(vectors))
-    write_vectors_to_csv(ffna_sum, headers, vectors, widths)
+    @assert strip.(headers) == ["Elevation_m", "Prominence_m", "Utm", "Cell_index", "Stress"] "Unexpected headers: $headers"
+    # Utm column data, all rows
+    vutm = parse_as_int_tuple.(summits_data[:, 3])
+    # Indices (rows) of lines where the Utm column is in set_utm
+    vi = findall(v -> v in set_utm, vutm)
+    # Filtered columns. Elevation_m is rounded for display, too.
+    Elevation_m = Int.(round.(summits_data[vi, 1]))
+    Prominence_m = summits_data[vi, 2]
+    Utm = summits_data[vi, 3]
+    Cell_index = summits_data[vi, 4]
+    Stress = summits_data[vi, 5]
+    write_named_tuple_to_csv(ffna_sum, (; Elevation_m,
+        Prominence_m ,
+        Utm,
+        Cell_index,
+        Stress ))
     # Return the cell indices of the kept summits.
-    CartesianIndex.(parse_as_int_tuple.(vectors[4]))
+    return CartesianIndex.(parse_as_int_tuple.(Cell_index))
 end
 
 
@@ -234,7 +230,6 @@ This is the first step:
 
 - Identify candidates for summits from elevation (will be filtered down in later steps)
 - Summarize in .csv file: SUMMITS_FNAM.
-#- Mark symbols in output image:  MARKERS_FNAM. TODO: Take this from graph, not from Summits.csv
 - Update relevant values in regional (sheet matrix) graph: ffna_graph
 
 The relevant indices for the graph is: summit candidates and sheet borders where they are adjacent to other sheets.
@@ -473,12 +468,11 @@ function write_prominence_to_csv(vpr, vz, vutm, indices, σ, ffnam)
     #
     if any_prominence_change_from_existing_csv_file(ffnam, vz[order], vpr[order])
         @debug "    Saving $ffnam"
-        # Nest and prepare for output.
-        # TODO: Use `write_named_tuple_to_csv`
-        vectors = [vz[order], vpr[order], vutm[order], vi[order], σ[order]]
-        headers = ["Elevation_m", "Prominence_m", "Utm", "Cell_index", "Stress"]
-        widths = [20, 20, 20, 20, 20]
-        write_vectors_to_csv(ffnam, headers, vectors, widths)
+        write_named_tuple_to_csv(ffnam, (; Elevation_m = vz[order],
+            Prominence_m = vpr[order],
+            Utm = vutm[order],
+            Cell_index = vi[order],
+            Stress = σ[order] ))
         return true
     else
         @info "No changes to $ffnam, skipping save."

@@ -143,7 +143,7 @@ for k in 0.2:0.1:1.0
     f_diff(rem_label, neigh_label) = segment_mean(gg, rem_label) - segment_mean(gg, neigh_label)
     h = prune_segments(gg, f_to_be_removed, f_diff)
     img = map(i -> get_consistent_random_color(i), labels_map(h))
-    open_as_temp_in_gimp(img)
+    open_as_temp_in_imgedit(img)
     @show k length(gg.segment_labels) length(h.segment_labels)
 end
 
@@ -161,10 +161,10 @@ begin
 end
 
 mask = bumpy_patch(transpose(g.A[:, :])[sicr])
-open_as_temp_in_gimp(mask)
+open_as_temp_in_imgedit(mask)
 mask
 conto = _elev_contours(full_folder_path(sb), sb.cell_iter, cell_to_utm_factor(sb), minlen, vthick, vdist)
-open_as_temp_in_gimp(conto)
+open_as_temp_in_imgedit(conto)
 
 
 
@@ -198,14 +198,14 @@ conto = __elev_contours(img, minlen, vthick, vdist)
 
 fnam = "tempo.png"
 save_png_with_phys(fnam, conto)
-gimp_path = "C:\\Program Files\\GIMP 2\\bin\\gimp-2.10.exe"
-@async run(`$gimp_path "$fnam"`)
+imgedit_path = "C:\\Program Files\\GIMP 2\\bin\\imgedit-2.10.exe"
+@async run(`$imgedit_path "$fnam"`)
 
 
 fnam = "temp.png"
 save_png_with_phys(fnam, topo)
-gimp_path = "C:\\Program Files\\GIMP 2\\bin\\gimp-2.10.exe"
-@async run(`$gimp_path "$fnam"`)
+imgedit_path = "C:\\Program Files\\GIMP 2\\bin\\imgedit-2.10.exe"
+@async run(`$imgedit_path "$fnam"`)
 
 sb = smb[2,2]
 img = _elev_contours(full_folder_path(sb), sb.cell_iter, cell_to_utm_factor(sb), minlen, vthick, vdist)

@@ -84,7 +84,7 @@ end
     _make_vector_graphics(ffna_svg, ffna_css, ffna_csv_summits, ffna_csv_lakes, cell_iter, sheet_width_mm, sheet_height_mm, density_pt_m⁻¹, font_pt, limit_left_align)
     --> Int, creates ffna_svg
 
-- Copy template .svg and .css into fofo, under new names.
+- Copy contents of template .svg and .css into fofo, under new names.
 - Interpolate dimensions and line distance into .svg file, and font size into css file.
 - Read summits file and generate text element.
 - Read lakes file and generate text elements.
@@ -107,21 +107,22 @@ function _make_vector_graphics(ffna_svg, ffna_css, ffna_csv_summits, ffna_csv_la
     #
     # Do the work
     #
-    copy_templates_to_folder(ffna_svg, ffna_css)
-    modify_css_font_size(ffna_css, fontsize_px)
-    modify_svg_to_sheet_size(ffna_svg, ffna_css, cell_iter, sheet_width_mm, sheet_height_mm)
+    make_css_with_font_size(ffna_css, fontsize_px)
+    make_svg_with_size_and_style(ffna_svg, ffna_css, cell_iter, sheet_width_mm, sheet_height_mm)
     modify_svg_text(ffna_svg, ffna_csv_summits, ffna_csv_lakes, lineheight_px, max_x_left_align)
 end
-
-function modify_svg_to_sheet_size(ffna_svg, ffna_css, cell_iter, sheet_width_mm, sheet_height_mm)
-    ny, nx = size(cell_iter)
-    doc = readxml(ffna_svg)
+function make_svg_with_size_and_style(ffna_svg, ffna_css, cell_iter, sheet_width_mm, sheet_height_mm)
+    ffna_template_css = joinpath(@__DIR__, "..", "resource", "template.svg") 
+    # Read existing content as xml
+    doc = readxml(ffna_template_css)
     ns = ["x" => "http://www.w3.org/2000/svg"]
-    # Update style sheet ref.
+    # Update xml with style sheet ref.
     stylenode = firstnode(doc.node)
     stylecontent = "type=\"text/css\" href=\"$(splitpath(ffna_css)[end])\""
     setnodecontent!(stylenode, stylecontent)
-    # Update svg contents
+    # This the size we change to
+    ny, nx = size(cell_iter)
+    # Update xml contents
     svg = EzXML.root(doc)
     svg["width"] = "$(round(sheet_width_mm, digits=3))mm"
     svg["height"] = "$(round(sheet_height_mm, digits=3))mm"
@@ -136,10 +137,10 @@ function modify_svg_to_sheet_size(ffna_svg, ffna_css, cell_iter, sheet_width_mm,
         The values in this svg file match the size of $COMPOSITE_FNAM with
         (w, h) = ($nx, $ny) pixels.
     """)
-    # The 'write' sometimes fail, probably only when the file was recently copied
-    # by the caller. Hence 'retry', see below.
-    retry_write(ffna_svg, doc)
+    # Write modified xml to destination file
+    write(ffna_svg, doc)
 end
+
 
 function modify_svg_text(ffna_svg, ffna_csv_summits, ffna_csv_lakes, lineheight_px, max_x_left_align)
     #
@@ -311,40 +312,24 @@ function add_alignment!(el, dx, text_anchor::String)
     end
 end
 
-
-function copy_templates_to_folder(ffna_svg, ffna_css)
-    ffna_template_svg = joinpath(@__DIR__, "..", "resource", "template.svg")
-    ffna_template_css = joinpath(@__DIR__, "..", "resource", "template.css")
-    isfile(ffna_template_svg) || throw(ErrorException("Could not find file $ffna_template_svg"))
-    isfile(ffna_template_css) || throw(ErrorException("Could not find file $ffna_template_css"))
-    # We will always overwrite existing files
-    cp(ffna_template_svg, ffna_svg; force = true)
-    cp(ffna_template_css, ffna_css; force = true)
-end
-
-function modify_css_font_size(ffna_css, fontsize_px)
-    vs = readlines(ffna_css, keep = true)
-    vs[2] = replace(vs[2], "fontsize: 78px;" => "fontsize: $(fontsize_px)px;")
-    #
-    #open(ffna_css, "w") do io
-    #    foreach(vs) do s
-    #        write(io, s)
-    #    end
-    #end
-    #
-    # We had some permission denied errors, but hard to reproduce with
-    # a checked out package. We believe this has to do with permissions
-    # being slightly different when a package is checked out. Copying a 
-    # file ( the css template) and immediately writing to it is
-    # the issue. We call this confusing the anti-virus ghosts.
-    # Hence, we revise this func to use 'retry_write'.
-    iob = IOBuffer()
-    foreach(vs) do s
-        write(iob, s)
+function make_css_with_font_size(ffna_css, fontsize_px)
+    if isfile(ffna_css)
+        ffna_template_css = ffna_css
+    else
+        ffna_template_css = joinpath(@__DIR__, "..", "resource", "template.css") 
     end
-    st = String(take!(iob))
-    retry_write(ffna_css, st)
+    # Read existing content as strings
+    vs = readlines(ffna_template_css, keep = true)
+    # Modify it
+    vs[2] = replace(vs[2], "fontsize: 78px;" => "fontsize: $(fontsize_px)px;")
+    # Write content to destination file
+    open(ffna_css, "w") do io
+        foreach(vs) do s
+            write(io, s)
+        end
+    end
 end
+
 
 """
     make_vector_mosaic(smb, ffna_svg)
@@ -357,8 +342,11 @@ function make_vector_mosaic(smb, ffna_svg)
     # from the .css style sheet, but
     # that may change in future. So make both .svg and .css
     ffna_css = splitext(ffna_svg)[1] * ".css"
-    copy_templates_to_folder(ffna_svg, ffna_css)
-    modify_svg_to_sheet_size(ffna_svg, ffna_css, smb[1].cell_iter, smb.sheet_width_mm, smb.sheet_height_mm)
+    # We don't actually use any text in the mosaic. This is just a placeholder value so that we can reuse 
+    # code from the sheet level.
+    fontsize_px = 48
+    make_css_with_font_size(ffna_css, fontsize_px)
+    make_svg_with_size_and_style(ffna_svg, ffna_css, smb[1].cell_iter, smb.sheet_width_mm, smb.sheet_height_mm)
     make_reference_mosaic(ffna_svg, smb)
 end
 function make_reference_mosaic(ffna_svg, smb)
@@ -432,36 +420,4 @@ function add_linked_tile!(parent, x, y, tile_width, tile_height, r, c, urlpath, 
     link!(parent, TextNode("\n")) # Line break for readability.
     link!(parent, el) # Line break for readability.
     link!(parent, TextNode("\n")) # Line break for readability.
-end
-
-"""
-    retry_write(filename::String, doc; attempts=30, delay=0.3)
-
-This function replaces the ordinary 'write' after hard-to-repeat crashes like
-
-    # ERROR: XMLError: Permission denied: C:\\Users\\.....(564923 7560195)-(567177 7563442).svg 
-    # from Input/Output stack (code: 1501, line: 0)
-
-Because on Windows, there is no standard, race-free way to check if a file is accessible for 
-reading or writing before actually trying to use it. This is a classic pattern called:
-"Easier to ask forgiveness than permission" (EAFP)
-On Windows specifically, many system services (e.g., antivirus, search indexer, file sync 
-tools) can briefly lock a newly created or copied file, and they do so outside of your 
-process — meaning there’s no portable check like isready(ffna_svg).
-"""
-function retry_write(filename::String, doc; attempts=30, delay=0.3)
-    for i in 1:attempts
-        try
-            write(filename, doc)
-            return
-        catch e
-            if i == attempts
-                rethrow(e)
-            elseif isa(e, EzXML.XMLError) && occursin("Permission denied", sprint(showerror, e))
-                sleep(delay)
-            else
-                rethrow(e)
-            end
-        end
-    end
 end

@@ -69,6 +69,8 @@ function _prepare_init_file_configuration(io)
     entry("UTM grid", "Grid spacing [m]", "1000")
     entry("UTM grid", "Zone for elevation data", "33"; comm = "\r\n  #   File metadata is ignored. wgs84 datum assumed.")
 
+    entry("Image editor", "Path to editor", ""; comm = "\r\n  #   If not provided, looks for Gimp v2.10. v3.02 can't open many .tif and .png files")
+
     entry("Water detection", "Sea level max [m]", "0.7"; comm = "\r\n  #   All elevations below level is considered sea")
     entry("Water detection", "Minimum area [m²]", "5193"; comm = "\r\n  #   All smaller lakes (including artifacts) are disregarded")
     entry("Water detection", "Local slopes [rad] limit", "0.015";
@@ -111,11 +113,13 @@ function get_config_value(sect::String, key::String; nothing_if_not_found = fals
     fna = _get_valid_ini_fnam()
     ini = read(Inifile(), fna)
     if sect ∉ keys(sections(ini))
-        msg = """$sect not a section in $fna.
-        The existing are: $(keys(sections(ini))).
-        If you `BitmapMaps.delete_init_file()`, a new template will be generated when needed.
-        """
-        throw(ArgumentError(msg))
+        if ! nothing_if_not_found
+            msg = """$sect not a section in $fna.
+            The existing are: $(keys(sections(ini))).
+            If you `BitmapMaps.delete_init_file()`, a new template will be generated when needed.
+            """
+            throw(ArgumentError(msg))
+        end
     end
     if nothing_if_not_found
         IniFile.get(ini, sect, key,  nothing)
@@ -144,16 +148,17 @@ function get_config_value(sect, key, type::DataType; nothing_if_not_found = fals
 end
 
 function get_config_value(sect, key, ::Type{String}; nothing_if_not_found = false)
-    st = strip(get_config_value(sect, key; nothing_if_not_found), ' ')
-    stv = strip(split(st, '#')[1])
+    st = get_config_value(sect, key; nothing_if_not_found)
+    isnothing(st) && return nothing
+    stv = strip(split(strip(st, ' '), '#')[1])
     isnothing(stv) && return nothing
     String(stv)
 end
 
 function get_config_value(sect, key, ::Type{Tuple{Int64, Int64}}; nothing_if_not_found = false)
-    st = strip(get_config_value(sect, key; nothing_if_not_found), ' ')
+    st = get_config_value(sect, key; nothing_if_not_found)
     isnothing(st) && return nothing
-    stv = split(split(replace(st, "(" => "", ")" => ""), '#')[1], ' ')
+    stv = split(split(replace(strip(st, ' '), "(" => "", ")" => ""), '#')[1], ' ')
     (tryparse(Int64, stv[1]),     tryparse(Int64, stv[2]))
 end
 

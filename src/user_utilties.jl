@@ -9,7 +9,7 @@
 # However, if data already exists locally for another bitmapmap, some of these functions
 # can help with local file management. Some others are used by the pipeline.
 #
-# For manual modifcation of .tif file values, see `utilties_edit_with_gimp`. That would ideally not be necessary at all.
+# For manual modifcation of .tif file values, see `utilties_edit_with_imgedit`. That would ideally not be necessary at all.
 
 
 """
@@ -191,7 +191,7 @@ end
 
 
 """
-    write_named_tuple_to_csv(filename::String, nt::NamedTuple)
+    write_named_tuple_to_csv(filename::String, nt::NamedTuple; colwidth = 20)
     ---> Nothing
 
 Make a column formatted and delimited .csv, without many dependencies. Not suitable for large files.
@@ -206,11 +206,11 @@ julia> write_named_tuple_to_csv("temp.csv", nt)
 
 ```
 """
-function write_named_tuple_to_csv(filename::String, nt::NamedTuple)
+function write_named_tuple_to_csv(filename::String, nt::NamedTuple; colwidth = 20)
     symbols = [fieldnames(typeof(nt))...]
     headers = string.(symbols)
     vectors = [getfield(nt, sy) for sy in symbols]
-    widths = repeat([20], length(headers))
+    widths = repeat([colwidth], length(headers))
     write_vectors_to_csv(filename, headers, vectors, widths)
 end
 

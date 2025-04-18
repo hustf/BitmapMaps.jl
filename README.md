@@ -138,6 +138,11 @@ The following steps are run only after 1-13 is complete for all sheets:
 
 # Current state
 
+Version 0.4.0: 
+Make path to image editor an entry in the .ini file.
+Drop copying template files to then edit the copy. Instead, we read the template, then modify, then write to a new file. Internal to `vector_graphics`.
+Also remove duplicate ways of writing to csv files.
+
 Version 0.3.8:
 Re-use `retry_write` in `modify_css_font_size`. File permissions in Windows seem to be more lenient, sometimes, with a checked out package than with a downloaded one.
 
@@ -283,7 +288,7 @@ julia> show_derived_properties(fnas[1])
 Some nice to know:
 
 - Metadata for printing is made and stored in .png files. Settings are respected by e.g. `Gimp`, `MS Paint`, and `IrFanview`.
-- Water surfaces often require manual touch-up. Try doing sea-level touch up in 'Consolidated.tif', or in your source data .tifs. High elevations can also be shown (reduced to 256 intensities in Gimp) by adding a temporary 'division mode' layer.
+- Water surfaces often require manual touch-up. Try doing sea-level touch up in 'Consolidated.tif', or in your source data .tifs. High elevations can also be shown (reduced to 256 intensities in image editors) by adding a temporary 'division mode' layer.
 - The UTM grid is the correct one for the local utm zone, even though data is from a country-wide zone. We might in the future add local UTM grid coordinates to summits as a tooltip.
 - Sheet numbering starts in the SW corner. See figure:
 
