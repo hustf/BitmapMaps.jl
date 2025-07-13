@@ -7,6 +7,7 @@
 
 """
     run_bitmapmap_pipeline(; complete_sheets_first = true, skip_summits = false, kwds...)
+    run_bitmapmap_pipeline(smb::SheetMatrixBuilder; kwds...)
     ---> SheetMatrixBuilder
 
 The job is defined in file BitmapMaps.ini, in user's home directory. Call `less(homedir() * "/BitmapMaps.ini")` to inspect.
@@ -35,7 +36,7 @@ SheetMatrixBuilder((35425, 6920995), # southwest_corner
                              11811, # density_pt_m⁻¹
               "BitmapMaps/default") # pth
         [easting, northing] derived properties:
-          Bounding Box (BB) SE-NW            = (35425 6920995)-(48955 6940483)
+          Bounding Box (BB) SW-NE            = (35425 6920995)-(48955 6940483)
           Northeast internal corner          = (48952, 6940483) - most northeastern sample point
           Geo centre                         = (42190.0, 6.930739e6)
           Grid centre single                 = (42190, 6930740)

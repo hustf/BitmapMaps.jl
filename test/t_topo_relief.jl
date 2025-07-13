@@ -135,14 +135,14 @@ let
     function f_verif(M::Matrix)
         @assert size(M) == (3, 3)
         _, w, _, n, z, s, _, e, _ = M
-        deriv_east_west = (e - w) / 2
+        deriv_west_east = (e - w) / 2
         deriv_south_north = (n - s) / 2
-        mag = sqrt(1 + deriv_south_north^2 + deriv_east_west^2)
-        n_ew = -deriv_east_west / mag
+        mag = sqrt(1 + deriv_south_north^2 + deriv_west_east^2)
+        n_we = -deriv_west_east / mag
         n_sn = -deriv_south_north / mag
         n_up =  1 / mag
         # Unit vector in a right-handed Euclidean coordinate system
-        n_ew, n_sn, n_up
+        n_we, n_sn, n_up
     end
     #
     # Flat landscape

@@ -83,15 +83,15 @@ function func_render(f_hypso, f_reflect)
         # w z e
         # _ s _
         _, w, _, n, z, s, _, e, _ = M
-        deriv_east_west = (e - w) / 2
+        deriv_west_east = (e - w) / 2
         deriv_south_north = (n - s) / 2
-        mag = sqrt(1 + deriv_south_north^2 + deriv_east_west^2)
+        mag = sqrt(1 + deriv_south_north^2 + deriv_west_east^2)
         # Surface normal unit vectors, to the upper side.
-        n_ew = -deriv_east_west / mag
+        n_we = -deriv_west_east / mag
         n_sn = -deriv_south_north / mag
         n_up =  1 / mag
         # Find the reflected color for light sources 1 to 4.
-        vcol = reflected_color.(1:4, z, n_ew, n_sn, n_up, f_hypso, f_reflect)
+        vcol = reflected_color.(1:4, z, n_we, n_sn, n_up, f_hypso, f_reflect)
         # We don't mix the light sources, but rather use the one
         # that is most luminous at this pixel.
         _, i = findmax(luminance, vcol)
@@ -100,17 +100,17 @@ function func_render(f_hypso, f_reflect)
 end
 
 """
-    reflected_color(direction_no, z, n_ew, n_sn, n_up, f_hypso, f_reflect)
+    reflected_color(direction_no, z, n_we, n_sn, n_up, f_hypso, f_reflect)
     ---> XYZ{Float32}
 ```
 """
-function reflected_color(direction_no, z, n_ew, n_sn, n_up, f_hypso, f_reflect)
-    f_hypso(z, direction_no) * f_reflect(direction_no, z, n_ew, n_sn, n_up)
+function reflected_color(direction_no, z, n_we, n_sn, n_up, f_hypso, f_reflect)
+    f_hypso(z, direction_no) * f_reflect(direction_no, z, n_we, n_sn, n_up)
 end
 
 """
     func_reflection_coefficient(; sun_deg = 202, light_elev_deg = [9, 30, 30, 30])
-    ---> generic function (direction_no, z, n_ew, n_sn, n_up) ---> Float32
+    ---> generic function (direction_no, z, n_we, n_sn, n_up) ---> Float32
 """
 function func_reflection_coefficient(; sun_deg = 202, light_elev_deg = [9, 30, 30, 30])
     # Direction no: From sun, opposite sun, one side 60°, other side 60 °
@@ -132,7 +132,7 @@ function func_reflection_coefficient(; sun_deg = 202, light_elev_deg = [9, 30, 3
     l_up = sin.(light_elev)
     # Closure on the light source vectors
     f = let l_ew = l_ew, l_sn = l_sn, l_up = l_up
-        (dno, z, n_ew, n_sn, n_up) -> begin
+        (dno, z, n_we, n_sn, n_up) -> begin
             @assert 1 <= dno <= 4
             # The dot product of light and surface normal is the fraction of light
             # reflected towards the observer. This is 'lambert shade'.
@@ -140,7 +140,7 @@ function func_reflection_coefficient(; sun_deg = 202, light_elev_deg = [9, 30, 3
             # We modify the lambert shading where there is snow.
             # Lambert_reflection^shade_exponent(z, dno) naively does not exceed 1.0. 
             # Thrust, but check.
-            min(1.0f0, convert(Float32, lambert_shade(n_ew, n_sn, n_up, l_ew[dno], l_sn[dno], l_up[dno]) ^
+            min(1.0f0, convert(Float32, lambert_shade(n_we, n_sn, n_up, l_ew[dno], l_sn[dno], l_up[dno]) ^
                 shade_exponent(z, dno)))
         end
     end
@@ -180,12 +180,12 @@ function shade_exponent(z, direction_no)
 end
 
 """
-    lambert_shade(n_ew, n_sn, n_up, l_ew, l_sn, l_up)
+    lambert_shade(n_we, n_sn, n_up, l_ew, l_sn, l_up)
     ---> Float64
 """
-function lambert_shade(n_ew, n_sn, n_up, l_ew, l_sn, l_up)
+function lambert_shade(n_we, n_sn, n_up, l_ew, l_sn, l_up)
     # Pure Lambertian reflection: dot product between surface normal and light direction normal.
-    r = l_sn * n_sn + l_ew * n_ew + l_up * n_up
+    r = l_sn * n_sn + l_ew * n_we + l_up * n_up
     # If the angle between l and n is more than 180°, reflection is negative. That means,
     # light would shine out from below the surface and could not be reflected from the surface.
     max(0.0, r)

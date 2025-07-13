@@ -6,7 +6,7 @@
 # and because we won't load data external to the sheet.
 
 """
-    consolidate_elevation_data(sb::SheetBuilder)
+    consolidate_elevation_data(sb::SheetBuilder; include_parent_folder = true)
     ---> Bool
 
 `sb` is a SheetBuilder, which is part of a collection, a SheetMatrixBuilder.
@@ -14,7 +14,7 @@
 This calls `consolidate_local_data_to_geoarray_in_folder(sb.pthsh)`.
 See that function regarding where to place input .tif files.
 """
-function consolidate_elevation_data(sb)
+function consolidate_elevation_data(sb; include_parent_folder = true)
     consolidated = consolidate_local_data_to_geoarray_in_folder(full_folder_path(sb); include_parent_folder = true)
     @assert consolidated isa Bool
     if ! consolidated
@@ -75,7 +75,12 @@ function consolidate_local_data_to_geoarray_in_folder(fofo; include_parent_folde
         splitpath(ffna)[end] !== CONSOLIDATED_FNAM
     end
     if length(fnas_source) == 0
-        @info "No .tif files in $fofo to consolidate. Exiting."
+        @info "No .tif files in $fofo to consolidate. 
+             Consider extending search one level up the path hierarchy by calling 
+             `consolidate_elevation_data(sb; include_parent_folder = true)` 
+             or `consolidate_local_data_to_geoarray_in_folder(fofo; include_parent_folder = true)`,
+             where `fofo = full_folder_path(sb)``
+             Exiting." maxlog = 1
         return false
     end
     g_dest = let

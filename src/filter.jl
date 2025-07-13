@@ -28,7 +28,7 @@ end
     ---> Vector{Float64}
 """
 function lowpass_coefficients(n; nyquist_denom::Int = 2)
-    isodd(n) && n > 1 || throw(ArgumentError("n"))
+    isodd(n) && n > 1 || throw(ArgumentError("n = $n not isodd && > 1"))
     nyquist_denom > 1 || throw(ArgumentError("nyquist_denom"))
     # Even number of coefficents on one side of center
     m = div(n,  2)

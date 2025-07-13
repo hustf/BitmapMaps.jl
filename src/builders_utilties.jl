@@ -418,7 +418,7 @@ Prints to stdout, used by `run_bitmapmap_pipeline` > `define_builder` > `show_au
 julia> show_derived_properties(smb[2,2])
 
         [easting, northing] derived properties:
-          Bounding Box (BB) SE-NW            = (42190 6930739)-(48955 6940483)
+          Bounding Box (BB) SW-NE            = (42190 6930739)-(48955 6940483)
           Northeast internal corner          = (48952, 6940483) - most northeastern sample point
           Geo centre                         = (45572.5, 6.935611e6)
           Grid centre single                 = (45572, 6935612)
@@ -444,7 +444,7 @@ function show_derived_properties(p)
     end
     # Unit is "utm meter"
     printstyled(tb1, "\n", tb1, "[easting, northing] derived properties: \n", color = :green)
-    println(tb2, rpad("Bounding Box (BB) SE-NW", 35), "= ", bbox_external_string(pt))
+    println(tb2, rpad("Bounding Box (BB) SW-NE", 35), "= ", bbox_external_string(pt))
     println(tb2, rpad("Northeast internal corner",     35), "= ", northeast_internal_corner(pt), " - most northeastern sample point")
     println(tb2, rpad("Geo centre",        35), "= ", geo_centre(pt))
     println(tb2, rpad("Grid centre single", 35), "= ", geo_grid_centre_single(pt))

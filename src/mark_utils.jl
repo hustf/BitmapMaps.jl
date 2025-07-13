@@ -75,32 +75,32 @@ Draws a line from A to B in the given image, with a thickness defined by `tol_di
 function line!(img, A::CartesianIndex{2}, B::CartesianIndex{2}, tol_dist=√2 / 2)
     i1, j1 = Tuple(A)
     i2, j2 = Tuple(B)
-    Δi = abs(i2 - i1)
-    Δj = abs(j2 - j1)
+    li = abs(i2 - i1)
+    lj = abs(j2 - j1)
     si = sign(i2 - i1)
     sj = sign(j2 - j1)
     max_dist2 = tol_dist^2
     # Get all valid indices for the image
     R = CartesianIndices(img)
-    if Δi > Δj
-        err = Δi ÷ 2
-        for _ in 1:(Δi + 1)
+    if li > lj
+        err = li ÷ 2
+        for _ in 1:(li + 1)
             color_neighbors!(img, R, CartesianIndex(i1, j1), max_dist2)
-            err -= Δj
+            err -= lj
             if err < 0
                 j1 += sj
-                err += Δi
+                err += li
             end
             i1 += si
         end
     else
-        err = Δj ÷ 2
-        for _ in 1:(Δj + 1)
+        err = lj ÷ 2
+        for _ in 1:(lj + 1)
             color_neighbors!(img, R, CartesianIndex(i1, j1), max_dist2)
-            err -= Δi
+            err -= li
             if err < 0
                 i1 += si
-                err += Δj
+                err += lj
             end
             j1 += sj
         end
@@ -122,7 +122,10 @@ function color_neighbors!(img, R, C::CartesianIndex{2}, max_dist2)
             end
         end
     end
+    img
 end
+
+
 ###########
 # Internals
 ###########

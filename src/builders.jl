@@ -57,7 +57,7 @@ SheetBuilder(;pixel_origin_ref_to_bitmapmap = (2255, 3248),
 julia> show_derived_properties(smb[2, 2]) # Let's see more human-readable details.
 
         [easting, northing] derived properties:
-          Bounding Box (BB) SE-NW            = (42190 6930739)-(48955 6940483)
+          Bounding Box (BB) SW-NE            = (42190 6930739)-(48955 6940483)
           Northeast internal corner          = (48952, 6940483) - most northeastern sample point
           Geo centre                         = (45572.5, 6.935611e6)
           Grid centre single                 = (45572, 6935612)
@@ -128,7 +128,9 @@ function Base.show(io::IO, sb::SheetBuilder)
     print(io, repr(sb.pthsh))
     println(io, ")")
 end
-Base.axes(sb::SheetBuilder) = map(Base.oneto, size(sb))
+
+# The meaning of this is ambigious. Use sb.cell_iter
+#Base.axes(sb::SheetBuilder) = map(Base.oneto, size(sb))
 
 #
 # SheetMatrixBuilder

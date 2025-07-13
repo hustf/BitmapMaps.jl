@@ -138,6 +138,9 @@ The following steps are run only after 1-13 is complete for all sheets:
 
 # Current state
 
+Version 0.4.1:
+Maintenance update, including inconsequential typos.
+
 Version 0.4.0: 
 Make path to image editor an entry in the .ini file.
 Drop copying template files to then edit the copy. Instead, we read the template, then modify, then write to a new file. Internal to `vector_graphics`.
@@ -265,7 +268,7 @@ Or, for single files:
 julia> show_derived_properties(fnas[1])
         
         [easting, northing] derived properties:
-          Bounding Box (BB) SE-NW            = (-54575 6875995)-(-39565 6891005)
+          Bounding Box (BB) SW-NE            = (-54575 6875995)-(-39565 6891005)
           Northeast internal corner          = (-39566.0, 6.891005e6) - most northeastern sample point
           Geo centre                         = (-47070.0, 6.8835e6)
           Grid centre single                 = (-47070.0, 6.8835e6)
