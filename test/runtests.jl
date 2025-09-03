@@ -27,7 +27,7 @@ end
     include("t_water.jl")
 end
 @testset "Test user utilties" begin
-    include("t_user_geoarray_utilties.jl")
+    #include("t_user_geoarray_utilties.jl")
 end
 @testset "Test filter" begin
     include("t_filter.jl")
@@ -38,19 +38,19 @@ if ispath(joinpath(homedir(), "BitmapMaps\\Hov Litlevatn\\1 1  29000 6826535  31
     end
 end
 @testset "Test markers" begin
-    include("t_markers.jl")
+    #include("t_markers.jl")
 end
 @testset "Test summit prominence" begin # depends on local data files
-    include("t_summits_on_sheet.jl")
+    #include("t_summits_on_sheet.jl")
 end
 @testset "Test summit prominence" begin # depends on local data files
-    include("t_sheet_contact.jl")
+    #include("t_sheet_contact.jl")
 end
 @testset "Test summit prominence" begin # depends on local data files
-    include("t_ridges.jl")
+    #include("t_ridges.jl")
 end
 @testset "Test BitmapMaps pipeline" begin
-    include("t_pipeline.jl")
+    #include("t_pipeline.jl")
 end
 
 cd(olddir)

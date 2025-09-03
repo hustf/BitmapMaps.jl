@@ -64,14 +64,14 @@ hp = height_cell(p) * cell_to_utm_factor(p)
 
 
 # Check that a sheet's folder name matches its northeast_external_corner
-@test tryparse.(Int, split(smb[2,2].pthsh, ' ')[end - 1: end]) == collect(northeast_external_corner(smb[2, 2]))
+@test tryparse.(Int, split(split(smb[2,2].pthsh, "__")[end], '-')) == collect(northeast_external_corner(smb[2, 2]))
 
 
 @test geo_area(smb) == BitmapMaps.width_cell(smb) * BitmapMaps.height_cell(smb) * cell2utm^2
 @test geo_area(smb[1]) == (BitmapMaps.width_cell(smb) * BitmapMaps.height_cell(smb) * cell2utm^2) / (BitmapMaps.nrows(smb) * BitmapMaps.ncols(smb))
 
-@test bbox_external_string(smb) == "(44000 6909047)-(44018 6909063)"
-@test bbox_external_string(smb[1,1]) == "(44000 6909047)-(44006 6909055)"
+@test bbox_external_string(smb) == "(44000 6909049)-(44016 6909063)"
+@test bbox_external_string(smb[1,1]) == "(44000 6909049)-(44004 6909055)"
 @test polygon_string(smb[1,2]) == "MULTIPOLYGON (\n                   ((44006 6909047, 44012 6909047, 44012 6909055, 44006 6909055, 44006 6909047)))"
 @test polygon_string(smb) == "MULTIPOLYGON (\n                   ((44000 6909047, 44006 6909047, 44006 6909055, 44000 6909055, 44000 6909047)),\n                   ((44000 6909055, 44006 6909055, 44006 6909063, 44000 6909063, 44000 6909055)),\n                   ((44006 6909047, 44012 6909047, 44012 6909055, 44006 6909055, 44006 6909047)),\n                   ((44006 6909055, 44012 6909055, 44012 6909063, 44006 6909063, 44006 6909055)),\n                   ((44012 6909047, 44018 6909047, 44018 6909055, 44012 6909055, 44012 6909047)),\n                   ((44012 6909055, 44018 6909055, 44018 6909063, 44012 6909063, 44012 6909055)))"
 

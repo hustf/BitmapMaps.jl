@@ -118,6 +118,6 @@ end
 @test smb[1,3] == smb[5]
 @test smb[2,3] == smb[6]
 
-@test repr(smb[2,3]) == "SheetBuilder((6, 0), (1:4, 1:3), (44012, 6909063)@(1, 1), 6, 1000, \"nopath\\\\2 3  44012 6909055  44018 6909063\")\n"
+@test repr(smb[2,3]) == "SheetBuilder((6, 0), (1:4, 1:3), (44012, 6909063)@(1, 1), 6, 1000, \"nopath\\\\2-3__44012-6909055__44018-6909063\")\n"
 @test repr(smb) == "SheetMatrixBuilder((44000, 6909047), CartesianIndices((1:2, 1:3)), 2, 3, 4, 1000, \"nopath\")"
 

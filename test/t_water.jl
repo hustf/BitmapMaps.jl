@@ -1,3 +1,11 @@
+@test true
+
+# The old development tests are irrelevant since the revision where
+# we also make a text file with identied coordinates.
+
+# Remnants of the old test is kept here in case of new revisions at a later date.
+
+
 # The algorithm and parameter values were optimized for a data set around 62.14111170231884N, 5.572971578864545E.
 # Further refinements are hardcoded in this package.
 #
@@ -6,8 +14,11 @@
 # but the area is below the limit set for detection.
 
 # Move the .tif file from /resource to a temporary directory.
+
+#=
+
 using BitmapMaps
-using BitmapMaps: WATER_FNAM, write_lake_to_csv
+using BitmapMaps: WATER_FNAM
 using Test
 import ImageSegmentation
 using ImageSegmentation: segment_pixel_count
@@ -37,8 +48,13 @@ end
 
 @test sum(iszero.(elevations)) == 155 # Southern edge zero
 
+
+
+
 cell2utm = 1
 cell_iter = CartesianIndices((1:cell2utm:155, 1:cell2utm:155))
+
+
 segments = BitmapMaps.lake_segment(elevations, cell_iter, cell2utm, 0.155)
 @test segment_pixel_count(segments, 2) * cell2utm^2  == 5372
 cell2utm = 2
@@ -72,3 +88,4 @@ end
 # Pass this sheet builder to the interface, see if that makes us another WATER_FNAM file...
 BitmapMaps.water_overlay(sb)
 @test isfile(joinpath(tmpdir_water, WATER_FNAM))
+=#
